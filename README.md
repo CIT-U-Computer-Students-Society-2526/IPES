@@ -5,9 +5,9 @@ We provide a solution that will unify the system and reduce the cumbersome proce
 We hope that this system willl help in minimizing manual effort, reducing errors, and providing real-time insights for both evaluators and administrators.
 
 ## Tech stack
-Back-end: Django
-Front-end: ReactJS
-Database: Supabase
+- Back-end: Django
+- Front-end: ReactJS
+- Database: Supabase
 
 ## ERD
 ```mermaid
