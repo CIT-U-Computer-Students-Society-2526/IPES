@@ -234,13 +234,13 @@ Edit `.env` and update with your local secrets (e.g. database, secret key, debug
 
 Your `.env` file should look like this:
 ```env
-SECRET_KEY=your-secret-key
+SECRET_KEY=mysecretkey
 DEBUG=True
-DB_NAME=ipes
-DB_USER=your-username
-DB_PASSWORD=your-password
-DB_HOST=localhost
-DB_PORT=5432
+DB_NAME=IPES
+DB_USER=root
+DB_PASSWORD=12345
+DB_HOST=127.0.0.1
+DB_ROOT=3306
 ```
 Generate your secret key [here](https://djecrety.ir/).
 > ⚠️ Never commit `.env` — it contains sensitive information.
@@ -257,10 +257,6 @@ Generate your secret key [here](https://djecrety.ir/).
    ```bash
    python manage.py createsuperuser
    ```
-3. Populate Currency table:
-    ```bash
-    python manage.py populate_currencies
-    ```
 ---
 
 ## ▶️ Running the Server
