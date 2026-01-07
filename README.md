@@ -182,9 +182,9 @@ erDiagram
 ---
 
 ## 📦 Requirements
-- Python 3.10+
+- Python 3.13+
 - Virtual environment (recommended: `venv`)
-- Database (MySQL)
+- Database (PostgreSQL)
 
 ---
 
@@ -240,7 +240,7 @@ DB_NAME=IPES
 DB_USER=root
 DB_PASSWORD=12345
 DB_HOST=127.0.0.1
-DB_ROOT=3306
+DB_PORT=3306
 ```
 Generate your secret key [here](https://djecrety.ir/).
 > ⚠️ Never commit `.env` — it contains sensitive information.
