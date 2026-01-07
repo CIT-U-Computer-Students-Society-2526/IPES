@@ -1,3 +1,5 @@
+![readme/IPES-banner.png](readme/IPES-banner.png)
+
 # IPES
 The Individual Performance Evaluation System (IPES) is an evaluation system by the Committee on Research of the CIT-U Supreme Student Government. It is done through Google Forms, but this makes workload heavy both for officers answering and the ones handling the results. 
 
