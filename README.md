@@ -29,6 +29,7 @@ erDiagram
         int id PK
         string name "e.g., CIT-U Supreme Student Government"
         string code "e.g., SSG-2025"
+        text description
         image display_picture "link to a CDN"
         int period_year_start 
         int period_year_end "nullable, Auto-calculated when Admin closes the Organization instance"
