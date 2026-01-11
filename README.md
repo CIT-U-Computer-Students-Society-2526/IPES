@@ -29,7 +29,8 @@ erDiagram
         int id PK
         string name "e.g., CIT-U Supreme Student Government"
         string code "e.g., SSG-2025"
-        string display_picture "link to a CDN"
+        text description
+        image display_picture "link to a CDN"
         int period_year_start 
         int period_year_end "nullable, Auto-calculated when Admin closes the Organization instance"
         boolean is_active
@@ -88,7 +89,7 @@ erDiagram
         string password_hash
         string first_name
         string last_name
-        string display_picture "link to a CDN"
+        image display_picture "link to a CDN"
         string role "Admin, Officer"
         boolean is_active
     }
