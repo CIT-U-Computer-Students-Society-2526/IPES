@@ -184,7 +184,7 @@ erDiagram
 
 ## 📦 Requirements
 - Python 3.13+
-- Virtual environment (recommended: `venv`)
+- Virtual environment
 - Database (PostgreSQL)
 
 ---
