@@ -4,7 +4,7 @@
 The Individual Performance Evaluation System (IPES) is an evaluation system by the Committee on Research of the CIT-U Supreme Student Government. It is done through Google Forms, but this makes workload heavy both for officers answering and the ones handling the results. 
 
 We provide a solution that will unify the system and reduce the cumbersome process by developing a dedicated, automated evaluation platform tailored to IPES. This system will streamline form distribution, response collection, and result analysis. 
-We hope that this system willl help in minimizing manual effort, reducing errors, and providing real-time insights for both evaluators and administrators.
+We hope that this system will help in minimizing manual effort, reducing errors, and providing real-time insights for both evaluators and administrators.
 
 ---
 ## Tech stack
@@ -273,7 +273,7 @@ DB_NAME=IPES
 DB_USER=root
 DB_PASSWORD=12345
 DB_HOST=127.0.0.1
-DB_PORT=3306
+DB_PORT=5432
 ```
 
 Generate your secret key [here](https://djecrety.ir/).
@@ -290,6 +290,8 @@ VITE_API_BASE_URL=http://localhost:8000/api
 ---
 
 ## 🗄️ Database Setup
+
+Supabase uses PostgreSQL. Connect to your Supabase database and run:
 
 1. Apply migrations:
    ```bash
