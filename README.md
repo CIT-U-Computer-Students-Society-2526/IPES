@@ -4,7 +4,7 @@
 The Individual Performance Evaluation System (IPES) is an evaluation system by the Committee on Research of the CIT-U Supreme Student Government. It is done through Google Forms, but this makes workload heavy both for officers answering and the ones handling the results. 
 
 We provide a solution that will unify the system and reduce the cumbersome process by developing a dedicated, automated evaluation platform tailored to IPES. This system will streamline form distribution, response collection, and result analysis. 
-We hope that this system willl help in minimizing manual effort, reducing errors, and providing real-time insights for both evaluators and administrators.
+We hope that this system will help in minimizing manual effort, reducing errors, and providing real-time insights for both evaluators and administrators.
 
 ---
 ## Tech stack
@@ -183,9 +183,15 @@ erDiagram
 ---
 
 ## 📦 Requirements
+
+### Backend
 - Python 3.13+
 - Virtual environment
 - Database (PostgreSQL)
+
+### Frontend
+- Node.js 18+ and npm (or yarn/pnpm)
+- Modern web browser
 
 ---
 
@@ -216,12 +222,36 @@ Activate it:
   source .venv/bin/activate
   ```
 
-### 3. Install Dependencies
+### 3. Install Backend Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. Environment Variables
+### 4. Setup Frontend
+
+Navigate to the frontend directory:
+```bash
+cd frontend
+```
+
+Install frontend dependencies:
+```bash
+npm install
+```
+
+Create frontend environment file:
+```bash
+cp .env.example .env.local
+```
+
+Edit `frontend/.env.local` and set your API base URL (default: `http://localhost:8000/api`)
+
+Return to project root:
+```bash
+cd ..
+```
+
+### 5. Environment Variables
 Copy the example environment file:
 ```bash
 cp sample.env .env
@@ -233,6 +263,8 @@ Edit `.env` and update with your local secrets (e.g. database, secret key, debug
 
 ## 🔑 Environment Variables
 
+### Backend (`.env`)
+
 Your `.env` file should look like this:
 ```env
 SECRET_KEY=mysecretkey
@@ -241,14 +273,25 @@ DB_NAME=IPES
 DB_USER=root
 DB_PASSWORD=12345
 DB_HOST=127.0.0.1
-DB_PORT=3306
+DB_PORT=5432
 ```
+
 Generate your secret key [here](https://djecrety.ir/).
-> ⚠️ Never commit `.env` — it contains sensitive information.
+> ⚠️ Update the database credentials to match your database configuration (e.g., Supabase PostgreSQL).
+
+### Frontend (`frontend/.env.local`)
+
+```env
+VITE_API_BASE_URL=http://localhost:8000/api
+```
+
+> ⚠️ Never commit `.env` or `.env.local` — they contain sensitive information.
 
 ---
 
 ## 🗄️ Database Setup
+
+Supabase uses PostgreSQL. Connect to your Supabase database and run:
 
 1. Apply migrations:
    ```bash
@@ -260,11 +303,68 @@ Generate your secret key [here](https://djecrety.ir/).
    ```
 ---
 
-## ▶️ Running the Server
+## ▶️ Running the Application
+
+### Development Mode
+
+You need to run both the Django backend and React frontend servers simultaneously.
+
+#### Terminal 1 - Django Backend
 ```bash
 python manage.py runserver
 ```
+Backend will be available at: [http://127.0.0.1:8000](http://127.0.0.1:8000)
 
-Visit: [http://127.0.0.1:8000](http://127.0.0.1:8000)
+#### Terminal 2 - React Frontend
+```bash
+cd frontend
+npm run dev
+```
+Frontend will be available at: [http://localhost:8080](http://localhost:8080)
+
+### Production Build
+
+To build the frontend for production:
+```bash
+cd frontend
+npm run build
+```
+
+The built files will be in `frontend/dist/` and can be served by Django static files or a web server.
+
+---
+
+## 📁 Project Structure
+
+```
+IPES/
+├── apps/              # Django apps (backend)
+│   ├── audit/
+│   ├── evaluations/
+│   ├── organizations/
+│   ├── portfolio/
+│   └── users/
+├── frontend/          # React application (frontend)
+│   ├── src/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   └── lib/
+│   └── package.json
+├── IPES/              # Django project settings
+├── manage.py
+└── requirements.txt
+```
+
+---
+
+## 🔌 API Endpoints
+
+The Django REST Framework API is available at `/api/`. API endpoints will be added as you develop the backend functionality.
+
+Example API structure:
+- `/api/users/` - User management
+- `/api/evaluations/` - Evaluation forms and responses
+- `/api/organizations/` - Organization management
+- etc.
 
 ---
