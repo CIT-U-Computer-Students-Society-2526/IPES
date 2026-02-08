@@ -22,7 +22,6 @@ from .api import APIRoot
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/", APIRoot.as_view(), name="api-root"),  # Public API root
-    path("api/auth/", include("rest_framework.urls", namespace="rest_framework")),  # Auth views
     path("api/", include("apps.users.urls")),  # Users API
     path("api/", include("apps.organizations.urls")),  # Organizations API
     # Add API routes here as you create them

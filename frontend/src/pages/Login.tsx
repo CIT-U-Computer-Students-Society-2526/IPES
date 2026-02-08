@@ -4,30 +4,92 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ClipboardCheck, Eye, EyeOff } from "lucide-react";
+import { api, getApiUrl } from "@/lib/api";
+
+interface LoginResponse {
+  user: {
+    id: number;
+    email: string;
+    username: string;
+    first_name: string;
+    last_name: string;
+    role: string;
+    is_active: boolean;
+  };
+  message: string;
+}
 
 const Login = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [currentOrg, setCurrentOrg] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const organizations = [
     { logo: "/css-logo.svg", name: "Computer Students' Society" },
     { logo: "/ssg2-logo.svg", name: "CIT-U Supreme Student Government" },
   ];
 
+  // Auto-cycle through organizations
+  const [currentOrg, setCurrentOrg] = useState(0);
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentOrg((prev) => (prev + 1) % organizations.length);
     }, 3000);
     return () => clearInterval(interval);
-  }, []);
+  }, [organizations.length]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Demo: navigate to officer dashboard
-    navigate("/officer/dashboard");
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch(getApiUrl("/auth/login/"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+        credentials: "include",
+      });
+
+      const data: any = await response.json();
+
+      if (!response.ok) {
+        // Construct error message from validation errors if available
+        let errorMsg = data.message || "Login failed";
+        if (data.errors) {
+          const errorDetails = Object.entries(data.errors)
+            .map(([field, msgs]: [string, any]) => {
+              if (Array.isArray(msgs)) {
+                return `${field}: ${msgs.join(', ')}`;
+              }
+              return `${field}: ${msgs}`;
+            })
+            .join('; ');
+          errorMsg = errorDetails || errorMsg;
+        }
+        throw new Error(errorMsg);
+      }
+
+      // Store user info in localStorage
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      // Redirect based on role
+      const role = data.user.role?.toLowerCase();
+      if (role === "admin" || role === "super_admin") {
+        navigate("/admin/dashboard");
+      } else {
+        navigate("/officer/dashboard");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -94,6 +156,11 @@ const Login = () => {
           </div>
 
           <form onSubmit={handleLogin} className="space-y-5">
+            {error && (
+              <div className="p-3 text-sm text-red-500 bg-red-50 rounded-md">
+                {error}
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="email">Email address</Label>
               <Input
@@ -129,8 +196,8 @@ const Login = () => {
               </div>
             </div>
 
-            <Button type="submit" className="w-full h-11 text-base">
-              Log in
+            <Button type="submit" className="w-full h-11 text-base" disabled={loading}>
+              {loading ? "Logging in..." : "Log in"}
             </Button>
           </form>
 

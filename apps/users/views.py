@@ -1,5 +1,5 @@
 from rest_framework import status, viewsets
-from rest_framework.decorators import action
+from rest_framework.decorators import action, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.contrib.auth import login, logout
@@ -16,11 +16,20 @@ class AuthViewSet(viewsets.ViewSet):
     """ViewSet for authentication endpoints"""
     permission_classes = [AllowAny]
     
-    @action(detail=False, methods=['post'], url_path='login')
+    @action(detail=False, methods=['post'], url_path='login', permission_classes=[AllowAny])
     def login(self, request):
         """Handle user login"""
         serializer = LoginSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        
+        if not serializer.is_valid():
+            # Return validation errors with more detail
+            return Response(
+                {
+                    'message': 'Login failed',
+                    'errors': serializer.errors
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
         
         user = serializer.validated_data['user']
         login(request, user)
@@ -30,13 +39,13 @@ class AuthViewSet(viewsets.ViewSet):
             'message': 'Login successful'
         })
     
-    @action(detail=False, methods=['post'], url_path='logout')
+    @action(detail=False, methods=['post'], url_path='logout', permission_classes=[AllowAny])
     def logout(self, request):
         """Handle user logout"""
         logout(request)
         return Response({'message': 'Logout successful'})
     
-    @action(detail=False, methods=['get'], url_path='me')
+    @action(detail=False, methods=['get'], url_path='me', permission_classes=[IsAuthenticated])
     def me(self, request):
         """Get current authenticated user"""
         if request.user.is_authenticated:

@@ -26,7 +26,7 @@ SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=False, cast=bool)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
 
 
 # Application definition
@@ -141,12 +141,9 @@ AUTH_USER_MODEL = "users.User"
 
 # CORS Configuration
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:8080",  # Vite dev server (from vite.config.ts)
-    "http://localhost:3000",  # Alternative React dev server
-    "http://127.0.0.1:8080",
-    "http://127.0.0.1:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
 ]
-
 CORS_ALLOW_CREDENTIALS = True
 
 # Django REST Framework Configuration
