@@ -3,7 +3,6 @@ import {
   Users, 
   Plus, 
   Search, 
-  Filter,
   MoreHorizontal,
   Edit,
   Trash2,
@@ -12,7 +11,8 @@ import {
   ShieldCheck,
   UserCheck,
   UserX,
-  Key
+  Key,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +32,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import {
@@ -49,87 +50,196 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/components/ui/use-toast";
+import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, type User, type UserCreate } from "@/hooks/useUsers";
 
-const users = [
-  { 
-    id: 1, 
-    name: "Maria Santos", 
-    email: "maria.santos@university.edu",
-    role: "Admin",
-    unit: "Executive",
-    position: "President",
-    status: "Active",
-    lastLogin: "2024-01-14 09:30"
-  },
-  { 
-    id: 2, 
-    name: "Juan Dela Cruz", 
-    email: "juan.delacruz@university.edu",
-    role: "Officer",
-    unit: "Legislative",
-    position: "Speaker",
-    status: "Active",
-    lastLogin: "2024-01-14 08:15"
-  },
-  { 
-    id: 3, 
-    name: "Ana Reyes", 
-    email: "ana.reyes@university.edu",
-    role: "Officer",
-    unit: "Academics",
-    position: "Chairperson",
-    status: "Active",
-    lastLogin: "2024-01-13 14:20"
-  },
-  { 
-    id: 4, 
-    name: "Carlos Garcia", 
-    email: "carlos.garcia@university.edu",
-    role: "Officer",
-    unit: "Finance",
-    position: "Chairperson",
-    status: "Active",
-    lastLogin: "2024-01-14 10:45"
-  },
-  { 
-    id: 5, 
-    name: "Rosa Mendoza", 
-    email: "rosa.mendoza@university.edu",
-    role: "Officer",
-    unit: "External",
-    position: "Chairperson",
-    status: "Inactive",
-    lastLogin: "2024-01-10 16:00"
-  },
-  { 
-    id: 6, 
-    name: "Pedro Lim", 
-    email: "pedro.lim@university.edu",
-    role: "Admin",
-    unit: "Internal",
-    position: "Chairperson",
-    status: "Active",
-    lastLogin: "2024-01-14 07:00"
-  },
+// Organization unit options
+const ORGANIZATION_UNITS = [
+  { value: "executive", label: "Executive Committee" },
+  { value: "legislative", label: "Legislative Council" },
+  { value: "academics", label: "Committee on Academics" },
+  { value: "finance", label: "Committee on Finance" },
+  { value: "external", label: "Committee on External Affairs" },
+  { value: "internal", label: "Committee on Internal Affairs" },
+];
+
+// Position options
+const POSITIONS = [
+  { value: "president", label: "President" },
+  { value: "vp", label: "Vice President" },
+  { value: "chair", label: "Chairperson" },
+  { value: "secretary", label: "Secretary" },
+  { value: "treasurer", label: "Treasurer" },
+  { value: "member", label: "Member" },
 ];
 
 const AdminUsers = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  
+  // Form states
+  const [formData, setFormData] = useState<UserCreate>({
+    email: "",
+    first_name: "",
+    last_name: "",
+    role: "Officer",
+    organization_id: undefined,
+    password: "",
+  });
 
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  const { toast } = useToast();
+
+  // Fetch users from API
+  const { data: users, isLoading, error, refetch } = useUsers();
+
+  // Mutations
+  const createUser = useCreateUser();
+  const updateUser = useUpdateUser();
+  const deleteUser = useDeleteUser();
+
+  // Filter users
+  const filteredUsers = users?.filter(user => {
+    const fullName = `${user.first_name} ${user.last_name}`.toLowerCase();
+    const matchesSearch = fullName.includes(searchQuery.toLowerCase()) ||
                           user.email.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesRole = roleFilter === "all" || user.role.toLowerCase() === roleFilter;
     return matchesSearch && matchesRole;
-  });
+  }) || [];
 
+  // Calculate stats
   const stats = {
-    total: users.length,
-    admins: users.filter(u => u.role === "Admin").length,
-    officers: users.filter(u => u.role === "Officer").length,
-    active: users.filter(u => u.status === "Active").length,
+    total: users?.length || 0,
+    admins: users?.filter(u => u.role === "Admin").length || 0,
+    officers: users?.filter(u => u.role === "Officer").length || 0,
+    active: users?.filter(u => u.is_active).length || 0,
   };
+
+  // Handle form input changes
+  const handleInputChange = (field: keyof UserCreate, value: string | number | undefined) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Handle create user
+  const handleCreateUser = async () => {
+    try {
+      await createUser.mutateAsync(formData);
+      toast({
+        title: "Success",
+        description: "User created successfully",
+      });
+      setIsAddDialogOpen(false);
+      setFormData({
+        email: "",
+        first_name: "",
+        last_name: "",
+        role: "Officer",
+        organization_id: undefined,
+        password: "",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create user",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle toggle user status
+  const handleToggleStatus = async (user: User) => {
+    try {
+      await updateUser.mutateAsync({
+        id: user.id,
+        data: { is_active: !user.is_active }
+      });
+      toast({
+        title: "Success",
+        description: `User ${user.is_active ? "deactivated" : "activated"} successfully`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update user status",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle delete user
+  const handleDeleteUser = async (userId: number) => {
+    if (confirm("Are you sure you want to delete this user?")) {
+      try {
+        await deleteUser.mutateAsync(userId);
+        toast({
+          title: "Success",
+          description: "User deleted successfully",
+        });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to delete user",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  // Loading skeleton for stats
+  const StatsSkeleton = () => (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {[1, 2, 3, 4].map((i) => (
+        <Card key={i}>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <Skeleton className="w-10 h-10 rounded-lg" />
+              <div>
+                <Skeleton className="h-8 w-12 mb-1" />
+                <Skeleton className="h-4 w-20" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+
+  // Loading skeleton for table
+  const TableSkeleton = () => (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>User</TableHead>
+          <TableHead>Role</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead>Last Login</TableHead>
+          <TableHead className="text-right">Actions</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {[1, 2, 3, 4, 5].map((i) => (
+          <TableRow key={i}>
+            <TableCell>
+              <div className="flex items-center gap-3">
+                <Skeleton className="w-10 h-10 rounded-full" />
+                <div>
+                  <Skeleton className="h-4 w-32 mb-1" />
+                  <Skeleton className="h-3 w-40" />
+                </div>
+              </div>
+            </TableCell>
+            <TableCell><Skeleton className="h-6 w-20" /></TableCell>
+            <TableCell><Skeleton className="h-6 w-16" /></TableCell>
+            <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+            <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
 
   return (
     <div className="space-y-6">
@@ -139,7 +249,7 @@ const AdminUsers = () => {
           <h1 className="text-2xl font-bold text-foreground">User Management</h1>
           <p className="text-muted-foreground">Manage system users and their roles</p>
         </div>
-        <Dialog>
+        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button className="gradient-hero text-primary-foreground">
               <Plus className="w-4 h-4 mr-2" />
@@ -154,119 +264,165 @@ const AdminUsers = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>First Name</Label>
-                  <Input placeholder="Juan" />
+                  <Input 
+                    placeholder="Juan" 
+                    value={formData.first_name}
+                    onChange={(e) => handleInputChange("first_name", e.target.value)}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Last Name</Label>
-                  <Input placeholder="Dela Cruz" />
+                  <Input 
+                    placeholder="Dela Cruz"
+                    value={formData.last_name}
+                    onChange={(e) => handleInputChange("last_name", e.target.value)}
+                  />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label>Email</Label>
-                <Input type="email" placeholder="juan@university.edu" />
+                <Input 
+                  type="email" 
+                  placeholder="juan@university.edu"
+                  value={formData.email}
+                  onChange={(e) => handleInputChange("email", e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Password</Label>
+                <Input 
+                  type="password"
+                  placeholder="Enter password"
+                  value={formData.password}
+                  onChange={(e) => handleInputChange("password", e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Role</Label>
-                <Select>
+                <Select 
+                  value={formData.role} 
+                  onValueChange={(value) => handleInputChange("role", value)}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="officer">Officer</SelectItem>
+                    <SelectItem value="Admin">Admin</SelectItem>
+                    <SelectItem value="Officer">Officer</SelectItem>
+                    <SelectItem value="Evaluator">Evaluator</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label>Organization Unit</Label>
-                <Select>
+                <Select 
+                  value={formData.organization_id?.toString() || ""}
+                  onValueChange={(value) => handleInputChange("organization_id", value ? parseInt(value) : undefined)}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select unit" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="executive">Executive Committee</SelectItem>
-                    <SelectItem value="legislative">Legislative Council</SelectItem>
-                    <SelectItem value="academics">Committee on Academics</SelectItem>
-                    <SelectItem value="finance">Committee on Finance</SelectItem>
-                    <SelectItem value="external">Committee on External Affairs</SelectItem>
+                    {ORGANIZATION_UNITS.map((unit) => (
+                      <SelectItem key={unit.value} value={unit.value}>
+                        {unit.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>Position</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select position" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="president">President</SelectItem>
-                    <SelectItem value="vp">Vice President</SelectItem>
-                    <SelectItem value="chair">Chairperson</SelectItem>
-                    <SelectItem value="member">Member</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button className="w-full">Create User</Button>
+              <Button 
+                className="w-full" 
+                onClick={handleCreateUser}
+                disabled={createUser.isLoading}
+              >
+                {createUser.isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  "Create User"
+                )}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
+      {isLoading ? (
+        <StatsSkeleton />
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Users className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{stats.total}</p>
+                  <p className="text-sm text-muted-foreground">Total Users</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+                  <ShieldCheck className="w-5 h-5 text-purple-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{stats.admins}</p>
+                  <p className="text-sm text-muted-foreground">Admins</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                  <UserCheck className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{stats.officers}</p>
+                  <p className="text-sm text-muted-foreground">Officers</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                  <UserCheck className="w-5 h-5 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{stats.active}</p>
+                  <p className="text-sm text-muted-foreground">Active</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <Card className="border-destructive">
           <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Users className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{stats.total}</p>
-                <p className="text-sm text-muted-foreground">Total Users</p>
-              </div>
+            <div className="text-center py-4">
+              <p className="text-destructive">Failed to load users</p>
+              <Button variant="outline" onClick={() => refetch()} className="mt-2">
+                Retry
+              </Button>
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
-                <ShieldCheck className="w-5 h-5 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{stats.admins}</p>
-                <p className="text-sm text-muted-foreground">Admins</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                <UserCheck className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{stats.officers}</p>
-                <p className="text-sm text-muted-foreground">Officers</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
-                <UserCheck className="w-5 h-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{stats.active}</p>
-                <p className="text-sm text-muted-foreground">Active</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      )}
 
       {/* Users Table */}
       <Card>
@@ -297,97 +453,111 @@ const AdminUsers = () => {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Unit & Position</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Last Login</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredUsers.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar>
-                        <AvatarFallback className="bg-primary/10 text-primary">
-                          {user.name.split(' ').map(n => n[0]).join('')}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium text-foreground">{user.name}</p>
-                        <p className="text-sm text-muted-foreground">{user.email}</p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={user.role === "Admin" ? "default" : "secondary"}>
-                      {user.role === "Admin" && <Shield className="w-3 h-3 mr-1" />}
-                      {user.role}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <p className="text-sm font-medium">{user.position}</p>
-                      <p className="text-xs text-muted-foreground">{user.unit}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={user.status === "Active" ? "outline" : "secondary"} 
-                           className={user.status === "Active" ? "text-green-600 border-green-600" : ""}>
-                      {user.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
-                    {user.lastLogin}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
-                          <Edit className="w-4 h-4 mr-2" />
-                          Edit User
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Key className="w-4 h-4 mr-2" />
-                          Reset Password
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Mail className="w-4 h-4 mr-2" />
-                          Send Email
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        {user.status === "Active" ? (
-                          <DropdownMenuItem>
-                            <UserX className="w-4 h-4 mr-2" />
-                            Deactivate
-                          </DropdownMenuItem>
-                        ) : (
-                          <DropdownMenuItem>
-                            <UserCheck className="w-4 h-4 mr-2" />
-                            Activate
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem className="text-destructive">
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Delete User
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+          {isLoading ? (
+            <TableSkeleton />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>User</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Last Login</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredUsers.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8">
+                      <p className="text-muted-foreground">No users found</p>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredUsers.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Avatar>
+                            <AvatarFallback className="bg-primary/10 text-primary">
+                              {user.first_name[0]}{user.last_name[0]}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium text-foreground">
+                              {user.first_name} {user.last_name}
+                            </p>
+                            <p className="text-sm text-muted-foreground">{user.email}</p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={user.role === "Admin" ? "default" : "secondary"}>
+                          {user.role === "Admin" && <Shield className="w-3 h-3 mr-1" />}
+                          {user.role}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant={user.is_active ? "outline" : "secondary"} 
+                          className={user.is_active ? "text-green-600 border-green-600" : ""}
+                        >
+                          {user.is_active ? "Active" : "Inactive"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {user.last_login || "Never"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem>
+                              <Edit className="w-4 h-4 mr-2" />
+                              Edit User
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Key className="w-4 h-4 mr-2" />
+                              Reset Password
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Mail className="w-4 h-4 mr-2" />
+                              Send Email
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleToggleStatus(user)}>
+                              {user.is_active ? (
+                                <>
+                                  <UserX className="w-4 h-4 mr-2" />
+                                  Deactivate
+                                </>
+                              ) : (
+                                <>
+                                  <UserCheck className="w-4 h-4 mr-2" />
+                                  Activate
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              className="text-destructive"
+                              onClick={() => handleDeleteUser(user.id)}
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Delete User
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>

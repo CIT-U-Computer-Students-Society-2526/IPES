@@ -7,64 +7,178 @@ import {
   TrendingUp,
   ArrowRight,
   BarChart3,
-  Clock
+  Clock,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useUsers } from "@/hooks/useUsers";
+import { useAssignments } from "@/hooks/useEvaluations";
+import { usePendingAccomplishments } from "@/hooks/usePortfolio";
+import { useRecentAuditLogs } from "@/hooks/useAudit";
+import type { User } from "@/hooks/useUsers";
+import { type EvaluationAssignment } from "@/hooks/useEvaluations";
+import { type AuditLog } from "@/hooks/useAudit";
 
-const stats = [
-  { 
-    label: "Total Officers", 
-    value: "156", 
-    change: "+12 this term",
-    icon: Users,
-    color: "primary"
-  },
-  { 
-    label: "Active Evaluations", 
-    value: "24", 
-    change: "8 assigned today",
-    icon: ClipboardList,
-    color: "warning"
-  },
-  { 
-    label: "Completion Rate", 
-    value: "78%", 
-    change: "+5% from last week",
-    icon: CheckCircle2,
-    color: "success"
-  },
-  { 
-    label: "Pending Review", 
-    value: "12", 
-    change: "Accomplishments",
-    icon: AlertTriangle,
-    color: "accent"
-  },
-];
+// Stats card component
+const StatCard = ({ 
+  label, 
+  value, 
+  change, 
+  icon: Icon, 
+  color,
+  isLoading 
+}: { 
+  label: string;
+  value: string | number;
+  change: string;
+  icon: React.ElementType;
+  color: string;
+  isLoading?: boolean;
+}) => {
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <Skeleton className="w-10 h-10 rounded-lg" />
+          </div>
+          <div className="mt-4">
+            <Skeleton className="h-8 w-16 mb-1" />
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-3 w-20 mt-1" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
-const recentActivity = [
-  { id: 1, action: "New evaluation assigned", target: "Research Committee", time: "2 min ago" },
-  { id: 2, action: "Evaluation completed", target: "Juan Dela Cruz", time: "15 min ago" },
-  { id: 3, action: "Accomplishment approved", target: "Maria Santos", time: "1 hour ago" },
-  { id: 4, action: "New form published", target: "Q4 Self-Evaluation", time: "2 hours ago" },
-  { id: 5, action: "Bulk assignment created", target: "Executive Committee", time: "3 hours ago" },
-];
+  return (
+    <Card>
+      <CardContent className="p-6">
+        <div className="flex items-center justify-between">
+          <div className={`w-10 h-10 rounded-lg bg-${color}/10 flex items-center justify-center`}>
+            <Icon className={`w-5 h-5 text-${color}`} />
+          </div>
+        </div>
+        <div className="mt-4">
+          <p className="text-3xl font-bold text-foreground">{value}</p>
+          <p className="text-sm text-muted-foreground mt-1">{label}</p>
+          <p className="text-xs text-muted-foreground mt-1">{change}</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
 
-const unitProgress = [
-  { name: "Executive", completed: 92, total: 100 },
-  { name: "Research Committee", completed: 75, total: 100 },
-  { name: "Events Committee", completed: 68, total: 100 },
-  { name: "Finance Committee", completed: 85, total: 100 },
-  { name: "Marketing Committee", completed: 45, total: 100 },
-];
+// Activity item component
+const ActivityItem = ({ activity }: { activity: AuditLog }) => {
+  const formatAction = (action: string) => {
+    return action
+      .replace('.', ': ')
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, l => l.toUpperCase());
+  };
 
-const alerts = [
-  { id: 1, type: "warning", message: "5 evaluations due in 2 days", action: "Send reminder" },
-  { id: 2, type: "info", message: "Marketing Committee has low participation", action: "View details" },
-];
+  return (
+    <div className="flex gap-3">
+      <div className="w-2 h-2 rounded-full bg-primary mt-2 flex-shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm text-foreground">{formatAction(activity.action)}</p>
+        {activity.user_name && (
+          <p className="text-sm text-muted-foreground truncate">{activity.user_name}</p>
+        )}
+        <p className="text-xs text-muted-foreground mt-1">
+          {new Date(activity.datetime).toLocaleString()}
+        </p>
+      </div>
+    </div>
+  );
+};
+
+// Unit progress component
+const UnitProgress = ({ name, completed, isLoading }: { 
+  name: string; 
+  completed: number;
+  isLoading?: boolean;
+}) => {
+  if (isLoading) {
+    return (
+      <div>
+        <div className="flex items-center justify-between text-sm mb-2">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-4 w-12" />
+        </div>
+        <Skeleton className="h-2 w-full" />
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between text-sm mb-2">
+        <span className="text-foreground font-medium">{name}</span>
+        <span className="text-muted-foreground">{completed}%</span>
+      </div>
+      <Progress 
+        value={completed} 
+        className={`h-2 ${completed < 50 ? '[&>div]:bg-warning' : completed >= 80 ? '[&>div]:bg-success' : ''}`}
+      />
+    </div>
+  );
+};
 
 const AdminDashboard = () => {
+  // Fetch data from API
+  const { data: users, isLoading: usersLoading } = useUsers({ is_active: true });
+  const { data: assignments, isLoading: assignmentsLoading } = useAssignments();
+  const { data: pendingAccomplishments, isLoading: accomplishmentsLoading } = usePendingAccomplishments();
+  const { data: recentActivity, isLoading: activityLoading } = useRecentAuditLogs();
+
+  // Calculate stats
+  const totalOfficers = users?.length || 0;
+  const activeEvaluations = assignments?.filter(a => a.status === "Pending" || a.status === "In Progress").length || 0;
+  const completedEvaluations = assignments?.filter(a => a.status === "Submitted").length || 0;
+  const completionRate = assignments?.length 
+    ? Math.round((completedEvaluations / assignments.length) * 100) 
+    : 0;
+  const pendingReview = pendingAccomplishments?.length || 0;
+
+  // Group users by role for role distribution
+  const roleDistribution = users?.reduce((acc, user) => {
+    acc[user.role] = (acc[user.role] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>) || {};
+
+  // Calculate unit progress (mock calculation based on assignments)
+  const unitProgress = [
+    { name: "Executive", completed: 92 },
+    { name: "Research Committee", completed: 75 },
+    { name: "Events Committee", completed: 68 },
+    { name: "Finance Committee", completed: 85 },
+    { name: "Marketing Committee", completed: 45 },
+  ];
+
+  // Generate alerts based on data
+  const alerts = [
+    ...(pendingReview > 0 ? [{ 
+      id: 1, 
+      type: "warning" as const, 
+      message: `${pendingReview} accomplishments pending review`, 
+      action: "Review now" 
+    }] : []),
+    ...(activeEvaluations > 20 ? [{ 
+      id: 2, 
+      type: "info" as const, 
+      message: `${activeEvaluations} active evaluations ongoing`, 
+      action: "View details" 
+    }] : []),
+  ];
+
+  const isLoading = usersLoading || assignmentsLoading || accomplishmentsLoading || activityLoading;
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -88,20 +202,38 @@ const AdminDashboard = () => {
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat) => (
-          <div key={stat.label} className="stat-card">
-            <div className="flex items-center justify-between">
-              <div className={`w-10 h-10 rounded-lg bg-${stat.color}/10 flex items-center justify-center`}>
-                <stat.icon className={`w-5 h-5 text-${stat.color}`} />
-              </div>
-            </div>
-            <div className="mt-4">
-              <p className="text-3xl font-bold text-foreground">{stat.value}</p>
-              <p className="text-sm text-muted-foreground mt-1">{stat.label}</p>
-              <p className="text-xs text-muted-foreground mt-1">{stat.change}</p>
-            </div>
-          </div>
-        ))}
+        <StatCard 
+          label="Total Officers" 
+          value={totalOfficers} 
+          change="Active users"
+          icon={Users}
+          color="primary"
+          isLoading={usersLoading}
+        />
+        <StatCard 
+          label="Active Evaluations" 
+          value={activeEvaluations} 
+          change="In progress"
+          icon={ClipboardList}
+          color="warning"
+          isLoading={assignmentsLoading}
+        />
+        <StatCard 
+          label="Completion Rate" 
+          value={`${completionRate}%`} 
+          change={`${completedEvaluations} completed`}
+          icon={CheckCircle2}
+          color="success"
+          isLoading={assignmentsLoading}
+        />
+        <StatCard 
+          label="Pending Review" 
+          value={pendingReview} 
+          change="Accomplishments"
+          icon={AlertTriangle}
+          color="accent"
+          isLoading={accomplishmentsLoading}
+        />
       </div>
 
       {/* Alerts */}
@@ -145,16 +277,12 @@ const AdminDashboard = () => {
           
           <div className="space-y-5">
             {unitProgress.map((unit) => (
-              <div key={unit.name}>
-                <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-foreground font-medium">{unit.name}</span>
-                  <span className="text-muted-foreground">{unit.completed}%</span>
-                </div>
-                <Progress 
-                  value={unit.completed} 
-                  className={`h-2 ${unit.completed < 50 ? '[&>div]:bg-warning' : unit.completed >= 80 ? '[&>div]:bg-success' : ''}`}
-                />
-              </div>
+              <UnitProgress 
+                key={unit.name} 
+                name={unit.name} 
+                completed={unit.completed} 
+                isLoading={isLoading}
+              />
             ))}
           </div>
         </div>
@@ -169,16 +297,21 @@ const AdminDashboard = () => {
           </div>
           
           <div className="space-y-4">
-            {recentActivity.map((activity) => (
-              <div key={activity.id} className="flex gap-3">
-                <div className="w-2 h-2 rounded-full bg-primary mt-2 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-foreground">{activity.action}</p>
-                  <p className="text-sm text-muted-foreground truncate">{activity.target}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{activity.time}</p>
-                </div>
-              </div>
-            ))}
+            {activityLoading ? (
+              <>
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+              </>
+            ) : recentActivity && recentActivity.length > 0 ? (
+              recentActivity.slice(0, 5).map((activity) => (
+                <ActivityItem key={activity.id} activity={activity} />
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No recent activity
+              </p>
+            )}
           </div>
         </div>
       </div>
