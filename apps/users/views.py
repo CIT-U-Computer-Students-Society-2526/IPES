@@ -4,6 +4,8 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.contrib.auth import login, logout
 
+from apps.audit.utils import log_action, AuditActions
+
 from .models import User
 from .serializers import (
     UserSerializer, 
@@ -34,6 +36,9 @@ class AuthViewSet(viewsets.ViewSet):
         user = serializer.validated_data['user']
         login(request, user)
         
+        # Log successful login
+        log_action(user, AuditActions.USER_LOGIN, request)
+        
         return Response({
             'user': UserSerializer(user).data,
             'message': 'Login successful'
@@ -42,7 +47,14 @@ class AuthViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['post'], url_path='logout', permission_classes=[AllowAny])
     def logout(self, request):
         """Handle user logout"""
+        # Get user before logout for logging
+        user = request.user if request.user.is_authenticated else None
         logout(request)
+        
+        # Log logout if user was authenticated
+        if user:
+            log_action(user, AuditActions.USER_LOGOUT, request)
+        
         return Response({'message': 'Logout successful'})
     
     @action(detail=False, methods=['get'], url_path='me', permission_classes=[IsAuthenticated])
@@ -67,3 +79,13 @@ class UserViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Filter users based on organization if needed"""
         return User.objects.filter(is_active=True)
+    
+    def perform_create(self, serializer):
+        """Log user creation"""
+        user = serializer.save()
+        log_action(
+            self.request.user,
+            AuditActions.USER_CREATED,
+            self.request,
+            user_email=user.email
+        )

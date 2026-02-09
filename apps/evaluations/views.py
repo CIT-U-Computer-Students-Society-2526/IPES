@@ -4,6 +4,8 @@ from rest_framework.response import Response as DRFResponse
 from django.db import models
 from django.utils import timezone
 
+from apps.audit.utils import log_action, AuditActions
+
 from .models import EvaluationForm, Question, EvaluationAssignment, Response
 from .serializers import (
     EvaluationFormSerializer,
@@ -43,8 +45,15 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
         return queryset.order_by('-id')
     
     def perform_create(self, serializer):
-        """Set created_by to current user"""
-        serializer.save(created_by=self.request.user)
+        """Set created_by to current user and log creation"""
+        form = serializer.save(created_by=self.request.user)
+        log_action(
+            self.request.user,
+            AuditActions.FORM_CREATED,
+            self.request,
+            form_title=form.title,
+            form_id=str(form.id)
+        )
     
     @action(detail=True, methods=['post'])
     def publish(self, request, pk=None):
@@ -59,6 +68,15 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
         
         form.is_published = True
         form.save()
+        
+        # Log form publishing
+        log_action(
+            request.user,
+            AuditActions.FORM_PUBLISHED,
+            request,
+            form_title=form.title,
+            form_id=str(form.id)
+        )
         
         return DRFResponse({
             'message': 'Form published successfully',
@@ -78,6 +96,15 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
         
         form.is_published = False
         form.save()
+        
+        # Log form unpublishing
+        log_action(
+            request.user,
+            AuditActions.FORM_UNPUBLISHED,
+            request,
+            form_title=form.title,
+            form_id=str(form.id)
+        )
         
         return DRFResponse({
             'message': 'Form unpublished successfully',
@@ -121,6 +148,16 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
             )
         
         serializer = EvaluationFormSerializer(new_form)
+        
+        # Log form duplication
+        log_action(
+            request.user,
+            AuditActions.FORM_DUPLICATED,
+            request,
+            original_form_id=str(form.id),
+            new_form_id=str(new_form.id)
+        )
+        
         return DRFResponse(serializer.data, status=status.HTTP_201_CREATED)
 
 
@@ -330,6 +367,16 @@ class EvaluationAssignmentViewSet(viewsets.ModelViewSet):
             assignment.total_score = None
         
         assignment.save()
+        
+        # Log evaluation submission
+        log_action(
+            request.user,
+            AuditActions.EVALUATION_SUBMITTED,
+            request,
+            assignment_id=str(assignment.id),
+            evaluatee_id=str(assignment.evaluatee_id.id),
+            score=str(assignment.total_score)
+        )
         
         serializer = EvaluationAssignmentSerializer(assignment)
         return DRFResponse({

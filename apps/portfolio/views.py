@@ -4,6 +4,8 @@ from rest_framework.response import Response
 from django.db.models import Count
 from django.utils import timezone
 
+from apps.audit.utils import log_action, AuditActions
+
 from .models import Accomplishment
 from .serializers import (
     AccomplishmentSerializer,
@@ -49,8 +51,15 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
         return queryset.select_related('user_id', 'verified_by').order_by('-date_completed', '-id')
     
     def perform_create(self, serializer):
-        """Auto-set user_id from request"""
-        serializer.save(user_id=self.request.user)
+        """Auto-set user_id from request and log creation"""
+        accomplishment = serializer.save(user_id=self.request.user)
+        log_action(
+            self.request.user,
+            AuditActions.ACCOMPLISHMENT_CREATED,
+            self.request,
+            accomplishment_id=str(accomplishment.id),
+            title=accomplishment.title
+        )
     
     @action(detail=False, methods=['get'])
     def my(self, request):
@@ -149,6 +158,17 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
         accomplishment.status = serializer.validated_data['status']
         accomplishment.verified_by = request.user
         accomplishment.save()
+        
+        # Log verification
+        action = AuditActions.ACCOMPLISHMENT_VERIFIED if accomplishment.status == 'Verified' else AuditActions.ACCOMPLISHMENT_REJECTED
+        log_action(
+            request.user,
+            action,
+            request,
+            accomplishment_id=str(accomplishment.id),
+            title=accomplishment.title,
+            status=accomplishment.status
+        )
         
         response_serializer = AccomplishmentSerializer(accomplishment)
         return Response({
