@@ -3,222 +3,194 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ClipboardCheck, Eye, EyeOff } from "lucide-react";
-import { api, getApiUrl } from "@/lib/api";
-
-interface LoginResponse {
-  user: {
-    id: number;
-    email: string;
-    username: string;
-    first_name: string;
-    last_name: string;
-    role: string;
-    is_active: boolean;
-  };
-  message: string;
-}
+import { Eye, EyeOff } from "lucide-react";
+import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 
 const Login = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [currentOrg, setCurrentOrg] = useState(0);
 
   const organizations = [
     { logo: "/css-logo.svg", name: "Computer Students' Society" },
     { logo: "/ssg2-logo.svg", name: "CIT-U Supreme Student Government" },
   ];
 
-  // Auto-cycle through organizations
-  const [currentOrg, setCurrentOrg] = useState(0);
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentOrg((prev) => (prev + 1) % organizations.length);
-    }, 3000);
+    }, 4000);
     return () => clearInterval(interval);
-  }, [organizations.length]);
+  }, []);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError("");
-
-    try {
-      const response = await fetch(getApiUrl("/auth/login/"), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-        credentials: "include",
-      });
-
-      const data: any = await response.json();
-
-      if (!response.ok) {
-        // Construct error message from validation errors if available
-        let errorMsg = data.message || "Login failed";
-        if (data.errors) {
-          const errorDetails = Object.entries(data.errors)
-            .map(([field, msgs]: [string, any]) => {
-              if (Array.isArray(msgs)) {
-                return `${field}: ${msgs.join(', ')}`;
-              }
-              return `${field}: ${msgs}`;
-            })
-            .join('; ');
-          errorMsg = errorDetails || errorMsg;
-        }
-        throw new Error(errorMsg);
-      }
-
-      // Store user info in localStorage
-      localStorage.setItem("user", JSON.stringify(data.user));
-
-      // Redirect based on role
-      const role = data.user.role?.toLowerCase();
-      if (role === "admin" || role === "super_admin") {
-        navigate("/admin/dashboard");
-      } else {
-        navigate("/officer/dashboard");
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
-    } finally {
-      setLoading(false);
-    }
+    navigate("/officer/dashboard");
   };
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left side - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, hsl(215 72% 47%) 0%, hsl(230 65% 55%) 50%, hsl(215 72% 47%) 100%)', backgroundSize: '200% 200%', animation: 'gradientHero 8s ease infinite' }}>
-        <style>{`
-          @keyframes gradientHero {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-          }
-        `}</style>
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2060%2060%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%23ffffff%22%20fill-opacity%3D%220.05%22%3E%3Cpath%20d%3D%22M36%2034v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6%2034v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6%204V0H4v4H0v2h4v4h2V6h4V4H6z%22%2F%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E')] opacity-40" />
-        <div className="relative z-10 flex flex-col justify-center px-12 xl:px-20 text-primary-foreground">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-12 h-12 rounded-xl bg-primary-foreground/20 flex items-center justify-center">
-              <img src="/ipes-logo.svg" alt="IPES Logo" className="w-7 h-7" />
-            </div>
-            <span className="text-2xl font-semibold">IPES</span>
+    <div className="min-h-screen flex font-sans text-[#293F55]">
+      <style>{`
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-up {
+          animation: fadeUp 0.6s ease-out forwards;
+          opacity: 0;
+        }
+        .delay-100 { animation-delay: 0.1s; }
+        .delay-200 { animation-delay: 0.2s; }
+        .delay-300 { animation-delay: 0.3s; }
+      `}</style>
+
+      {/* LEFT SIDE - BRANDING PANEL */}
+      <div className="hidden lg:flex lg:w-5/12 relative overflow-hidden flex-col justify-between"
+           style={{ backgroundColor: '#293F55' }}>
+
+        <div className="absolute inset-0  pointer-events-none flex items-center justify-center">
+            <DotLottieReact
+              src="public/assets/anim_getthingsdone.json"
+              loop
+              autoplay
+              className="w-full h-full"
+              renderConfig={{
+                autoResize: true
+              }}
+            />
+        </div>
+
+        {/* Decorative Yellow Accent Sideline */}
+        <div className="absolute left-0 top-0 bottom-0 w-2 bg-[#FCBD78] z-20 shadow-[0_0_15px_rgba(252,189,120,0.3)]"></div>
+
+        {/* Top Content */}
+        <div className="relative z-20 px-12 pt-20">
+
+          <div className="flex items-start gap-5 animate-fade-up delay-100 mb-6">
+            <h1 className="text-3xl xl:text-4xl font-bold text-white leading-tight">
+              <span className="text-[#FCBD78]">Individual Performance</span>
+              <br />Evaluation System
+            </h1>
           </div>
-          <h1 className="text-4xl xl:text-5xl font-bold leading-tight mb-6">
-            Individual Performance<br />Evaluation System
-          </h1>
-          <p className="font-['Montserrat'] text-lg text-primary-foreground/80 max-w-md leading-relaxed">
-            A centralized platform for fair, transparent, and efficient evaluation of student organization officers.
+
+          <p className="text-blue-100/80 text-lg leading-relaxed max-w-sm animate-fade-up delay-200">
+            Ensuring transparency and excellence in student governance through data-driven assessment.
           </p>
-          <div className="mt-12">
-            <p className="font-['Montserrat'] text-sm text-primary-foreground/70 mb-4">In collaboration with:</p>
-            <div className="relative h-16 flex items-center justify-start">
-              {organizations.map((org, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-3 absolute transition-all duration-500 ease-in-out"
-                  style={{
-                    opacity: index === currentOrg ? 1 : 0,
-                    transform: index === currentOrg ? 'translateX(0)' : 'translateX(20px)',
-                    visibility: index === currentOrg ? 'visible' : 'hidden',
-                  }}
-                >
-                  <img src={org.logo} alt={org.name} className="h-12" />
-                  <span className="font-medium">{org.name}</span>
+        </div>
+
+        {/* Bottom Content (Partners) */}
+        <div className="relative z-10 px-12 pb-12">
+          <p className="text-[#FCBD78] text-xs font-bold uppercase tracking-wider mb-4">Authorized Partners</p>
+          <div className="relative h-14">
+            {organizations.map((org, index) => (
+              <div
+                key={index}
+                className="flex items-center gap-4 absolute transition-all duration-700 ease-in-out w-full"
+                style={{
+                  opacity: index === currentOrg ? 1 : 0,
+                  transform: index === currentOrg ? 'translateY(0)' : 'translateY(10px)',
+                  pointerEvents: index === currentOrg ? 'auto' : 'none',
+                }}
+              >
+                <div className="rounded-full flex items-center justify-center">
+                  <img src={org.logo} alt="" className="w-10 h-10 object-contain" onError={(e) => e.currentTarget.style.display = 'none'} />
                 </div>
-              ))}
-            </div>
+                <span className="text-white font-medium text-sm border-l-2 border-[#FCBD78] pl-3">{org.name}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Right side - Login Form */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-background">
-        <div className="w-full max-w-md animate-fade-in">
-          {/* Mobile logo */}
-          <div className="lg:hidden flex items-center gap-3 mb-8 justify-center">
-            <div className="w-10 h-10 rounded-lg gradient-hero flex items-center justify-center">
-              <ClipboardCheck className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <span className="text-xl font-semibold text-foreground">IPES</span>
+      {/* RIGHT SIDE - LOGIN FORM */}
+      <div className="flex-1 flex items-center justify-center p-6 bg-[#293F55] lg:bg-[#F8FAFC] relative">
+
+        {/* Top Left Logo for Right Pane (Desktop/Tablet) */}
+        <div className="hidden lg:flex absolute top-10 left-10 items-center gap-3 animate-fade-up">
+           <img src="/ipes-logo-colored.svg" alt="IPES Logo" className="w-10 h-10 object-contain" />
+           <span className="text-[#293F55] font-bold text-2xl tracking-tight">IPES</span>
+        </div>
+
+        <div className="w-full max-w-[420px] bg-white p-8 md:p-10 rounded-2xl shadow-xl border border-slate-100 animate-fade-up">
+
+          {/* Mobile Header */}
+          <div className="lg:hidden flex items-center gap-2 mb-8 justify-center text-[#293F55]">
+            <img src="/ipes-logo-colored.svg" alt="Logo" className="w-8 h-8" />
+            <span className="text-xl font-bold tracking-tight">IPES Portal</span>
           </div>
 
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-semibold text-foreground mb-2">Welcome back!</h2>
-            <p className="font-['Montserrat'] text-muted-foreground">Log in to access your evaluations</p>
+          <div className="mb-8">
+            <h2 className="text-3xl font-bold text-[#293F55] mb-2">Sign In</h2>
+            <p className="text-slate-500 text-sm">Please enter your official credentials to continue.</p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-5">
-            {error && (
-              <div className="p-3 text-sm text-red-500 bg-red-50 rounded-md">
-                {error}
-              </div>
-            )}
-            <div className="space-y-2">
-              <Label htmlFor="email">Email address</Label>
+          <form onSubmit={handleLogin} className="space-y-6">
+            <div className="space-y-2 animate-fade-up delay-100">
+              <Label htmlFor="email" className="text-[#293F55] font-semibold text-sm">
+                Institutional Email
+              </Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="firstname.lastname@cit.edu"
+                placeholder="id.number@cit.edu"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="font-['Montserrat'] h-11"
+                className="h-12 bg-slate-50 border-slate-200 focus-visible:ring-[#293F55] focus-visible:ring-offset-0 focus-visible:border-[#293F55] transition-all"
               />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 animate-fade-up delay-200">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>                
+                <Label htmlFor="password" className="text-[#293F55] font-semibold text-sm">Password</Label>
               </div>
               <div className="relative">
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="font-['Montserrat'] h-11 pr-10"
+                  className="h-12 bg-slate-50 border-slate-200 focus-visible:ring-[#293F55] focus-visible:ring-offset-0 focus-visible:border-[#293F55] transition-all pr-10"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#293F55] transition-colors"
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
             </div>
 
-            <Button type="submit" className="w-full h-11 text-base" disabled={loading}>
-              {loading ? "Logging in..." : "Log in"}
-            </Button>
+            <div className="pt-2 animate-fade-up delay-300">
+              <Button
+                type="submit"
+                className="w-full h-12 text-base font-bold bg-[#FCBD78] hover:bg-[#faa94f] text-[#293F55] shadow-md hover:shadow-lg transition-all duration-300"
+              >
+                Access System
+              </Button>
+            </div>
           </form>
 
-          <div className="mt-8 text-center">
-            <p className="text-sm text-muted-foreground">
-              Demo accounts available:
-            </p>
-            <div className="mt-3 flex gap-3 justify-center">
+          <div className="mt-8 pt-6 border-t border-slate-100 text-center animate-fade-up delay-300">
+            <p className="text-xs text-slate-400 mb-4 uppercase tracking-widest">System Preview</p>
+            <div className="flex gap-3 justify-center">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => navigate("/officer/dashboard")}
+                className="border-slate-200 text-[#293F55] hover:bg-slate-50 hover:text-[#293F55]"
               >
-                Officer Demo
+                Officer View
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => navigate("/admin/dashboard")}
+                className="border-slate-200 text-[#293F55] hover:bg-slate-50 hover:text-[#293F55]"
               >
-                Admin Demo
+                Admin View
               </Button>
             </div>
           </div>
