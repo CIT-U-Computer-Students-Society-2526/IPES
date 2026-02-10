@@ -17,12 +17,14 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path, include
+from .api import APIRoot
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("api/", include("rest_framework.urls")),  # API browsable interface
-    # Add API routes here as you create them
-    # path("api/", include("apps.users.urls")),
-    # path("api/", include("apps.evaluations.urls")),
-    # etc.
+    path("api/", APIRoot.as_view(), name="api-root"),  # Public API root
+    path("api/", include("apps.users.urls")),  # Users API
+    path("api/", include("apps.organizations.urls")),  # Organizations API
+    path("api/", include("apps.evaluations.urls")),  # Evaluations API
+    path("api/", include("apps.portfolio.urls")),  # Portfolio API
+    path("api/", include("apps.audit.urls")),  # Audit API
 ]
