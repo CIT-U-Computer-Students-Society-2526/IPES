@@ -54,11 +54,9 @@ const AdminLayout = () => {
           {/* Logo */}
           <div className="h-16 flex items-center justify-between px-4 border-b border-border">
             <Link to="/admin/dashboard" className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg gradient-hero flex items-center justify-center">
-                <ClipboardCheck className="w-5 h-5 text-primary-foreground" />
-              </div>
+              <img src="/ipes-logo-colored.svg" alt="IPES Logo" className="w-7 h-7 object-contain" />
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-foreground">IPES</span>
+                <span className="text-[#293F55] font-bold text-2xl tracking-tight">IPES</span>
                 <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium">Admin</span>
               </div>
             </Link>

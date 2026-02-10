@@ -46,10 +46,8 @@ const OfficerLayout = () => {
           {/* Logo */}
           <div className="h-16 flex items-center justify-between px-4 border-b border-border">
             <Link to="/officer/dashboard" className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg gradient-hero flex items-center justify-center">
-                <ClipboardCheck className="w-5 h-5 text-primary-foreground" />
-              </div>
-              <span className="font-semibold text-foreground">IPES</span>
+              <img src="/ipes-logo-colored.svg" alt="IPES Logo" className="w-7 h-7 object-contain" />
+              <span className="text-[#293F55] font-bold text-2xl tracking-tight">IPES</span>
             </Link>
             <button 
               onClick={() => setSidebarOpen(false)}
