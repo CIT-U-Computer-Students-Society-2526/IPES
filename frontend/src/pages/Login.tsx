@@ -66,7 +66,7 @@ const Login = () => {
         <div className="absolute left-0 top-0 bottom-0 w-2 bg-[#FCBD78] z-20 shadow-[0_0_15px_rgba(252,189,120,0.3)]"></div>
 
         {/* Top Content */}
-        <div className="relative z-20 px-12 pt-20">
+        <div className="relative z-20 px-12 pt-10">
 
           <div className="flex items-start gap-5 animate-fade-up delay-100 mb-6">
             <h1 className="text-3xl xl:text-4xl font-bold text-white leading-tight">
