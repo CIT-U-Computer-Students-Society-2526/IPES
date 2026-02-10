@@ -52,7 +52,7 @@ const Login = () => {
 
         <div className="absolute inset-0  pointer-events-none flex items-center justify-center">
             <DotLottieReact
-              src="public/assets/anim_getthingsdone.json"
+              src="/assets/anim_getthingsdone.json"
               loop
               autoplay
               className="w-full h-full"
