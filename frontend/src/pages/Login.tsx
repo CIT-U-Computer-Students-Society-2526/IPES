@@ -134,7 +134,7 @@ const Login = () => {
               <Input
                 id="email"
                 type="email"
-                placeholder="id.number@cit.edu"
+                placeholder="firstname.lastname@cit.edu"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="h-12 bg-slate-50 border-slate-200 focus-visible:ring-[#293F55] focus-visible:ring-offset-0 focus-visible:border-[#293F55] transition-all"
@@ -168,7 +168,7 @@ const Login = () => {
                 type="submit"
                 className="w-full h-12 text-base font-bold bg-[#FCBD78] hover:bg-[#faa94f] text-[#293F55] shadow-md hover:shadow-lg transition-all duration-300"
               >
-                Access System
+                Log In
               </Button>
             </div>
           </form>
