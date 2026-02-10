@@ -24,7 +24,7 @@ urlpatterns = [
     path("api/", APIRoot.as_view(), name="api-root"),  # Public API root
     path("api/", include("apps.users.urls")),  # Users API
     path("api/", include("apps.organizations.urls")),  # Organizations API
-    # Add API routes here as you create them
-    # path("api/", include("apps.evaluations.urls")),
-    # etc.
+    path("api/", include("apps.evaluations.urls")),  # Evaluations API
+    path("api/", include("apps.portfolio.urls")),  # Portfolio API
+    path("api/", include("apps.audit.urls")),  # Audit API
 ]

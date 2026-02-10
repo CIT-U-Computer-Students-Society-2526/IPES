@@ -1,4 +1,6 @@
 from rest_framework import viewsets, permissions
+from apps.audit.utils import log_action, AuditActions
+
 from .models import Organization, UnitType, OrganizationUnit, PositionType, Membership
 from .serializers import (
     OrganizationSerializer,
@@ -14,6 +16,17 @@ class OrganizationViewSet(viewsets.ModelViewSet):
     queryset = Organization.objects.filter(is_active=True)
     serializer_class = OrganizationSerializer
     permission_classes = [permissions.IsAuthenticated]
+    
+    def perform_create(self, serializer):
+        """Log organization creation"""
+        org = serializer.save()
+        log_action(
+            self.request.user,
+            AuditActions.ORG_CREATED,
+            self.request,
+            org_name=org.name,
+            org_id=str(org.id)
+        )
 
 
 class UnitTypeViewSet(viewsets.ModelViewSet):

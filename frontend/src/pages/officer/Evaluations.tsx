@@ -1,147 +1,179 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Clock, CheckCircle2, AlertCircle, Search, Filter } from "lucide-react";
+import { Clock, CheckCircle2, AlertCircle, Search, Filter, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { useMyPendingEvaluations, useAssignments, type EvaluationAssignment } from "@/hooks/useEvaluations";
 
-const evaluations = [
-  { 
-    id: 1, 
-    title: "Peer Evaluation - Research Committee", 
-    evaluatee: "Maria Santos",
-    position: "Research Director",
-    dueDate: "Jan 10, 2026",
-    type: "Peer",
-    status: "pending",
-    urgent: true
-  },
-  { 
-    id: 2, 
-    title: "Self-Evaluation Q4 2025", 
-    evaluatee: "Self",
-    position: "Committee Head",
-    dueDate: "Jan 12, 2026",
-    type: "Self",
-    status: "pending",
-    urgent: false
-  },
-  { 
-    id: 3, 
-    title: "Cross-Unit Evaluation - Events Committee", 
-    evaluatee: "Pedro Reyes",
-    position: "Events Director",
-    dueDate: "Jan 15, 2026",
-    type: "Cross-Unit",
-    status: "pending",
-    urgent: false
-  },
-  { 
-    id: 4, 
-    title: "Executive Evaluation - President", 
-    evaluatee: "Ana Garcia",
-    position: "President",
-    dueDate: "Jan 8, 2026",
-    type: "Executive",
-    status: "in-progress",
-    urgent: false
-  },
-  { 
-    id: 5, 
-    title: "Peer Evaluation - Finance Committee", 
-    evaluatee: "Carlos Mendoza",
-    position: "Finance Head",
-    dueDate: "Jan 5, 2026",
-    type: "Peer",
-    status: "completed",
-    urgent: false
-  },
-  { 
-    id: 6, 
-    title: "Cross-Unit Evaluation - Marketing", 
-    evaluatee: "Sofia Cruz",
-    position: "Marketing Director",
-    dueDate: "Jan 3, 2026",
-    type: "Cross-Unit",
-    status: "completed",
-    urgent: false
-  },
-];
-
-const getStatusBadge = (status: string) => {
-  switch (status) {
+// Helper to format status
+const getStatusInfo = (status: string) => {
+  switch (status.toLowerCase()) {
     case "pending":
-      return <span className="status-badge status-pending">Not Started</span>;
-    case "in-progress":
-      return <span className="status-badge status-in-progress">In Progress</span>;
-    case "completed":
-      return <span className="status-badge status-completed">Completed</span>;
+      return { label: "Not Started", className: "bg-yellow-100 text-yellow-800" };
+    case "in progress":
+      return { label: "In Progress", className: "bg-blue-100 text-blue-800" };
+    case "submitted":
+      return { label: "Completed", className: "bg-green-100 text-green-800" };
+    case "reviewed":
+      return { label: "Reviewed", className: "bg-purple-100 text-purple-800" };
     default:
-      return null;
+      return { label: status, className: "bg-gray-100 text-gray-800" };
   }
 };
+
+// Helper to check if evaluation is urgent (due within 3 days)
+const isUrgent = (dueDate: string) => {
+  const due = new Date(dueDate);
+  const now = new Date();
+  const diff = (due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+  return diff <= 3 && diff >= 0;
+};
+
+// Format date for display
+const formatDate = (dateString: string) => {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+};
+
+// Evaluation card component
+const EvaluationCard = ({ evaluation }: { evaluation: EvaluationAssignment }) => {
+  const statusInfo = getStatusInfo(evaluation.status);
+  const urgent = evaluation.due_date ? isUrgent(evaluation.due_date) : false;
+  const isSelfEvaluation = evaluation.evaluatee_id === evaluation.evaluator_id;
+
+  return (
+    <Card className="hover:shadow-md transition-shadow">
+      <CardContent className="p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="font-medium text-foreground truncate">
+                {evaluation.form_title || `Evaluation Form #${evaluation.form_id}`}
+              </h3>
+              {urgent && (
+                <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0" />
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+              <Badge className={statusInfo.className}>
+                {statusInfo.label}
+              </Badge>
+              <Badge variant="outline">
+                {evaluation.form_id ? "Evaluation" : "Form"}
+              </Badge>
+              {evaluation.due_date && (
+                <span className="flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5" />
+                  Due {formatDate(evaluation.due_date)}
+                </span>
+              )}
+            </div>
+            {!isSelfEvaluation && evaluation.evaluatee_name && (
+              <p className="text-sm text-muted-foreground mt-2">
+                Evaluating: <span className="text-foreground">{evaluation.evaluatee_name}</span>
+              </p>
+            )}
+            {isSelfEvaluation && (
+              <p className="text-sm text-muted-foreground mt-2">
+                <Badge variant="secondary">Self-Evaluation</Badge>
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {evaluation.status === "Submitted" ? (
+              <Button variant="outline" size="sm" disabled>
+                <CheckCircle2 className="w-4 h-4 mr-1" />
+                Submitted
+              </Button>
+            ) : (
+              <Link to={`/officer/evaluations/${evaluation.id}`}>
+                <Button size="sm">
+                  {evaluation.status === "In Progress" ? "Continue" : "Start"}
+                </Button>
+              </Link>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+// Loading skeleton for evaluation card
+const EvaluationCardSkeleton = () => (
+  <Card>
+    <CardContent className="p-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-2">
+            <Skeleton className="h-5 w-48" />
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <Skeleton className="h-6 w-20" />
+            <Skeleton className="h-5 w-16" />
+            <Skeleton className="h-4 w-24" />
+          </div>
+          <Skeleton className="h-4 w-32 mt-2" />
+        </div>
+        <Skeleton className="h-9 w-20" />
+      </div>
+    </CardContent>
+  </Card>
+);
 
 const OfficerEvaluations = () => {
   const [searchQuery, setSearchQuery] = useState("");
 
-  const filterEvaluations = (status: string) => {
-    return evaluations.filter(e => 
-      (status === "all" || e.status === status) &&
-      (e.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-       e.evaluatee.toLowerCase().includes(searchQuery.toLowerCase()))
-    );
+  // Fetch assignments from API
+  const { data: pendingAssignments, isLoading: pendingLoading } = useMyPendingEvaluations();
+  const { data: allAssignments, isLoading: allLoading } = useAssignments();
+
+  // Combine and filter assignments
+  const getFilteredEvaluations = (status: string) => {
+    let evaluations: EvaluationAssignment[] = [];
+
+    if (status === "pending") {
+      evaluations = pendingAssignments || [];
+    } else if (status === "completed") {
+      evaluations = allAssignments?.filter(a => a.status === "Submitted") || [];
+    } else {
+      evaluations = allAssignments || [];
+    }
+
+    // Apply search filter
+    if (searchQuery) {
+      evaluations = evaluations.filter(e =>
+        (e.form_title?.toLowerCase().includes(searchQuery.toLowerCase()) || false) ||
+        (e.evaluatee_name?.toLowerCase().includes(searchQuery.toLowerCase()) || false)
+      );
+    }
+
+    return evaluations;
   };
 
-  const renderEvaluationsList = (items: typeof evaluations) => (
+  const pendingCount = pendingAssignments?.length || 0;
+  const completedCount = allAssignments?.filter(a => a.status === "Submitted").length || 0;
+  const totalCount = allAssignments?.length || 0;
+
+  const renderEvaluationsList = (evaluations: EvaluationAssignment[], isLoading: boolean) => (
     <div className="space-y-3">
-      {items.length === 0 ? (
+      {isLoading ? (
+        <>
+          <EvaluationCardSkeleton />
+          <EvaluationCardSkeleton />
+          <EvaluationCardSkeleton />
+        </>
+      ) : evaluations.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           No evaluations found
         </div>
       ) : (
-        items.map((evaluation) => (
-          <div 
-            key={evaluation.id}
-            className="evaluation-card"
-          >
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="font-medium text-foreground">{evaluation.title}</h3>
-                  {evaluation.urgent && (
-                    <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0" />
-                  )}
-                </div>
-                <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                  {getStatusBadge(evaluation.status)}
-                  <span className="text-xs bg-secondary px-2 py-0.5 rounded">{evaluation.type}</span>
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5" />
-                    Due {evaluation.dueDate}
-                  </span>
-                </div>
-                {evaluation.evaluatee !== "Self" && (
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Evaluating: <span className="text-foreground">{evaluation.evaluatee}</span> ({evaluation.position})
-                  </p>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                {evaluation.status === "completed" ? (
-                  <Button variant="outline" size="sm" disabled>
-                    <CheckCircle2 className="w-4 h-4 mr-1" />
-                    Submitted
-                  </Button>
-                ) : (
-                  <Link to={`/officer/evaluations/${evaluation.id}`}>
-                    <Button size="sm">
-                      {evaluation.status === "in-progress" ? "Continue" : "Start"}
-                    </Button>
-                  </Link>
-                )}
-              </div>
-            </div>
-          </div>
+        evaluations.map((evaluation) => (
+          <EvaluationCard key={evaluation.id} evaluation={evaluation} />
         ))
       )}
     </div>
@@ -174,26 +206,26 @@ const OfficerEvaluations = () => {
       <Tabs defaultValue="pending" className="w-full">
         <TabsList className="w-full sm:w-auto">
           <TabsTrigger value="pending" className="flex-1 sm:flex-none">
-            Pending ({filterEvaluations("pending").length + filterEvaluations("in-progress").length})
+            Pending ({pendingCount})
           </TabsTrigger>
           <TabsTrigger value="completed" className="flex-1 sm:flex-none">
-            Completed ({filterEvaluations("completed").length})
+            Completed ({completedCount})
           </TabsTrigger>
           <TabsTrigger value="all" className="flex-1 sm:flex-none">
-            All ({evaluations.length})
+            All ({totalCount})
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="pending" className="mt-4">
-          {renderEvaluationsList([...filterEvaluations("pending"), ...filterEvaluations("in-progress")])}
+          {renderEvaluationsList(getFilteredEvaluations("pending"), pendingLoading)}
         </TabsContent>
 
         <TabsContent value="completed" className="mt-4">
-          {renderEvaluationsList(filterEvaluations("completed"))}
+          {renderEvaluationsList(getFilteredEvaluations("completed"), allLoading)}
         </TabsContent>
 
         <TabsContent value="all" className="mt-4">
-          {renderEvaluationsList(filterEvaluations("all"))}
+          {renderEvaluationsList(getFilteredEvaluations("all"), allLoading)}
         </TabsContent>
       </Tabs>
     </div>
