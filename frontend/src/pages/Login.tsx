@@ -126,7 +126,7 @@ const Login = () => {
 
         <div className="absolute inset-0  pointer-events-none flex items-center justify-center">
             <DotLottieReact
-              src="public/assets/anim_getthingsdone.json"
+              src="/assets/anim_getthingsdone.json"
               loop
               autoplay
               className="w-full h-full"
@@ -140,7 +140,7 @@ const Login = () => {
         <div className="absolute left-0 top-0 bottom-0 w-2 bg-[#FCBD78] z-20 shadow-[0_0_15px_rgba(252,189,120,0.3)]"></div>
 
         {/* Top Content */}
-        <div className="relative z-20 px-12 pt-20">
+        <div className="relative z-20 px-12 pt-10">
 
           <div className="flex items-start gap-5 animate-fade-up delay-100 mb-6">
             <h1 className="text-3xl xl:text-4xl font-bold text-white leading-tight">
@@ -213,7 +213,7 @@ const Login = () => {
               <Input
                 id="email"
                 type="email"
-                placeholder="id.number@cit.edu"
+                placeholder="firstname.lastname@cit.edu"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="h-12 bg-slate-50 border-slate-200 focus-visible:ring-[#293F55] focus-visible:ring-offset-0 focus-visible:border-[#293F55] transition-all"
@@ -248,7 +248,7 @@ const Login = () => {
                 disabled={loading}
                 className="w-full h-12 text-base font-bold bg-[#FCBD78] hover:bg-[#faa94f] text-[#293F55] shadow-md hover:shadow-lg transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                {loading ? "Signing in..." : "Access System"}
+                {loading ? "Signing in..." : "Sign In"}
               </Button>
             </div>
           </form>
