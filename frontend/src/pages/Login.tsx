@@ -5,6 +5,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff } from "lucide-react";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+import { getApiUrl } from "@/lib/api";
+
+interface LoginResponse {
+  user: {
+    id: number;
+    email: string;
+    username: string;
+    first_name: string;
+    last_name: string;
+    role: string;
+    is_active: boolean;
+  };
+  message: string;
+}
 
 const Login = () => {
   const navigate = useNavigate();
@@ -12,6 +26,8 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [currentOrg, setCurrentOrg] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const organizations = [
     { logo: "/css-logo.svg", name: "Computer Students' Society" },
@@ -25,9 +41,67 @@ const Login = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    navigate("/officer/dashboard");
+    setLoading(true);
+    setError("");
+
+    try {
+      const getCsrfToken = (): string | null => {
+        const cookies = document.cookie.split(';');
+        for (const cookie of cookies) {
+          const [name, value] = cookie.trim().split('=');
+          if (name === 'csrftoken') return value || null;
+        }
+        return null;
+      };
+
+      const csrf = getCsrfToken();
+
+      const response = await fetch(getApiUrl("/auth/login/"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(csrf ? { 'X-CSRFToken': csrf } : {}),
+        },
+        body: JSON.stringify({ email, password }),
+        credentials: "include",
+      });
+
+      const data: LoginResponse = await response.json();
+
+      if (!response.ok) {
+        // Construct error message from validation errors if available
+        let errorMsg = data.message || "Login failed";
+        if ((data as any).errors) {
+          const errorDetails = Object.entries((data as any).errors)
+            .map(([field, msgs]: [string, any]) => {
+              if (Array.isArray(msgs)) {
+                return `${field}: ${msgs.join(', ')}`;
+              }
+              return `${field}: ${msgs}`;
+            })
+            .join('; ');
+          errorMsg = errorDetails || errorMsg;
+        }
+        throw new Error(errorMsg);
+      }
+
+      // Store user info in localStorage
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      // Redirect based on role
+      const role = data.user.role?.toLowerCase();
+      if (role === "admin" || role === "super_admin") {
+        navigate("/admin/dashboard");
+      } else {
+        navigate("/officer/dashboard");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -127,6 +201,11 @@ const Login = () => {
           </div>
 
           <form onSubmit={handleLogin} className="space-y-6">
+            {error && (
+              <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md border border-red-200 animate-fade-up">
+                {error}
+              </div>
+            )}
             <div className="space-y-2 animate-fade-up delay-100">
               <Label htmlFor="email" className="text-[#293F55] font-semibold text-sm">
                 Institutional Email
@@ -166,9 +245,10 @@ const Login = () => {
             <div className="pt-2 animate-fade-up delay-300">
               <Button
                 type="submit"
-                className="w-full h-12 text-base font-bold bg-[#FCBD78] hover:bg-[#faa94f] text-[#293F55] shadow-md hover:shadow-lg transition-all duration-300"
+                disabled={loading}
+                className="w-full h-12 text-base font-bold bg-[#FCBD78] hover:bg-[#faa94f] text-[#293F55] shadow-md hover:shadow-lg transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                Access System
+                {loading ? "Signing in..." : "Access System"}
               </Button>
             </div>
           </form>

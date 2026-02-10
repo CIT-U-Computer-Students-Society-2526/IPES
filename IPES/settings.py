@@ -146,6 +146,24 @@ CORS_ALLOWED_ORIGINS = [
 ]
 CORS_ALLOW_CREDENTIALS = True
 
+# Trusted origins for CSRF (development)
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+]
+
+# Also allow Vite fallback ports (dev servers may pick another port)
+CORS_ALLOWED_ORIGINS += [
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
+]
+CSRF_TRUSTED_ORIGINS += [
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
+]
+
 # Django REST Framework Configuration
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
