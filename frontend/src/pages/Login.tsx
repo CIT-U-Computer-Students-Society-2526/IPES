@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff } from "lucide-react";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
-import { getApiUrl } from "@/lib/api";
+import { api } from "@/lib/api";
 
 interface LoginResponse {
   user: {
@@ -47,45 +47,8 @@ const Login = () => {
     setError("");
 
     try {
-      const getCsrfToken = (): string | null => {
-        const cookies = document.cookie.split(';');
-        for (const cookie of cookies) {
-          const [name, value] = cookie.trim().split('=');
-          if (name === 'csrftoken') return value || null;
-        }
-        return null;
-      };
-
-      const csrf = getCsrfToken();
-
-      const response = await fetch(getApiUrl("/auth/login/"), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(csrf ? { 'X-CSRFToken': csrf } : {}),
-        },
-        body: JSON.stringify({ email, password }),
-        credentials: "include",
-      });
-
+      const response = await api.post("/auth/login/", { email, password });
       const data: LoginResponse = await response.json();
-
-      if (!response.ok) {
-        // Construct error message from validation errors if available
-        let errorMsg = data.message || "Login failed";
-        if ((data as any).errors) {
-          const errorDetails = Object.entries((data as any).errors)
-            .map(([field, msgs]: [string, any]) => {
-              if (Array.isArray(msgs)) {
-                return `${field}: ${msgs.join(', ')}`;
-              }
-              return `${field}: ${msgs}`;
-            })
-            .join('; ');
-          errorMsg = errorDetails || errorMsg;
-        }
-        throw new Error(errorMsg);
-      }
 
       // Store user info in localStorage
       localStorage.setItem("user", JSON.stringify(data.user));
@@ -97,8 +60,30 @@ const Login = () => {
       } else {
         navigate("/officer/dashboard");
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
+    } catch (err: any) {
+      console.error('Login error:', err);
+      let errorMsg = "Login failed";
+
+      if (err.name === 'ApiError' && err.data) {
+        const errorData = err.data as any; // Cast to any to access properties
+        errorMsg = errorData.message || errorMsg;
+
+        if (errorData.errors) {
+          const errorDetails = Object.entries(errorData.errors)
+            .map(([field, msgs]: [string, any]) => {
+              if (Array.isArray(msgs)) {
+                return `${field}: ${msgs.join(', ')}`;
+              }
+              return `${field}: ${msgs}`;
+            })
+            .join('; ');
+          errorMsg = errorDetails || errorMsg;
+        }
+      } else if (err instanceof Error) {
+        errorMsg = err.message;
+      }
+
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -122,18 +107,18 @@ const Login = () => {
 
       {/* LEFT SIDE - BRANDING PANEL */}
       <div className="hidden lg:flex lg:w-5/12 relative overflow-hidden flex-col justify-between"
-           style={{ backgroundColor: '#293F55' }}>
+        style={{ backgroundColor: '#293F55' }}>
 
         <div className="absolute inset-0  pointer-events-none flex items-center justify-center">
-            <DotLottieReact
-              src="/assets/anim_getthingsdone.json"
-              loop
-              autoplay
-              className="w-full h-full"
-              renderConfig={{
-                autoResize: true
-              }}
-            />
+          <DotLottieReact
+            src="/assets/anim_getthingsdone.json"
+            loop
+            autoplay
+            className="w-full h-full"
+            renderConfig={{
+              autoResize: true
+            }}
+          />
         </div>
 
         {/* Decorative Yellow Accent Sideline */}
@@ -183,8 +168,8 @@ const Login = () => {
 
         {/* Top Left Logo for Right Pane (Desktop/Tablet) */}
         <div className="hidden lg:flex absolute top-10 left-10 items-center gap-3 animate-fade-up">
-           <img src="/ipes-logo-colored.svg" alt="IPES Logo" className="w-10 h-10 object-contain" />
-           <span className="text-[#293F55] font-bold text-2xl tracking-tight">IPES</span>
+          <img src="/ipes-logo-colored.svg" alt="IPES Logo" className="w-10 h-10 object-contain" />
+          <span className="text-[#293F55] font-bold text-2xl tracking-tight">IPES</span>
         </div>
 
         <div className="w-full max-w-[420px] bg-white p-8 md:p-10 rounded-2xl shadow-xl border border-slate-100 animate-fade-up">
