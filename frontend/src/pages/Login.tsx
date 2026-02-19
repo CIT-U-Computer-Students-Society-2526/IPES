@@ -28,6 +28,7 @@ const Login = () => {
   const [currentOrg, setCurrentOrg] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
 
   const organizations = [
     { logo: "/css-logo.svg", name: "Computer Students' Society" },
@@ -45,6 +46,7 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setFieldErrors({});
 
     try {
       const response = await api.post("/auth/login/", { email, password });
@@ -62,28 +64,44 @@ const Login = () => {
       }
     } catch (err: any) {
       console.error('Login error:', err);
-      let errorMsg = "Login failed";
+      let errorMsg = "";
 
       if (err.name === 'ApiError' && err.data) {
         const errorData = err.data as any; // Cast to any to access properties
-        errorMsg = errorData.message || errorMsg;
 
+        // Handle field-specific errors if available
         if (errorData.errors) {
-          const errorDetails = Object.entries(errorData.errors)
-            .map(([field, msgs]: [string, any]) => {
-              if (Array.isArray(msgs)) {
-                return `${field}: ${msgs.join(', ')}`;
-              }
-              return `${field}: ${msgs}`;
-            })
-            .join('; ');
-          errorMsg = errorDetails || errorMsg;
+          const newFieldErrors: Record<string, string[]> = {};
+          let hasFieldErrors = false;
+
+          Object.entries(errorData.errors).forEach(([field, msgs]: [string, any]) => {
+            if (field === 'non_field_errors') {
+              // Collect non-field errors to show in the main alert
+              const nonFieldMsgs = Array.isArray(msgs) ? msgs.join('; ') : msgs;
+              errorMsg = errorMsg ? `${errorMsg}; ${nonFieldMsgs}` : nonFieldMsgs;
+            } else {
+              // Collect field-specific errors
+              newFieldErrors[field] = Array.isArray(msgs) ? msgs : [msgs];
+              hasFieldErrors = true;
+            }
+          });
+
+          if (hasFieldErrors) {
+            setFieldErrors(newFieldErrors);
+          }
+        }
+
+        // Fallback to message if no specific errors parsed or if message is present
+        if (!errorMsg && !Object.keys(fieldErrors).length) {
+          errorMsg = errorData.message || "Login failed";
         }
       } else if (err instanceof Error) {
         errorMsg = err.message;
       }
 
-      setError(errorMsg);
+      if (errorMsg) {
+        setError(errorMsg);
+      }
     } finally {
       setLoading(false);
     }
@@ -201,8 +219,13 @@ const Login = () => {
                 placeholder="firstname.lastname@cit.edu"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="h-12 bg-slate-50 border-slate-200 focus-visible:ring-[#293F55] focus-visible:ring-offset-0 focus-visible:border-[#293F55] transition-all"
+                className={`h-12 bg-slate-50 border-slate-200 focus-visible:ring-[#293F55] focus-visible:ring-offset-0 focus-visible:border-[#293F55] transition-all ${fieldErrors.email ? "border-red-500 focus-visible:border-red-500" : ""}`}
               />
+              {fieldErrors.email && (
+                <p className="text-sm text-red-500 mt-1 animate-fade-up">
+                  {fieldErrors.email[0]}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2 animate-fade-up delay-200">
@@ -215,7 +238,7 @@ const Login = () => {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="h-12 bg-slate-50 border-slate-200 focus-visible:ring-[#293F55] focus-visible:ring-offset-0 focus-visible:border-[#293F55] transition-all pr-10"
+                  className={`h-12 bg-slate-50 border-slate-200 focus-visible:ring-[#293F55] focus-visible:ring-offset-0 focus-visible:border-[#293F55] transition-all pr-10 ${fieldErrors.password ? "border-red-500 focus-visible:border-red-500" : ""}`}
                 />
                 <button
                   type="button"
@@ -225,6 +248,11 @@ const Login = () => {
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
+              {fieldErrors.password && (
+                <p className="text-sm text-red-500 mt-1 animate-fade-up">
+                  {fieldErrors.password[0]}
+                </p>
+              )}
             </div>
 
             <div className="pt-2 animate-fade-up delay-300">
