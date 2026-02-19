@@ -18,9 +18,11 @@ import { useUsers } from "@/hooks/useUsers";
 import { useAssignments } from "@/hooks/useEvaluations";
 import { usePendingAccomplishments } from "@/hooks/usePortfolio";
 import { useRecentAuditLogs } from "@/hooks/useAudit";
+import { useUnitCompletionStats, useAnalyticsSummary } from "@/hooks/useOrganizations";
 import type { User } from "@/hooks/useUsers";
 import { type EvaluationAssignment } from "@/hooks/useEvaluations";
 import { type AuditLog } from "@/hooks/useAudit";
+import { type UnitCompletionStats } from "@/hooks/useOrganizations";
 
 // Stats card component
 const StatCard = ({ 
@@ -136,6 +138,7 @@ const AdminDashboard = () => {
   const { data: assignments, isLoading: assignmentsLoading } = useAssignments();
   const { data: pendingAccomplishments, isLoading: accomplishmentsLoading } = usePendingAccomplishments();
   const { data: recentActivity, isLoading: activityLoading } = useRecentAuditLogs();
+  const { data: unitStats, isLoading: unitStatsLoading } = useUnitCompletionStats();
 
   // Calculate stats
   const totalOfficers = users?.length || 0;
@@ -152,14 +155,11 @@ const AdminDashboard = () => {
     return acc;
   }, {} as Record<string, number>) || {};
 
-  // Calculate unit progress (mock calculation based on assignments)
-  const unitProgress = [
-    { name: "Executive", completed: 92 },
-    { name: "Research Committee", completed: 75 },
-    { name: "Events Committee", completed: 68 },
-    { name: "Finance Committee", completed: 85 },
-    { name: "Marketing Committee", completed: 45 },
-  ];
+  // Use real unit progress data from API
+  const unitProgress = unitStats?.map((stat: UnitCompletionStats) => ({
+    name: stat.unit_name,
+    completed: stat.completion_percentage
+  })) || [];
 
   // Generate alerts based on data
   const alerts = [
@@ -177,7 +177,7 @@ const AdminDashboard = () => {
     }] : []),
   ];
 
-  const isLoading = usersLoading || assignmentsLoading || accomplishmentsLoading || activityLoading;
+  const isLoading = usersLoading || assignmentsLoading || accomplishmentsLoading || activityLoading || unitStatsLoading;
 
   return (
     <div className="space-y-6 animate-fade-in">
