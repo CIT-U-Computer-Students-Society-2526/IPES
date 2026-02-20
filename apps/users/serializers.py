@@ -44,6 +44,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
             'username', 'email', 'first_name', 'last_name',
             'password'
         ]
+        read_only_fields = ['username']
         
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():
