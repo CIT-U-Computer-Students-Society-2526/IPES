@@ -59,7 +59,7 @@ class LoginSerializer(serializers.Serializer):
 
             if user:
                 if not user.is_active:
-                    raise serializers.ValidationError('User account is disabled')
+                    raise serializers.ValidationError('Invalid email or password') # Prevent user enumeration
                 attrs['user'] = user
                 return attrs
             
