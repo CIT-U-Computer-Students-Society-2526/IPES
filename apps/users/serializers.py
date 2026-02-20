@@ -54,17 +54,17 @@ class LoginSerializer(serializers.Serializer):
         password = attrs.get('password')
         
         if email and password:
-            # Authenticate using email
-            try:
-                user = User.objects.get(email=email)
-                if not user.check_password(password):
-                    raise serializers.ValidationError('Invalid password')
+            # Authenticate using email as username
+            user = authenticate(username=email, password=password)
+
+            if user:
                 if not user.is_active:
                     raise serializers.ValidationError('User account is disabled')
-            except User.DoesNotExist:
-                raise serializers.ValidationError('Invalid email or password')
+                attrs['user'] = user
+                return attrs
             
-            attrs['user'] = user
+            # Generic error message
+            raise serializers.ValidationError('Invalid email or password')
         else:
             raise serializers.ValidationError('Email and password are required')
         
