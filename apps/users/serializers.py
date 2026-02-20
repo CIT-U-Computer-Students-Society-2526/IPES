@@ -24,7 +24,9 @@ class UserSerializer(serializers.ModelSerializer):
                 'organization_name': m.unit_id.organization_id.name,
                 'unit_id': m.unit_id.id,
                 'unit_name': m.unit_id.name,
+                'position_id': m.position_id.id,
                 'position_name': m.position_id.name,
+                'position_rank': m.position_id.rank,
                 'role': m.role,
                 'is_active': m.is_active
             }

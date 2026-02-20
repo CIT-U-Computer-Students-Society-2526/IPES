@@ -14,7 +14,9 @@ export interface Membership {
   organization_name: string;
   unit_id: number;
   unit_name: string;
+  position_id: number;
   position_name: string;
+  position_rank: number;
   role: 'Admin' | 'Member';
   is_active: boolean;
 }
