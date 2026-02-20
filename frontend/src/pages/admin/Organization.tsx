@@ -120,59 +120,7 @@ const AdminOrganization = () => {
   const [selectedApprovePosition, setSelectedApprovePosition] = useState<string>("");
   const [selectedApproveRole, setSelectedApproveRole] = useState<string>("Member");
 
-  const approveMutation = useApproveJoinRequest();
-  const rejectMutation = useRejectJoinRequest();
-  const { toast } = useToast();
-
-  const handleApproveConfirm = () => {
-    if (!approveDialogId || !selectedApproveUnit || !selectedApprovePosition) return;
-
-    approveMutation.mutate({
-      id: approveDialogId,
-      unit_id: parseInt(selectedApproveUnit),
-      position_id: parseInt(selectedApprovePosition),
-      role: selectedApproveRole
-    }, {
-      onSuccess: () => {
-        setApproveDialogId(null);
-        setSelectedApproveUnit("");
-        setSelectedApprovePosition("");
-        setSelectedApproveRole("Member");
-        toast({
-          title: "Request Approved",
-          description: "Member has been successfully added to the organization.",
-        });
-      },
-      onError: (err: any) => {
-        toast({
-          title: "Approval Failed",
-          description: err.message || "An error occurred while approving the request.",
-          variant: "destructive",
-        });
-      }
-    });
-  };
-
-  const handleReject = (id: number) => {
-    if (confirm("Are you sure you want to reject this request?")) {
-      rejectMutation.mutate({ id }, {
-        onSuccess: () => {
-          toast({
-            title: "Request Rejected",
-            description: "The join request was successfully rejected.",
-          });
-        },
-        onError: (err: any) => {
-          toast({
-            title: "Rejection Failed",
-            description: err.message || "An error occurred while rejecting the request.",
-            variant: "destructive",
-          });
-        }
-      });
-    }
-  };
-
+  // --- Handlers: Create ---
   const handleCreatePositionType = () => {
     if (!newPositionName || !newPositionWeight) return;
     createPositionMutation.mutate({
@@ -203,27 +151,6 @@ const AdminOrganization = () => {
     });
   };
 
-  const handleDeleteUnit = (id: number) => {
-    if (confirm("Are you sure you want to delete this unit? All memberships tied to it will also be disabled.")) {
-      deleteUnitMutation.mutate(id, {
-        onSuccess: () => {
-          setSelectedUnit(null);
-          toast({ title: "Unit Deleted", description: "The unit has been removed." });
-        },
-        onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
-      });
-    }
-  };
-
-  const handleDeletePosition = (id: number) => {
-    if (confirm("Are you sure you want to delete this position type? All memberships with this position will also be disabled.")) {
-      deletePositionMutation.mutate(id, {
-        onSuccess: () => toast({ title: "Position Deleted", description: "The position type has been removed." }),
-        onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
-      });
-    }
-  };
-
   const handleCreateUnit = () => {
     if (!newUnitName || !newUnitTypeId) return;
     createUnitMutation.mutate({
@@ -239,6 +166,154 @@ const AdminOrganization = () => {
         toast({ title: "Success", description: "Organization Unit created successfully." });
       },
       onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
+    });
+  };
+
+  // --- Handlers: Edit ---
+  const openEditUnit = (unit: any) => {
+    setEditUnitId(unit.id);
+    setEditUnitName(unit.name);
+    setEditUnitDescription(unit.description || "");
+    setEditUnitTypeId(unit.type_id ? unit.type_id.toString() : "");
+  };
+
+  const handleUpdateUnit = () => {
+    if (!editUnitId || !editUnitName) return;
+    updateUnitMutation.mutate({
+      id: editUnitId,
+      data: {
+        name: editUnitName,
+        description: editUnitDescription,
+        type_id: editUnitTypeId ? parseInt(editUnitTypeId) : undefined
+      }
+    }, {
+      onSuccess: () => {
+        setEditUnitId(null);
+        toast({ title: "Success", description: "Unit updated successfully." });
+      },
+      onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
+    });
+  };
+
+  const openEditUnitType = (unitType: any) => {
+    setEditUnitTypeIdState(unitType.id);
+    setEditUnitTypeName(unitType.name);
+  };
+
+  const handleUpdateUnitType = () => {
+    if (!editUnitTypeIdState || !editUnitTypeName) return;
+    updateUnitTypeMutation.mutate({
+      id: editUnitTypeIdState,
+      data: { name: editUnitTypeName }
+    }, {
+      onSuccess: () => {
+        setEditUnitTypeIdState(null);
+        toast({ title: "Success", description: "Unit Type updated successfully." });
+      },
+      onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
+    });
+  };
+
+  const openEditPosition = (pos: any) => {
+    setEditPositionId(pos.id);
+    setEditPositionName(pos.name);
+    setEditPositionWeight(pos.rank.toString());
+  };
+
+  const handleUpdatePosition = () => {
+    if (!editPositionId || !editPositionName || !editPositionWeight) return;
+    updatePositionMutation.mutate({
+      id: editPositionId,
+      data: { name: editPositionName, rank: parseInt(editPositionWeight) }
+    }, {
+      onSuccess: () => {
+        setEditPositionId(null);
+        toast({ title: "Success", description: "Position updated successfully." });
+      },
+      onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
+    });
+  };
+
+  // --- Handlers: Delete ---
+  const confirmDeleteUnit = () => {
+    if (!deleteUnitId) return;
+    deleteUnitMutation.mutate(deleteUnitId, {
+      onSuccess: () => {
+        setDeleteUnitId(null);
+        toast({ title: "Unit Deleted", description: "The unit has been removed." });
+      },
+      onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
+    });
+  };
+
+  const confirmDeleteUnitType = () => {
+    if (!deleteUnitTypeIdState) return;
+    deleteUnitTypeMutation.mutate(deleteUnitTypeIdState, {
+      onSuccess: () => {
+        setDeleteUnitTypeIdState(null);
+        toast({ title: "Type Deleted", description: "The unit type has been removed." });
+      },
+      onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
+    });
+  };
+
+  const confirmDeletePosition = () => {
+    if (!deletePositionId) return;
+    deletePositionMutation.mutate(deletePositionId, {
+      onSuccess: () => {
+        setDeletePositionId(null);
+        toast({ title: "Position Deleted", description: "The position type has been removed." });
+      },
+      onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
+    });
+  };
+
+
+  // --- Handlers: Approvals ---
+  const handleApproveConfirm = () => {
+    if (!approveDialogId || !selectedApproveUnit || !selectedApprovePosition) return;
+
+    approveMutation.mutate({
+      id: approveDialogId,
+      unit_id: parseInt(selectedApproveUnit),
+      position_id: parseInt(selectedApprovePosition),
+      role: selectedApproveRole
+    }, {
+      onSuccess: () => {
+        setApproveDialogId(null);
+        setSelectedApproveUnit("");
+        setSelectedApprovePosition("");
+        setSelectedApproveRole("Member");
+        toast({
+          title: "Request Approved",
+          description: "Member has been successfully added to the organization.",
+        });
+      },
+      onError: (err: any) => {
+        toast({
+          title: "Approval Failed",
+          description: err.message || "An error occurred while approving the request.",
+          variant: "destructive",
+        });
+      }
+    });
+  };
+
+  const handleReject = (id: number) => {
+    rejectMutation.mutate({ id }, {
+      onSuccess: () => {
+        toast({
+          title: "Request Rejected",
+          description: "The join request was successfully rejected.",
+        });
+      },
+      onError: (err: any) => {
+        toast({
+          title: "Rejection Failed",
+          description: err.message || "An error occurred while rejecting the request.",
+          variant: "destructive",
+        });
+      }
     });
   };
 
