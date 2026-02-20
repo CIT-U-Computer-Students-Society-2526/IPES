@@ -85,11 +85,9 @@ const AdminLayout = () => {
           <div className="h-16 flex items-center justify-between px-4 border-b border-border">
             <Link to="/admin/dashboard" className="flex items-center gap-2.5">
               <img src="/ipes-logo-colored.svg" alt="IPES Logo" className="w-7 h-7 object-contain" />
-              <div className="flex items-center gap-2 max-w-[130px]">
-                <span className="text-[#293F55] font-bold text-lg truncate tracking-tight" title={activeMembership.organization_name}>
-                  {activeMembership.organization_name}
-                </span>
-                <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium shrink-0">Admin</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[#293F55] font-bold text-2xl tracking-tight">IPES</span>
+                <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium">Admin</span>
               </div>
             </Link>
             <button
