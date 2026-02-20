@@ -272,10 +272,10 @@ const Login = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => navigate("/preview/officer/dashboard")}
+                onClick={() => navigate("/preview/member/dashboard")}
                 className="border-slate-200 text-[#293F55] hover:bg-slate-50 hover:text-[#293F55]"
               >
-                Officer View
+                Member View
               </Button>
               <Button
                 variant="outline"

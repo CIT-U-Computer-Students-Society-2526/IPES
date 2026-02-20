@@ -18,11 +18,11 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const navigation = [
-  { name: "Dashboard", href: "/officer/dashboard", icon: LayoutDashboard },
-  { name: "My Evaluations", href: "/officer/evaluations", icon: ClipboardList },
-  { name: "My Results", href: "/officer/results", icon: BarChart3 },
-  { name: "Accomplishments", href: "/officer/accomplishments", icon: Trophy },
-  { name: "Profile", href: "/officer/profile", icon: User },
+  { name: "Dashboard", href: "/member/dashboard", icon: LayoutDashboard },
+  { name: "My Evaluations", href: "/member/evaluations", icon: ClipboardList },
+  { name: "My Results", href: "/member/results", icon: BarChart3 },
+  { name: "Accomplishments", href: "/member/accomplishments", icon: Trophy },
+  { name: "Profile", href: "/member/profile", icon: User },
 ];
 
 const OfficerLayout = () => {
@@ -106,7 +106,7 @@ const OfficerLayout = () => {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-foreground truncate">{fullName}</p>
-                <p className="text-xs text-muted-foreground truncate">{user.role}</p>
+                <p className="text-xs text-muted-foreground truncate">{activeMembership.unit_name} • {activeMembership.position_name}</p>
               </div>
             </div>
             <Link to="/login">
