@@ -79,7 +79,7 @@ class UserViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         """Filter users based on organization if needed"""
-        return User.objects.filter(is_active=True)
+        return User.objects.all()
     
     def perform_create(self, serializer):
         """Log user creation"""
