@@ -61,9 +61,7 @@ class AuthViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['get'], url_path='me', permission_classes=[IsAuthenticated])
     def me(self, request):
         """Get current authenticated user"""
-        if request.user.is_authenticated:
-            return Response(UserSerializer(request.user).data)
-        return Response({'detail': 'Not authenticated'}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response(UserSerializer(request.user).data)
 
 
 class UserViewSet(viewsets.ModelViewSet):
