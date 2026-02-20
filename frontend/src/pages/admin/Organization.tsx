@@ -378,6 +378,69 @@ const AdminOrganization = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Approve Dialog */}
+      <Dialog open={approveDialogId !== null} onOpenChange={(open) => !open && setApproveDialogId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Approve Join Request</DialogTitle>
+            <DialogDescription>
+              Assign the new member to a specific unit, position, and role within the organization.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Unit</Label>
+              <Select value={selectedApproveUnit} onValueChange={setSelectedApproveUnit}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a unit" />
+                </SelectTrigger>
+                <SelectContent>
+                  {realUnits?.map((unit: any) => (
+                    <SelectItem key={unit.id} value={unit.id.toString()}>{unit.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Position</Label>
+              <Select value={selectedApprovePosition} onValueChange={setSelectedApprovePosition}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a position" />
+                </SelectTrigger>
+                <SelectContent>
+                  {realPositions?.map((pos: any) => (
+                    <SelectItem key={pos.id} value={pos.id.toString()}>{pos.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Role</Label>
+              <Select value={selectedApproveRole} onValueChange={setSelectedApproveRole}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Member">Member</SelectItem>
+                  <SelectItem value="Admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setApproveDialogId(null)}>Cancel</Button>
+            <Button
+              onClick={handleApproveConfirm}
+              disabled={!selectedApproveUnit || !selectedApprovePosition || approveMutation.isPending}
+            >
+              Confirm Approval
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
