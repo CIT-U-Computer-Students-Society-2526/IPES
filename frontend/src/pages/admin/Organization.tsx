@@ -10,7 +10,8 @@ import {
   Trash2,
   UserPlus,
   Check,
-  X
+  X,
+  Settings
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +28,10 @@ import {
   useCreateOrganizationUnit,
   useDeleteOrganizationUnit,
   useDeletePositionType,
-  useDeleteUnitType
+  useDeleteUnitType,
+  useUpdateOrganizationUnit,
+  useUpdateUnitType,
+  useUpdatePositionType
 } from "@/hooks/useOrganizations";
 import { useOrganizationState } from "@/contexts/OrganizationContext";
 import { useToast } from "@/hooks/use-toast";
@@ -48,6 +52,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -375,7 +389,7 @@ const AdminOrganization = () => {
             </DialogContent>
           </Dialog>
 
-          {/* Add Unit Type (LUT) Dialog */}
+          {/* Add Unit Type Dialog */}
           <Dialog open={isUnitTypeDialogOpen} onOpenChange={setIsUnitTypeDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline">
@@ -387,7 +401,7 @@ const AdminOrganization = () => {
               <DialogHeader>
                 <DialogTitle>Add Unit Type</DialogTitle>
                 <DialogDescription>
-                  Define top-level categories for organization units. (e.g., 'Department', 'Commission', 'Committee')
+                  Define top-level categories for organization units. (e.g., 'Department', 'Commission')
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
@@ -435,9 +449,9 @@ const AdminOrganization = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Description <span className="text-muted-foreground font-normal">(Optional)</span></Label>
+                  <Label>Description (Optional)</Label>
                   <Input
-                    placeholder="Brief description of this unit's responsibilities..."
+                    placeholder="Brief description..."
                     value={newUnitDescription}
                     onChange={e => setNewUnitDescription(e.target.value)}
                   />
@@ -450,7 +464,7 @@ const AdminOrganization = () => {
                     </SelectTrigger>
                     <SelectContent>
                       {realUnitTypes?.length === 0 && (
-                        <SelectItem value="none" disabled>No Unit Types defined yet. Please create one.</SelectItem>
+                        <SelectItem value="none" disabled>No Unit Types defined yet.</SelectItem>
                       )}
                       {realUnitTypes?.map((ut: any) => (
                         <SelectItem key={ut.id} value={ut.id.toString()}>{ut.name}</SelectItem>
@@ -513,7 +527,8 @@ const AdminOrganization = () => {
 
         <TabsContent value="structure" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Units List */}
+
+            {/* LEFT COLUMN: Units List */}
             <div className="lg:col-span-2 space-y-4">
               <div className="flex items-center gap-4">
                 <div className="relative flex-1">
@@ -531,119 +546,155 @@ const AdminOrganization = () => {
                 {filteredUnits.length === 0 ? (
                   <p className="text-muted-foreground text-center py-4">No units found.</p>
                 ) : (
-                  filteredUnits.map((unit: any) => (
-                    <Card
-                      key={unit.id}
-                      className={`cursor-pointer transition-all hover:shadow-md ${selectedUnit?.id === unit.id ? 'ring-2 ring-primary' : ''}`}
-                      onClick={() => setSelectedUnit(unit)}
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                              <Users className="w-5 h-5 text-primary" />
+                  filteredUnits.map((unit: any) => {
+                    const typeName = realUnitTypes?.find((ut: any) => ut.id === unit.type_id)?.name || 'Unknown Type';
+                    return (
+                      <Card key={unit.id} className="transition-all hover:shadow-md">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4 pr-4">
+                              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                                <Users className="w-5 h-5 text-primary" />
+                              </div>
+                              <div>
+                                <h3 className="font-medium text-foreground">{unit.name}</h3>
+                                <p className="text-sm text-muted-foreground mt-0.5">
+                                  {unit.description || 'No description provided'}
+                                </p>
+                              </div>
                             </div>
-                            <div>
-                              <h3 className="font-medium text-foreground">{unit.name}</h3>
-                              <p className="text-sm text-muted-foreground line-clamp-1">{unit.description || 'No description provided'}</p>
+                            <div className="flex items-center gap-3 shrink-0">
+                              <Badge variant="secondary">{typeName}</Badge>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon">
+                                    <MoreHorizontal className="w-4 h-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => openEditUnit(unit)}>
+                                    <Edit className="w-4 h-4 mr-2" />
+                                    Edit Unit
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    className={`text-destructive ${unit.members_count && unit.members_count > 0 ? "opacity-50 cursor-not-allowed" : ""}`}
+                                    onClick={(e) => {
+                                      if (unit.members_count && unit.members_count > 0) {
+                                        e.preventDefault();
+                                        toast({
+                                          title: "Cannot Delete Unit",
+                                          description: `This unit currently has ${unit.members_count} active member(s). Please reassign or remove them before deleting.`,
+                                          variant: "destructive"
+                                        });
+                                      } else {
+                                        setDeleteUnitId(unit.id);
+                                      }
+                                    }}
+                                  >
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Delete Unit
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
                           </div>
-                          <div className="flex items-center gap-3">
-                            <Badge variant="secondary">Type ID: {unit.type_id || 'None'}</Badge>
-                            <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))
+                        </CardContent>
+                      </Card>
+                    )
+                  })
                 )}
               </div>
             </div>
 
-            {/* Unit Details / Position Types */}
-            <div className="space-y-4">
-              {selectedUnit ? (
-                <Card>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg">{selectedUnit.name}</CardTitle>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <Edit className="w-4 h-4 mr-2" />
-                            Edit Unit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <UserPlus className="w-4 h-4 mr-2" />
-                            Add Member
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteUnit(selectedUnit.id)}>
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Delete Unit
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-1">Type ID</p>
-                      <Badge>{selectedUnit.type_id || 'None'}</Badge>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-1">Description</p>
-                      <p className="font-medium">{selectedUnit.description || 'No description assigned.'}</p>
-                    </div>
-                    <Button className="w-full" variant="outline">
-                      <UserPlus className="w-4 h-4 mr-2" />
-                      Add Member to Unit
-                    </Button>
-                  </CardContent>
-                </Card>
-              ) : (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Position Types</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {realPositions?.length === 0 ? (
-                        <p className="text-muted-foreground text-center py-4">No Position Types defined.</p>
-                      ) : (
-                        realPositions?.sort((a: any, b: any) => b.rank - a.rank).map((pos: any) => (
-                          <div key={pos.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                            <div>
-                              <p className="font-medium text-foreground">{pos.name}</p>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <Badge variant="secondary">Weight: {pos.rank}</Badge>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-destructive outline-none border-none hover:bg-destructive/10 hover:text-destructive"
-                                onClick={() => handleDeletePosition(pos.id)}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
+            {/* RIGHT COLUMN: Position Types & Unit Types */}
+            <div className="space-y-6">
+
+              {/* Unit Types Card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Unit Types</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {realUnitTypes?.length === 0 ? (
+                      <p className="text-muted-foreground text-center py-4">No Unit Types defined.</p>
+                    ) : (
+                      realUnitTypes?.map((ut: any) => (
+                        <div key={ut.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                          <div>
+                            <p className="font-medium text-foreground">{ut.name}</p>
                           </div>
-                        ))
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted"
+                              onClick={() => openEditUnitType(ut)}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive outline-none border-none hover:bg-destructive/10 hover:text-destructive"
+                              onClick={() => setDeleteUnitTypeIdState(ut.id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Position Types Card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Position Types</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {realPositions?.length === 0 ? (
+                      <p className="text-muted-foreground text-center py-4">No Position Types defined.</p>
+                    ) : (
+                      realPositions?.sort((a: any, b: any) => b.rank - a.rank).map((pos: any) => (
+                        <div key={pos.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                          <div>
+                            <p className="font-medium text-foreground">{pos.name}</p>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Badge variant="secondary" className="mr-2">Weight: {pos.rank}</Badge>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted"
+                              onClick={() => openEditPosition(pos)}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive outline-none border-none hover:bg-destructive/10 hover:text-destructive"
+                              onClick={() => setDeletePositionId(pos.id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
             </div>
           </div>
         </TabsContent>
 
         <TabsContent value="requests" className="space-y-6">
-          {/* Join Requests UI */}
           <Card>
             <CardHeader>
               <CardTitle>Pending Join Requests</CardTitle>
@@ -666,7 +717,7 @@ const AdminOrganization = () => {
                         <Button size="sm" onClick={() => setApproveDialogId(req.id)} disabled={approveMutation.isPending}>
                           <Check className="w-4 h-4 mr-2" /> Approve
                         </Button>
-                        <Button size="sm" variant="destructive" onClick={() => handleReject(req.id)} disabled={rejectMutation.isPending}>
+                        <Button size="sm" variant="destructive" onClick={() => setApproveDialogId(-req.id)} disabled={rejectMutation.isPending}>
                           <X className="w-4 h-4 mr-2" /> Reject
                         </Button>
                       </div>
@@ -679,8 +730,178 @@ const AdminOrganization = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Approve Dialog */}
-      <Dialog open={approveDialogId !== null} onOpenChange={(open) => !open && setApproveDialogId(null)}>
+      {/* --- INLINE EDIT DIALOGS --- */}
+
+      {/* Edit Unit Dialog */}
+      <Dialog open={editUnitId !== null} onOpenChange={(val) => !val && setEditUnitId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Organization Unit</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Unit Name</Label>
+              <Input
+                value={editUnitName}
+                onChange={e => setEditUnitName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Input
+                value={editUnitDescription}
+                onChange={e => setEditUnitDescription(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Unit Type</Label>
+              <Select value={editUnitTypeId} onValueChange={setEditUnitTypeId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {realUnitTypes?.map((ut: any) => (
+                    <SelectItem key={ut.id} value={ut.id.toString()}>{ut.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditUnitId(null)}>Cancel</Button>
+            <Button onClick={handleUpdateUnit} disabled={!editUnitName || !editUnitTypeId || updateUnitMutation.isPending}>
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Unit Type Dialog */}
+      <Dialog open={editUnitTypeIdState !== null} onOpenChange={(val) => !val && setEditUnitTypeIdState(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Unit Type</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Unit Type Name</Label>
+              <Input
+                value={editUnitTypeName}
+                onChange={e => setEditUnitTypeName(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditUnitTypeIdState(null)}>Cancel</Button>
+            <Button onClick={handleUpdateUnitType} disabled={!editUnitTypeName || updateUnitTypeMutation.isPending}>
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Position Dialog */}
+      <Dialog open={editPositionId !== null} onOpenChange={(val) => !val && setEditPositionId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Position Type</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Position Name</Label>
+              <Input
+                value={editPositionName}
+                onChange={e => setEditPositionName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Weight (1-10)</Label>
+              <Input
+                type="number"
+                min="1" max="10"
+                value={editPositionWeight}
+                onChange={e => setEditPositionWeight(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditPositionId(null)}>Cancel</Button>
+            <Button onClick={handleUpdatePosition} disabled={!editPositionName || !editPositionWeight || updatePositionMutation.isPending}>
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
+      {/* --- ALERT DIALOGS FOR DELETION --- */}
+
+      <AlertDialog open={deleteUnitId !== null} onOpenChange={(val) => !val && setDeleteUnitId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Organization Unit?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this unit? All memberships tied to it will be disabled. This action cannot be fully undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteUnitMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => { e.preventDefault(); confirmDeleteUnit(); }}
+              disabled={deleteUnitMutation.isPending}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={deleteUnitTypeIdState !== null} onOpenChange={(val) => !val && setDeleteUnitTypeIdState(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Unit Type?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this unit type? Units assigned to this type may lose their categorization.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteUnitTypeMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => { e.preventDefault(); confirmDeleteUnitType(); }}
+              disabled={deleteUnitTypeMutation.isPending}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={deletePositionId !== null} onOpenChange={(val) => !val && setDeletePositionId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Position Type?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this position type? All memberships with this position will be disabled.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletePositionMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => { e.preventDefault(); confirmDeletePosition(); }}
+              disabled={deletePositionMutation.isPending}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+
+      {/* --- Approve Dialog (Join Requests) --- */}
+      <Dialog open={approveDialogId !== null && approveDialogId > 0} onOpenChange={(open) => !open && setApproveDialogId(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Approve Join Request</DialogTitle>
@@ -741,6 +962,29 @@ const AdminOrganization = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Reject Alert Dialog */}
+      <AlertDialog open={approveDialogId !== null && approveDialogId < 0} onOpenChange={(val) => !val && setApproveDialogId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reject Join Request?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to reject this request? The user will not be added to the organization.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={rejectMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => { e.preventDefault(); handleReject(Math.abs(approveDialogId!)); }}
+              disabled={rejectMutation.isPending}
+            >
+              Reject
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 };
