@@ -272,7 +272,7 @@ const Login = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => navigate("/officer/dashboard")}
+                onClick={() => navigate("/preview/officer/dashboard")}
                 className="border-slate-200 text-[#293F55] hover:bg-slate-50 hover:text-[#293F55]"
               >
                 Officer View
@@ -280,7 +280,7 @@ const Login = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => navigate("/admin/dashboard")}
+                onClick={() => navigate("/preview/admin/dashboard")}
                 className="border-slate-200 text-[#293F55] hover:bg-slate-50 hover:text-[#293F55]"
               >
                 Admin View
