@@ -4,8 +4,9 @@
  * Hooks for organization management and analytics
  */
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { useOrganizationState } from '@/contexts/OrganizationContext';
 
 // Unit completion stats type
 export interface UnitCompletionStats {
@@ -32,8 +33,11 @@ export interface AnalyticsSummary {
 
 // Fetch unit completion stats
 export const useUnitCompletionStats = (organizationId?: number) => {
-  const queryString = organizationId 
-    ? `?organization_id=${organizationId}`
+  const { activeOrganizationId } = useOrganizationState();
+  const effectiveOrgId = organizationId || activeOrganizationId;
+
+  const queryString = effectiveOrgId
+    ? `?organization_id=${effectiveOrgId}`
     : '';
 
   return useQuery({
@@ -48,8 +52,11 @@ export const useUnitCompletionStats = (organizationId?: number) => {
 
 // Fetch analytics summary
 export const useAnalyticsSummary = (organizationId?: number) => {
-  const queryString = organizationId 
-    ? `?organization_id=${organizationId}`
+  const { activeOrganizationId } = useOrganizationState();
+  const effectiveOrgId = organizationId || activeOrganizationId;
+
+  const queryString = effectiveOrgId
+    ? `?organization_id=${effectiveOrgId}`
     : '';
 
   return useQuery({
