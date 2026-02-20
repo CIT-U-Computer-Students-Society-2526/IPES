@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Organization, UnitType, OrganizationUnit, PositionType, Membership
+from .models import Organization, UnitType, OrganizationUnit, PositionType, Membership, JoinRequest
 
 
 class OrganizationSerializer(serializers.ModelSerializer):
@@ -62,3 +62,18 @@ class MembershipSerializer(serializers.ModelSerializer):
             'date_end', 'is_active'
         ]
         read_only_fields = ['id']
+
+class JoinRequestSerializer(serializers.ModelSerializer):
+    """Serializer for JoinRequest model"""
+    user_email = serializers.CharField(source='user.email', read_only=True)
+    user_first_name = serializers.CharField(source='user.first_name', read_only=True)
+    user_last_name = serializers.CharField(source='user.last_name', read_only=True)
+    organization_name = serializers.CharField(source='organization.name', read_only=True)
+    
+    class Meta:
+        model = JoinRequest
+        fields = [
+            'id', 'user', 'user_email', 'user_first_name', 'user_last_name',
+            'organization', 'organization_name', 'status', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'user']
