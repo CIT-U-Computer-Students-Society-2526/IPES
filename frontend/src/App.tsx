@@ -61,7 +61,7 @@ const App = () => (
           <Route path="/login" element={<Login />} />
 
           {/* System Preview routes (No Auth) */}
-          <Route path="/preview/officer" element={<OfficerPreviewLayout />}>
+            <Route path="/preview/member" element={<OfficerPreviewLayout />}>
             <Route path="dashboard" element={<OfficerDashboardPreview />} />
             <Route path="evaluations" element={<OfficerEvaluationsPreview />} />
             <Route path="results" element={<OfficerResultsPreview />} />
@@ -80,8 +80,8 @@ const App = () => (
             <Route path="settings" element={<AdminSettingsPreview />} />
           </Route>
 
-          {/* Officer routes */}
-          <Route path="/officer" element={<OfficerLayout />}>
+            {/* Member routes */}
+            <Route path="/member" element={<OfficerLayout />}>
             <Route path="dashboard" element={<OfficerDashboard />} />
             <Route path="evaluations" element={<OfficerEvaluations />} />
             <Route path="evaluations/:id" element={<EvaluationForm />} />
