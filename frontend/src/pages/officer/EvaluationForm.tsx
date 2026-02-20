@@ -116,9 +116,10 @@ const EvaluationForm = () => {
     { name: "Comments", questions: [] as Question[] },
   ];
 
-  const answeredCount = Object.keys(answers).length + Object.keys(textAnswers).length;
+  const answeredCount = Object.keys(answers).length +
+    Object.keys(textAnswers).filter(id => Number(id) !== -1 && textAnswers[Number(id)]?.trim() !== "").length;
   const totalQuestions = questions.length;
-  const progressPercentage = totalQuestions === 0 ? 0 : (answeredCount / totalQuestions) * 100;
+  const progressPercentage = totalQuestions === 0 ? 0 : Math.min(100, (answeredCount / totalQuestions) * 100);
 
   const handleRatingChange = (questionId: number, value: string) => {
     if (isCompleted) return;
@@ -349,8 +350,8 @@ const EvaluationForm = () => {
               key={index}
               onClick={() => setCurrentSection(index)}
               className={`px-3 py-1.5 rounded-md text-sm whitespace-nowrap transition-colors ${currentSection === index
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted"
                 }`}
             >
               {section.name}
