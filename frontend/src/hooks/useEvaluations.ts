@@ -146,6 +146,51 @@ export const useDuplicateForm = () => {
   });
 };
 
+// Create form
+export const useCreateForm = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<EvaluationForm, Error, Partial<EvaluationForm>>({
+    mutationFn: async (data: Partial<EvaluationForm>) => {
+      const response = await api.post('/forms/', data);
+      return response.json() as Promise<EvaluationForm>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['forms'] });
+    },
+  });
+};
+
+// Update form
+export const useUpdateForm = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<EvaluationForm, Error, { id: number; data: Partial<EvaluationForm> }>({
+    mutationFn: async ({ id, data }) => {
+      const response = await api.patch(`/forms/${id}/`, data);
+      return response.json() as Promise<EvaluationForm>;
+    },
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['forms'] });
+      queryClient.invalidateQueries({ queryKey: ['forms', id] });
+    },
+  });
+};
+
+// Delete form
+export const useDeleteForm = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, number>({
+    mutationFn: async (id: number) => {
+      await api.delete(`/forms/${id}/`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['forms'] });
+    },
+  });
+};
+
 // Auto Assign form
 export const useAutoAssignForm = () => {
   const queryClient = useQueryClient();
@@ -159,6 +204,52 @@ export const useAutoAssignForm = () => {
       queryClient.invalidateQueries({ queryKey: ['forms'] });
       queryClient.invalidateQueries({ queryKey: ['forms', id] });
       queryClient.invalidateQueries({ queryKey: ['assignments'] });
+    },
+  });
+};
+
+// ===== Question Hooks =====
+
+// Bulk create questions for a form
+export const useCreateQuestions = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<Question[], Error, { form_id: number; questions: Partial<Question>[] }>({
+    mutationFn: async (data: { form_id: number; questions: Partial<Question>[] }) => {
+      const response = await api.post('/questions/bulk_create/', data);
+      return response.json() as Promise<Question[]>;
+    },
+    onSuccess: (_, { form_id }) => {
+      queryClient.invalidateQueries({ queryKey: ['forms', form_id, 'questions'] });
+    },
+  });
+};
+
+// Update single question
+export const useUpdateQuestion = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<Question, Error, { id: number; form_id: number; data: Partial<Question> }>({
+    mutationFn: async ({ id, data }) => {
+      const response = await api.patch(`/questions/${id}/`, data);
+      return response.json() as Promise<Question>;
+    },
+    onSuccess: (_, { form_id }) => {
+      queryClient.invalidateQueries({ queryKey: ['forms', form_id, 'questions'] });
+    },
+  });
+};
+
+// Delete single question
+export const useDeleteQuestion = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, { id: number; form_id: number }>({
+    mutationFn: async ({ id }) => {
+      await api.delete(`/questions/${id}/`);
+    },
+    onSuccess: (_, { form_id }) => {
+      queryClient.invalidateQueries({ queryKey: ['forms', form_id, 'questions'] });
     },
   });
 };
