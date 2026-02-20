@@ -13,17 +13,20 @@ class Organization(models.Model):
 class UnitType(models.Model):
     organization_id = models.ForeignKey(Organization, on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
+    is_active = models.BooleanField(default=True)
 
 class OrganizationUnit(models.Model):
     organization_id = models.ForeignKey(Organization, on_delete=models.CASCADE)
     type_id = models.ForeignKey(UnitType, on_delete=models.CASCADE)
     name = models.CharField(max_length=255)
     description = models.TextField()
+    is_active = models.BooleanField(default=True)
 
 class PositionType(models.Model):
     organization_id = models.ForeignKey(Organization, on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
     rank = models.IntegerField(help_text='1 for Head, higher numbers for lower rank')
+    is_active = models.BooleanField(default=True)
 
 class Membership(models.Model):
     user_id = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='memberships')

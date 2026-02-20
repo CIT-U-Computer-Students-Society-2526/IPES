@@ -224,7 +224,7 @@ class OrganizationViewSet(viewsets.ModelViewSet):
 
 class UnitTypeViewSet(viewsets.ModelViewSet):
     """ViewSet for UnitType CRUD"""
-    queryset = UnitType.objects.all()
+    queryset = UnitType.objects.filter(is_active=True)
     serializer_class = UnitTypeSerializer
     permission_classes = [permissions.IsAuthenticated]
     
@@ -235,10 +235,14 @@ class UnitTypeViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(organization_id=org_id)
         return queryset
 
+    def perform_destroy(self, instance):
+        instance.is_active = False
+        instance.save()
+
 
 class OrganizationUnitViewSet(viewsets.ModelViewSet):
     """ViewSet for OrganizationUnit CRUD"""
-    queryset = OrganizationUnit.objects.all()
+    queryset = OrganizationUnit.objects.filter(is_active=True)
     serializer_class = OrganizationUnitSerializer
     permission_classes = [permissions.IsAuthenticated]
     
@@ -249,10 +253,17 @@ class OrganizationUnitViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(organization_id=org_id)
         return queryset
 
+    def perform_destroy(self, instance):
+        # Soft delete the unit
+        instance.is_active = False
+        instance.save()
+        # Also soft delete memberships tied to this unit
+        Membership.objects.filter(unit_id=instance, is_active=True).update(is_active=False)
+
 
 class PositionTypeViewSet(viewsets.ModelViewSet):
     """ViewSet for PositionType CRUD"""
-    queryset = PositionType.objects.all()
+    queryset = PositionType.objects.filter(is_active=True)
     serializer_class = PositionTypeSerializer
     permission_classes = [permissions.IsAuthenticated]
     
@@ -262,6 +273,12 @@ class PositionTypeViewSet(viewsets.ModelViewSet):
         if org_id:
             queryset = queryset.filter(organization_id=org_id)
         return queryset
+
+    def perform_destroy(self, instance):
+        instance.is_active = False
+        instance.save()
+        # Also soft delete memberships holding this position
+        Membership.objects.filter(position_id=instance, is_active=True).update(is_active=False)
 
 
 class MembershipViewSet(viewsets.ModelViewSet):
