@@ -167,6 +167,22 @@ export const useDeleteOrganizationUnit = () => {
   });
 };
 
+export const useUpdateOrganizationUnit = () => {
+  const queryClient = useQueryClient();
+  const { activeOrganizationId } = useOrganizationState();
+
+  return useMutation<any, Error, { id: number; data: { name?: string; description?: string; type_id?: number } }>({
+    mutationFn: async ({ id, data }) => {
+      const response = await api.patch(`/units/${id}/`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['units', activeOrganizationId] });
+      queryClient.invalidateQueries({ queryKey: ['organizations', 'analytics'] });
+    },
+  });
+};
+
 // Fetch Unit Types (LUT)
 export interface UnitType {
   id: number;
@@ -214,6 +230,21 @@ export const useDeleteUnitType = () => {
     mutationFn: async (id) => {
       const response = await api.delete(`/unit-types/${id}/`);
       return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['unit-types', activeOrganizationId] });
+    },
+  });
+};
+
+export const useUpdateUnitType = () => {
+  const queryClient = useQueryClient();
+  const { activeOrganizationId } = useOrganizationState();
+
+  return useMutation<any, Error, { id: number; data: { name?: string } }>({
+    mutationFn: async ({ id, data }) => {
+      const response = await api.patch(`/unit-types/${id}/`, data);
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['unit-types', activeOrganizationId] });
@@ -271,6 +302,21 @@ export const useDeletePositionType = () => {
     mutationFn: async (id) => {
       const response = await api.delete(`/positions/${id}/`);
       return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['positions', activeOrganizationId] });
+    },
+  });
+};
+
+export const useUpdatePositionType = () => {
+  const queryClient = useQueryClient();
+  const { activeOrganizationId } = useOrganizationState();
+
+  return useMutation<any, Error, { id: number; data: { name?: string; rank?: number } }>({
+    mutationFn: async ({ id, data }) => {
+      const response = await api.patch(`/positions/${id}/`, data);
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['positions', activeOrganizationId] });
