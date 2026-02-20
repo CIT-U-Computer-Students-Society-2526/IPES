@@ -39,3 +39,19 @@ class Membership(models.Model):
     date_start = models.DateField()
     date_end = models.DateField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
+
+class JoinRequest(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='join_requests')
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='join_requests')
+    
+    STATUS_CHOICES = (
+        ('Pending', 'Pending'),
+        ('Approved', 'Approved'),
+        ('Rejected', 'Rejected'),
+    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = ('user', 'organization')
