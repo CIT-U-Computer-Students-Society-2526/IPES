@@ -65,3 +65,20 @@ class LoginSerializer(serializers.Serializer):
             raise serializers.ValidationError('Invalid email or password')
         else:
             raise serializers.ValidationError('Email and password are required')
+
+
+class PasswordResetSerializer(serializers.Serializer):
+    """Serializer for password resets by Admins"""
+    password = serializers.CharField(write_only=True, min_length=8)
+    
+    def update(self, instance, validated_data):
+        instance.set_password(validated_data['password'])
+        instance.save()
+        return instance
+
+
+class UserProfileUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for regular users to update their own profile"""
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name', 'display_picture']
