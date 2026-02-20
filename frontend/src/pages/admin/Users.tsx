@@ -1,17 +1,15 @@
 import { useState } from "react";
 import {
   Users,
-  Plus,
   Search,
   MoreHorizontal,
-  Edit,
-  Trash2,
-  Mail,
   Shield,
   ShieldCheck,
   UserCheck,
-  UserX,
-  Key
+  Settings2,
+  UserPlus,
+  UserMinus,
+  AlertTriangle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +23,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -42,7 +47,7 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/use-toast";
-import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, type User, type UserCreate } from "@/hooks/useUsers";
+import { useUsers, useCurrentUser, type User } from "@/hooks/useUsers";
 
 // Organization unit options
 const ORGANIZATION_UNITS = [
@@ -65,22 +70,32 @@ const POSITIONS = [
 ];
 
 import { useOrganizationState } from "@/contexts/OrganizationContext";
+import { useUpdateMembership, useOrganizationUnits, usePositionTypes } from "@/hooks/useOrganizations";
 
 const AdminUsers = () => {
   const { activeOrganizationId } = useOrganizationState();
+
+  // Fetch logged in user profile to evaluate Head Admin status
+  const { data: currentUserProfile } = useCurrentUser();
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
-  const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [isManageMembershipOpen, setIsManageMembershipOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    unit_id: undefined as number | undefined,
+    position_id: undefined as number | undefined,
+  });
 
   const { toast } = useToast();
 
   // Fetch users from API (Filtered by Organization ID)
   const { data: users, isLoading, error, refetch } = useUsers({ organization_id: activeOrganizationId });
+  const { data: units } = useOrganizationUnits(activeOrganizationId);
+  const { data: positions } = usePositionTypes(activeOrganizationId);
 
   // Mutations
-  const updateUser = useUpdateUser();
-  const deleteUser = useDeleteUser();
+  const updateMembership = useUpdateMembership();
 
   // Filter users
   const filteredUsers = users?.filter((user: User) => {
@@ -104,46 +119,97 @@ const AdminUsers = () => {
     active: filteredUsers.filter((u: User) => u.is_active).length || 0,
   };
 
-  // Handle toggle user status
-  const handleToggleStatus = async (user: User) => {
+  // Calculate logged in user's rank status
+  const currentUserMembership = currentUserProfile?.memberships?.find(m => m.organization_id === activeOrganizationId);
+  const isHeadAdmin = currentUserMembership?.position_rank === 1;
+
+  // Handle unit and position updates
+  const handleUpdateMembership = async () => {
+    if (!selectedUser) return;
+
+    const membership = selectedUser.memberships?.find(m => m.organization_id === activeOrganizationId);
+    if (!membership) return;
+
     try {
-      await updateUser.mutateAsync({
-        id: user.id,
-        data: { is_active: !user.is_active }
+      await updateMembership.mutateAsync({
+        id: membership.id,
+        data: {
+          unit_id: formData.unit_id,
+          position_id: formData.position_id
+        }
       });
       toast({
         title: "Success",
-        description: `User ${user.is_active ? "deactivated" : "activated"} successfully`,
+        description: "Membership updated successfully",
       });
+      setIsManageMembershipOpen(false);
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to update user status",
+        description: "Failed to update membership",
         variant: "destructive",
       });
     }
   };
 
-  // Handle delete user
-  const handleDeleteUser = async (userId: number) => {
-    if (confirm("Are you sure you want to delete this user?")) {
+  // Handle granting or revoking privileges
+  const handleToggleAdminStatus = async (user: User) => {
+    const membership = user.memberships?.find(m => m.organization_id === activeOrganizationId);
+    if (!membership) return;
+
+    const isCurrentlyAdmin = membership.role === 'Admin';
+
+    if (isCurrentlyAdmin && !isHeadAdmin) {
+      toast({
+        title: "Permission Denied",
+        description: "Only the Head Administrator can revoke Admin privileges.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await updateMembership.mutateAsync({
+        id: membership.id,
+        data: { role: isCurrentlyAdmin ? 'Member' : 'Admin' }
+      });
+      toast({
+        title: "Success",
+        description: `Admin privileges ${isCurrentlyAdmin ? "revoked" : "granted"} successfully`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update privileges",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle removal from org
+  const handleRemoveFromOrganization = async (user: User) => {
+    const membership = user.memberships?.find(m => m.organization_id === activeOrganizationId);
+    if (!membership) return;
+
+    if (confirm(`Are you sure you want to remove ${user.first_name} ${user.last_name} from the organization?`)) {
       try {
-        await deleteUser.mutateAsync(userId);
+        await updateMembership.mutateAsync({
+          id: membership.id,
+          data: { is_active: false }
+        });
         toast({
           title: "Success",
-          description: "User deleted successfully",
+          description: "User removed from organization",
         });
       } catch (error) {
         toast({
           title: "Error",
-          description: "Failed to delete user",
+          description: "Failed to remove user",
           variant: "destructive",
         });
       }
     }
   };
-
-  // Loading skeleton for stats
   const StatsSkeleton = () => (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       {[1, 2, 3, 4].map((i) => (
@@ -355,14 +421,16 @@ const AdminUsers = () => {
                       </TableCell>
                       <TableCell>
                         <Badge
-                          variant={user.is_active ? "outline" : "secondary"}
-                          className={user.is_active ? "text-green-600 border-green-600" : ""}
+                          variant={user.memberships?.find(m => m.organization_id === activeOrganizationId)?.is_active ? "outline" : "secondary"}
+                          className={user.memberships?.find(m => m.organization_id === activeOrganizationId)?.is_active ? "text-green-600 border-green-600" : ""}
                         >
-                          {user.is_active ? "Active" : "Inactive"}
+                          {user.memberships?.find(m => m.organization_id === activeOrganizationId)?.is_active ? "Active" : "Inactive"}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
-                        {user.last_login || "Never"}
+                        {user.memberships?.find(m => m.organization_id === activeOrganizationId)?.unit_name || "Unassigned"}
+                        <br />
+                        <span className="text-xs">{user.memberships?.find(m => m.organization_id === activeOrganizationId)?.position_name}</span>
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
@@ -372,38 +440,38 @@ const AdminUsers = () => {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                              <Edit className="w-4 h-4 mr-2" />
-                              Edit User
+                            <DropdownMenuItem onClick={() => {
+                              setSelectedUser(user);
+                              const membership = user.memberships?.find(m => m.organization_id === activeOrganizationId);
+                              setFormData({
+                                unit_id: membership?.unit_id,
+                                position_id: membership?.position_id
+                              });
+                              setIsManageMembershipOpen(true);
+                            }}>
+                              <Settings2 className="w-4 h-4 mr-2" />
+                              Manage Membership
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Key className="w-4 h-4 mr-2" />
-                              Reset Password
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Mail className="w-4 h-4 mr-2" />
-                              Send Email
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleToggleStatus(user)}>
-                              {user.is_active ? (
+                            <DropdownMenuItem onClick={() => handleToggleAdminStatus(user)}>
+                              {user.memberships?.find(m => m.organization_id === activeOrganizationId)?.role === 'Admin' ? (
                                 <>
-                                  <UserX className="w-4 h-4 mr-2" />
-                                  Deactivate
+                                  <UserMinus className="w-4 h-4 mr-2" />
+                                  <span className={!isHeadAdmin ? "opacity-50" : ""}>Revoke Admin Privileges</span>
                                 </>
                               ) : (
                                 <>
-                                  <UserCheck className="w-4 h-4 mr-2" />
-                                  Activate
+                                  <UserPlus className="w-4 h-4 mr-2" />
+                                  Grant Admin Privileges
                                 </>
                               )}
                             </DropdownMenuItem>
+                            <DropdownMenuSeparator />
                             <DropdownMenuItem
                               className="text-destructive"
-                              onClick={() => handleDeleteUser(user.id)}
+                              onClick={() => handleRemoveFromOrganization(user)}
                             >
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Delete User
+                              <AlertTriangle className="w-4 h-4 mr-2" />
+                              Remove from Organization
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -416,6 +484,61 @@ const AdminUsers = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Manage Membership Dialog */}
+      <Dialog open={isManageMembershipOpen} onOpenChange={setIsManageMembershipOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Manage Membership: {selectedUser?.first_name} {selectedUser?.last_name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Organization Unit</Label>
+              <Select
+                value={formData.unit_id?.toString() || ""}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, unit_id: value ? parseInt(value) : undefined }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select unit..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {units?.map((unit) => (
+                    <SelectItem key={unit.id} value={unit.id.toString()}>
+                      {unit.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Position</Label>
+              <Select
+                value={formData.position_id?.toString() || ""}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, position_id: value ? parseInt(value) : undefined }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select position..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {positions?.map((pos) => (
+                    <SelectItem key={pos.id} value={pos.id.toString()}>
+                      {pos.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button variant="outline" onClick={() => setIsManageMembershipOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateMembership} disabled={updateMembership.isPending}>
+              Save Changes
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
