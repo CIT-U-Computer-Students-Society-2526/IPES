@@ -85,6 +85,7 @@ const AdminOrganization = () => {
   const deleteUnitTypeMutation = useDeleteUnitType();
 
   const [newUnitName, setNewUnitName] = useState("");
+  const [newUnitDescription, setNewUnitDescription] = useState("");
   const [newUnitTypeId, setNewUnitTypeId] = useState<string>("");
   const [isUnitDialogOpen, setIsUnitDialogOpen] = useState(false);
 
@@ -201,11 +202,13 @@ const AdminOrganization = () => {
     if (!newUnitName || !newUnitTypeId) return;
     createUnitMutation.mutate({
       name: newUnitName,
+      description: newUnitDescription,
       type_id: parseInt(newUnitTypeId),
     }, {
       onSuccess: () => {
         setIsUnitDialogOpen(false);
         setNewUnitName("");
+        setNewUnitDescription("");
         setNewUnitTypeId("");
         toast({ title: "Success", description: "Organization Unit created successfully." });
       },
@@ -328,6 +331,14 @@ const AdminOrganization = () => {
                     placeholder="e.g., Committee on Education"
                     value={newUnitName}
                     onChange={e => setNewUnitName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Description <span className="text-muted-foreground font-normal">(Optional)</span></Label>
+                  <Input
+                    placeholder="Brief description of this unit's responsibilities..."
+                    value={newUnitDescription}
+                    onChange={e => setNewUnitDescription(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">

@@ -19,7 +19,7 @@ class OrganizationUnit(models.Model):
     organization_id = models.ForeignKey(Organization, on_delete=models.CASCADE)
     type_id = models.ForeignKey(UnitType, on_delete=models.CASCADE)
     name = models.CharField(max_length=255)
-    description = models.TextField()
+    description = models.TextField(blank=True, null=True)
     is_active = models.BooleanField(default=True)
 
 class PositionType(models.Model):
