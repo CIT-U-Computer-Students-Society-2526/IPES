@@ -3,8 +3,6 @@ from rest_framework.decorators import action, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.contrib.auth import login, logout
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
 
 from apps.audit.utils import log_action, AuditActions
 
@@ -15,9 +13,8 @@ from .serializers import (
     LoginSerializer
 )
 
+from .permissions import IsAdmin
 
-@method_decorator(csrf_exempt, name='login')
-@method_decorator(csrf_exempt, name='logout')
 class AuthViewSet(viewsets.ViewSet):
     """ViewSet for authentication endpoints"""
     permission_classes = [AllowAny]
@@ -70,10 +67,10 @@ class AuthViewSet(viewsets.ViewSet):
 
 
 class UserViewSet(viewsets.ModelViewSet):
-    """ViewSet for User CRUD operations - Admin only for create"""
+    """ViewSet for User CRUD operations - Admin only"""
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdmin]
     
     def get_serializer_class(self):
         if self.action == 'create':
