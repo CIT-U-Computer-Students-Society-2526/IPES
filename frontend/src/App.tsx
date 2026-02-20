@@ -7,6 +7,7 @@ import { OrganizationProvider } from "./contexts/OrganizationContext";
 // Pages
 import Index from "./pages/Index";
 import Login from "./pages/Login";
+import Register from "./pages/Register";
 import SelectOrganization from "./pages/SelectOrganization";
 import NotFound from "./pages/NotFound";
 
@@ -62,6 +63,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
             <Route path="/select-organization" element={<SelectOrganization />} />
 
             {/* System Preview routes (No Auth) */}

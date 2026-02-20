@@ -260,6 +260,18 @@ const Login = () => {
             </div>
           </form>
 
+          <div className="mt-6 text-center animate-fade-up delay-300">
+            <p className="text-sm text-slate-500">
+              Don't have an account?{' '}
+              <button
+                onClick={() => navigate("/register")}
+                className="font-semibold text-[#FCBD78] hover:text-[#faa94f] transition-colors"
+              >
+                Sign Up
+              </button>
+            </p>
+          </div>
+
           <div className="mt-8 pt-6 border-t border-slate-100 text-center animate-fade-up delay-300">
             <p className="text-xs text-slate-400 mb-4 uppercase tracking-widest">System Preview</p>
             <div className="flex gap-3 justify-center">

@@ -59,6 +59,34 @@ class AuthViewSet(viewsets.ViewSet):
             log_action(user, AuditActions.USER_LOGOUT, request)
 
         return Response({'message': 'Logout successful'})
+        
+    @action(detail=False, methods=['post'], url_path='register', permission_classes=[AllowAny])
+    def register(self, request):
+        """Handle public user registration"""
+        serializer = UserCreateSerializer(data=request.data)
+        
+        if not serializer.is_valid():
+            return Response(
+                {
+                    'message': 'Registration failed',
+                    'errors': serializer.errors
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        user = serializer.save()
+        
+        # Log successful registration
+        log_action(user, AuditActions.USER_CREATED, request, user_email=user.email)
+        
+        # Log them in automatically
+        login(request, user)
+        log_action(user, AuditActions.USER_LOGIN, request)
+        
+        return Response({
+            'user': UserSerializer(user).data,
+            'message': 'Registration successful'
+        }, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=['get', 'put', 'patch'], url_path='me', permission_classes=[IsAuthenticated])
     def me(self, request):
