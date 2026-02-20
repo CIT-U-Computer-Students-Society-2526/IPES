@@ -6,7 +6,6 @@ class User(AbstractUser):
 
     # AbstractUser already includes: username, email, first_name, last_name, password, is_active
     display_picture = models.ImageField(upload_to='users/pictures/', blank=True, null=True)
-    role = models.CharField(max_length=50)
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username', 'first_name', 'last_name']
