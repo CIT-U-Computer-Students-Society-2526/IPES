@@ -134,6 +134,95 @@ export const useOrganizationUnits = (organizationId?: number) => {
   });
 };
 
+export const useCreateOrganizationUnit = () => {
+  const queryClient = useQueryClient();
+  const { activeOrganizationId } = useOrganizationState();
+
+  return useMutation<any, Error, { name: string; description?: string; type_id: number }>({
+    mutationFn: async (data) => {
+      const payload = { ...data, organization_id: activeOrganizationId };
+      const response = await api.post('/units/', payload);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['units', activeOrganizationId] });
+      queryClient.invalidateQueries({ queryKey: ['organizations', 'analytics'] });
+    },
+  });
+};
+
+export const useDeleteOrganizationUnit = () => {
+  const queryClient = useQueryClient();
+  const { activeOrganizationId } = useOrganizationState();
+
+  return useMutation<any, Error, number>({
+    mutationFn: async (id) => {
+      const response = await api.delete(`/units/${id}/`);
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['units', activeOrganizationId] });
+      queryClient.invalidateQueries({ queryKey: ['organizations', 'analytics'] });
+    },
+  });
+};
+
+// Fetch Unit Types (LUT)
+export interface UnitType {
+  id: number;
+  name: string;
+  organization_id: number;
+}
+
+export const useUnitTypes = (organizationId?: number) => {
+  const { activeOrganizationId } = useOrganizationState();
+  const effectiveOrgId = organizationId || activeOrganizationId;
+
+  return useQuery({
+    queryKey: ['unit-types', effectiveOrgId],
+    queryFn: async () => {
+      if (!effectiveOrgId) return [];
+      const response = await api.get(`/unit-types/?organization_id=${effectiveOrgId}`);
+      const data = await response.json();
+      return Array.isArray(data) ? data : data.results || [];
+    },
+    enabled: !!effectiveOrgId
+  });
+};
+
+export const useCreateUnitType = () => {
+  const queryClient = useQueryClient();
+  const { activeOrganizationId } = useOrganizationState();
+
+  return useMutation<any, Error, { name: string }>({
+    mutationFn: async (data) => {
+      const payload = { ...data, organization_id: activeOrganizationId };
+      const response = await api.post('/unit-types/', payload);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['unit-types', activeOrganizationId] });
+    },
+  });
+};
+
+export const useDeleteUnitType = () => {
+  const queryClient = useQueryClient();
+  const { activeOrganizationId } = useOrganizationState();
+
+  return useMutation<any, Error, number>({
+    mutationFn: async (id) => {
+      const response = await api.delete(`/unit-types/${id}/`);
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['unit-types', activeOrganizationId] });
+    },
+  });
+};
+
+
+
 // Fetch Position Types
 export interface PositionType {
   id: number;
@@ -155,6 +244,37 @@ export const usePositionTypes = (organizationId?: number) => {
       return Array.isArray(data) ? data : data.results || [];
     },
     enabled: !!effectiveOrgId
+  });
+};
+
+export const useCreatePositionType = () => {
+  const queryClient = useQueryClient();
+  const { activeOrganizationId } = useOrganizationState();
+
+  return useMutation<any, Error, { name: string; rank: number }>({
+    mutationFn: async (data) => {
+      const payload = { ...data, organization_id: activeOrganizationId };
+      const response = await api.post('/positions/', payload);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['positions', activeOrganizationId] });
+    },
+  });
+};
+
+export const useDeletePositionType = () => {
+  const queryClient = useQueryClient();
+  const { activeOrganizationId } = useOrganizationState();
+
+  return useMutation<any, Error, number>({
+    mutationFn: async (id) => {
+      const response = await api.delete(`/positions/${id}/`);
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['positions', activeOrganizationId] });
+    },
   });
 };
 
