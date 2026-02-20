@@ -90,7 +90,15 @@ class UserViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         """Filter users based on organization if needed"""
-        return User.objects.all()
+        queryset = User.objects.all()
+        org_id = self.request.query_params.get('organization_id')
+        if org_id:
+            # Only return users who have an active membership in the specified organization
+            queryset = queryset.filter(
+                memberships__unit_id__organization_id=org_id,
+                memberships__is_active=True
+            ).distinct()
+        return queryset
     
     def perform_create(self, serializer):
         """Log user creation"""
