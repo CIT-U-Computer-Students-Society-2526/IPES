@@ -109,6 +109,55 @@ export const useJoinOrganization = () => {
   });
 };
 
+// Fetch Organization Units
+export interface OrganizationUnit {
+  id: number;
+  name: string;
+  description: string;
+  type_id?: number;
+  organization_id: number;
+}
+
+export const useOrganizationUnits = (organizationId?: number) => {
+  const { activeOrganizationId } = useOrganizationState();
+  const effectiveOrgId = organizationId || activeOrganizationId;
+
+  return useQuery({
+    queryKey: ['units', effectiveOrgId],
+    queryFn: async () => {
+      if (!effectiveOrgId) return [];
+      const response = await api.get(`/units/?organization_id=${effectiveOrgId}`);
+      const data = await response.json();
+      return Array.isArray(data) ? data : data.results || [];
+    },
+    enabled: !!effectiveOrgId
+  });
+};
+
+// Fetch Position Types
+export interface PositionType {
+  id: number;
+  name: string;
+  rank: number;
+  organization_id: number;
+}
+
+export const usePositionTypes = (organizationId?: number) => {
+  const { activeOrganizationId } = useOrganizationState();
+  const effectiveOrgId = organizationId || activeOrganizationId;
+
+  return useQuery({
+    queryKey: ['positions', effectiveOrgId],
+    queryFn: async () => {
+      if (!effectiveOrgId) return [];
+      const response = await api.get(`/positions/?organization_id=${effectiveOrgId}`);
+      const data = await response.json();
+      return Array.isArray(data) ? data : data.results || [];
+    },
+    enabled: !!effectiveOrgId
+  });
+};
+
 // Fetch pending join requests for an organization
 export const usePendingJoinRequests = (organizationId?: number) => {
   const { activeOrganizationId } = useOrganizationState();
