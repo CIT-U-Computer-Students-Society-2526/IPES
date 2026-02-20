@@ -59,7 +59,6 @@ import {
 
 const AdminOrganization = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedUnit, setSelectedUnit] = useState<any | null>(null);
 
   const { activeOrganizationId } = useOrganizationState();
   const { data: pendingRequests, isLoading: isLoadingRequests } = usePendingJoinRequests(activeOrganizationId);
@@ -67,28 +66,55 @@ const AdminOrganization = () => {
   const { data: realPositions } = usePositionTypes(activeOrganizationId);
   const { data: realUnitTypes } = useUnitTypes(activeOrganizationId);
 
-  // Position Type State
+  // --- Mutations ---
   const createPositionMutation = useCreatePositionType();
+  const updatePositionMutation = useUpdatePositionType();
+  const deletePositionMutation = useDeletePositionType();
+
+  const createUnitTypeMutation = useCreateUnitType();
+  const updateUnitTypeMutation = useUpdateUnitType();
+  const deleteUnitTypeMutation = useDeleteUnitType();
+
+  const createUnitMutation = useCreateOrganizationUnit();
+  const updateUnitMutation = useUpdateOrganizationUnit();
+  const deleteUnitMutation = useDeleteOrganizationUnit();
+
+  const approveMutation = useApproveJoinRequest();
+  const rejectMutation = useRejectJoinRequest();
+  const { toast } = useToast();
+
+  // --- Create States ---
   const [newPositionName, setNewPositionName] = useState("");
   const [newPositionWeight, setNewPositionWeight] = useState("5");
   const [isPositionDialogOpen, setIsPositionDialogOpen] = useState(false);
 
-  // Unit Type State
-  const createUnitTypeMutation = useCreateUnitType();
   const [newUnitTypeName, setNewUnitTypeName] = useState("");
   const [isUnitTypeDialogOpen, setIsUnitTypeDialogOpen] = useState(false);
-
-  // Unit State
-  const createUnitMutation = useCreateOrganizationUnit();
-  const deleteUnitMutation = useDeleteOrganizationUnit();
-  const deletePositionMutation = useDeletePositionType();
-  const deleteUnitTypeMutation = useDeleteUnitType();
 
   const [newUnitName, setNewUnitName] = useState("");
   const [newUnitDescription, setNewUnitDescription] = useState("");
   const [newUnitTypeId, setNewUnitTypeId] = useState<string>("");
   const [isUnitDialogOpen, setIsUnitDialogOpen] = useState(false);
 
+  // --- Edit States ---
+  const [editUnitId, setEditUnitId] = useState<number | null>(null);
+  const [editUnitName, setEditUnitName] = useState("");
+  const [editUnitDescription, setEditUnitDescription] = useState("");
+  const [editUnitTypeId, setEditUnitTypeId] = useState<string>("");
+
+  const [editUnitTypeIdState, setEditUnitTypeIdState] = useState<number | null>(null);
+  const [editUnitTypeName, setEditUnitTypeName] = useState("");
+
+  const [editPositionId, setEditPositionId] = useState<number | null>(null);
+  const [editPositionName, setEditPositionName] = useState("");
+  const [editPositionWeight, setEditPositionWeight] = useState("5");
+
+  // --- Delete States (Alert Dialogs) ---
+  const [deleteUnitId, setDeleteUnitId] = useState<number | null>(null);
+  const [deleteUnitTypeIdState, setDeleteUnitTypeIdState] = useState<number | null>(null);
+  const [deletePositionId, setDeletePositionId] = useState<number | null>(null);
+
+  // --- Approval State ---
   const [approveDialogId, setApproveDialogId] = useState<number | null>(null);
   const [selectedApproveUnit, setSelectedApproveUnit] = useState<string>("");
   const [selectedApprovePosition, setSelectedApprovePosition] = useState<string>("");
