@@ -7,7 +7,7 @@ class QuestionSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Question
-        fields = ['id', 'form_id', 'text', 'input_type', 'order', 'weight']
+        fields = ['id', 'form_id', 'text', 'input_type', 'order', 'weight', 'is_required', 'min_value', 'max_value']
         read_only_fields = ['id']
 
 
@@ -16,7 +16,7 @@ class QuestionCreateSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Question
-        fields = ['id', 'text', 'input_type', 'order', 'weight']
+        fields = ['id', 'text', 'input_type', 'order', 'weight', 'is_required', 'min_value', 'max_value']
         read_only_fields = ['id']
     
     def validate_input_type(self, value):
@@ -121,19 +121,24 @@ class ResponseCreateSerializer(serializers.ModelSerializer):
         
         if question.input_type in ['rating', 'number', 'dropdown']:
             if score_value is None:
-                raise serializers.ValidationError({
-                    'score_value': f"This question requires a score value for {question.input_type} type"
-                })
-            if score_value < 0 or score_value > 10:
-                raise serializers.ValidationError({
-                    'score_value': 'Score must be between 0 and 10'
-                })
+                if question.is_required:
+                    raise serializers.ValidationError({
+                        'score_value': f"This question requires a score value for {question.input_type} type"
+                    })
+            else:
+                min_val = question.min_value if question.min_value is not None else 0
+                max_val = question.max_value if question.max_value is not None else 10
+                if score_value < min_val or score_value > max_val:
+                    raise serializers.ValidationError({
+                        'score_value': f'Score must be between {min_val} and {max_val}'
+                    })
         
         if question.input_type in ['text', 'textarea']:
             if not text or not text.strip():
-                raise serializers.ValidationError({
-                    'text': 'This question requires a text response'
-                })
+                if question.is_required:
+                    raise serializers.ValidationError({
+                        'text': 'This question requires a text response'
+                    })
         
         return attrs
 

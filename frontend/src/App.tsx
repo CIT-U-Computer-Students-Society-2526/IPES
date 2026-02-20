@@ -1,5 +1,4 @@
 import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
@@ -30,18 +29,57 @@ import AdminUsers from "./pages/admin/Users";
 import AdminAuditLog from "./pages/admin/AuditLog";
 import AdminSettings from "./pages/admin/Settings";
 
+// Preview components
+import OfficerPreviewLayout from "./components/layout/OfficerPreviewLayout";
+import AdminPreviewLayout from "./components/layout/AdminPreviewLayout";
+import OfficerDashboardPreview from "./pages/preview/OfficerDashboardPreview";
+import AdminDashboardPreview from "./pages/preview/AdminDashboardPreview";
+
+import OfficerEvaluationsPreview from "./pages/preview/OfficerEvaluationsPreview";
+import OfficerResultsPreview from "./pages/preview/OfficerResultsPreview";
+import OfficerAccomplishmentsPreview from "./pages/preview/OfficerAccomplishmentsPreview";
+import OfficerProfilePreview from "./pages/preview/OfficerProfilePreview";
+
+import AdminOrganizationPreview from "./pages/preview/AdminOrganizationPreview";
+import AdminFormBuilderPreview from "./pages/preview/AdminFormBuilderPreview";
+import AdminAssignmentsPreview from "./pages/preview/AdminAssignmentsPreview";
+import AdminAnalyticsPreview from "./pages/preview/AdminAnalyticsPreview";
+import AdminAccomplishmentsPreview from "./pages/preview/AdminAccomplishmentsPreview";
+import AdminUsersPreview from "./pages/preview/AdminUsersPreview";
+import AdminAuditLogPreview from "./pages/preview/AdminAuditLogPreview";
+import AdminSettingsPreview from "./pages/preview/AdminSettingsPreview";
+
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
-      <Sonner />
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />
-          
+
+          {/* System Preview routes (No Auth) */}
+          <Route path="/preview/officer" element={<OfficerPreviewLayout />}>
+            <Route path="dashboard" element={<OfficerDashboardPreview />} />
+            <Route path="evaluations" element={<OfficerEvaluationsPreview />} />
+            <Route path="results" element={<OfficerResultsPreview />} />
+            <Route path="accomplishments" element={<OfficerAccomplishmentsPreview />} />
+            <Route path="profile" element={<OfficerProfilePreview />} />
+          </Route>
+          <Route path="/preview/admin" element={<AdminPreviewLayout />}>
+            <Route path="dashboard" element={<AdminDashboardPreview />} />
+            <Route path="organization" element={<AdminOrganizationPreview />} />
+            <Route path="forms" element={<AdminFormBuilderPreview />} />
+            <Route path="assignments" element={<AdminAssignmentsPreview />} />
+            <Route path="analytics" element={<AdminAnalyticsPreview />} />
+            <Route path="accomplishments" element={<AdminAccomplishmentsPreview />} />
+            <Route path="users" element={<AdminUsersPreview />} />
+            <Route path="audit-log" element={<AdminAuditLogPreview />} />
+            <Route path="settings" element={<AdminSettingsPreview />} />
+          </Route>
+
           {/* Officer routes */}
           <Route path="/officer" element={<OfficerLayout />}>
             <Route path="dashboard" element={<OfficerDashboard />} />
@@ -51,7 +89,7 @@ const App = () => (
             <Route path="accomplishments" element={<OfficerAccomplishments />} />
             <Route path="profile" element={<OfficerProfile />} />
           </Route>
-          
+
           {/* Admin routes */}
           <Route path="/admin" element={<AdminLayout />}>
             <Route path="dashboard" element={<AdminDashboard />} />
@@ -64,7 +102,7 @@ const App = () => (
             <Route path="audit-log" element={<AdminAuditLog />} />
             <Route path="settings" element={<AdminSettings />} />
           </Route>
-          
+
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

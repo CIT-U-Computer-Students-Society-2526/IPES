@@ -1,20 +1,22 @@
 import { useState } from "react";
-import { Link, useLocation, Outlet } from "react-router-dom";
-import { 
-  LayoutDashboard, 
-  Users, 
-  Building2, 
+import { Link, useLocation, Outlet, Navigate } from "react-router-dom";
+import { useCurrentUser } from "@/hooks/useUsers";
+import {
+  LayoutDashboard,
+  Users,
+  Building2,
   FileEdit,
   ClipboardList,
   BarChart3,
   Trophy,
   Settings,
   Shield,
-  Bell, 
+  Bell,
   LogOut,
   Menu,
   X,
-  ClipboardCheck
+  ClipboardCheck,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -34,12 +36,27 @@ const navigation = [
 const AdminLayout = () => {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { data: user, isLoading, isError } = useCurrentUser();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (isError || !user || user.role !== 'Admin') {
+    return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email;
 
   return (
     <div className="min-h-screen bg-background flex">
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
@@ -60,7 +77,7 @@ const AdminLayout = () => {
                 <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium">Admin</span>
               </div>
             </Link>
-            <button 
+            <button
               onClick={() => setSidebarOpen(false)}
               className="lg:hidden text-muted-foreground hover:text-foreground"
             >
@@ -79,8 +96,8 @@ const AdminLayout = () => {
                   onClick={() => setSidebarOpen(false)}
                   className={cn(
                     "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                    isActive 
-                      ? "bg-primary text-primary-foreground" 
+                    isActive
+                      ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted"
                   )}
                 >
@@ -98,7 +115,7 @@ const AdminLayout = () => {
                 <Shield className="w-4 h-4 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">Admin User</p>
+                <p className="text-sm font-medium text-foreground truncate">{fullName}</p>
                 <p className="text-xs text-muted-foreground truncate">System Administrator</p>
               </div>
             </div>
@@ -116,7 +133,7 @@ const AdminLayout = () => {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar */}
         <header className="h-16 bg-card border-b border-border flex items-center justify-between px-4 lg:px-6">
-          <button 
+          <button
             onClick={() => setSidebarOpen(true)}
             className="lg:hidden text-muted-foreground hover:text-foreground"
           >
