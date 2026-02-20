@@ -75,14 +75,17 @@ export interface EvaluationSubmitData {
 
 // Fetch all forms
 export const useForms = (params?: { is_active?: boolean; is_published?: boolean; organization_id?: number }) => {
-  const queryString = params
+  const { activeOrganizationId } = useOrganizationState();
+  const effectiveParams = { ...params, organization_id: params?.organization_id || activeOrganizationId || undefined };
+
+  const queryString = Object.keys(effectiveParams).length > 0
     ? '?' + new URLSearchParams(
-      Object.entries(params).filter(([, v]) => v !== undefined).reduce((acc, [k, v]) => ({ ...acc, [k]: String(v) }), {})
+      Object.entries(effectiveParams).filter(([, v]) => v !== undefined).reduce((acc, [k, v]) => ({ ...acc, [k]: String(v) }), {})
     ).toString()
     : '';
 
   return useQuery({
-    queryKey: ['forms', params],
+    queryKey: ['forms', effectiveParams],
     queryFn: async () => {
       const response = await api.get(`/forms/${queryString}`);
       const data = await response.json() as { results: EvaluationForm[] } | EvaluationForm[];
