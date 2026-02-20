@@ -15,7 +15,20 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { usePendingJoinRequests, useApproveJoinRequest, useRejectJoinRequest } from "@/hooks/useOrganizations";
+import {
+  usePendingJoinRequests,
+  useApproveJoinRequest,
+  useRejectJoinRequest,
+  useOrganizationUnits,
+  usePositionTypes,
+  useUnitTypes,
+  useCreatePositionType,
+  useCreateUnitType,
+  useCreateOrganizationUnit,
+  useDeleteOrganizationUnit,
+  useDeletePositionType,
+  useDeleteUnitType
+} from "@/hooks/useOrganizations";
 import { useOrganizationState } from "@/contexts/OrganizationContext";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,6 +42,8 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -44,19 +59,58 @@ import {
 
 const AdminOrganization = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedUnit, setSelectedUnit] = useState<typeof units[0] | null>(null);
+  const [selectedUnit, setSelectedUnit] = useState<any | null>(null);
 
   const { activeOrganizationId } = useOrganizationState();
   const { data: pendingRequests, isLoading: isLoadingRequests } = usePendingJoinRequests(activeOrganizationId);
+  const { data: realUnits } = useOrganizationUnits(activeOrganizationId);
+  const { data: realPositions } = usePositionTypes(activeOrganizationId);
+  const { data: realUnitTypes } = useUnitTypes(activeOrganizationId);
+
+  // Position Type State
+  const createPositionMutation = useCreatePositionType();
+  const [newPositionName, setNewPositionName] = useState("");
+  const [newPositionWeight, setNewPositionWeight] = useState("5");
+  const [isPositionDialogOpen, setIsPositionDialogOpen] = useState(false);
+
+  // Unit Type State
+  const createUnitTypeMutation = useCreateUnitType();
+  const [newUnitTypeName, setNewUnitTypeName] = useState("");
+  const [isUnitTypeDialogOpen, setIsUnitTypeDialogOpen] = useState(false);
+
+  // Unit State
+  const createUnitMutation = useCreateOrganizationUnit();
+  const deleteUnitMutation = useDeleteOrganizationUnit();
+  const deletePositionMutation = useDeletePositionType();
+  const deleteUnitTypeMutation = useDeleteUnitType();
+
+  const [newUnitName, setNewUnitName] = useState("");
+  const [newUnitTypeId, setNewUnitTypeId] = useState<string>("");
+  const [isUnitDialogOpen, setIsUnitDialogOpen] = useState(false);
+
+  const [approveDialogId, setApproveDialogId] = useState<number | null>(null);
+  const [selectedApproveUnit, setSelectedApproveUnit] = useState<string>("");
+  const [selectedApprovePosition, setSelectedApprovePosition] = useState<string>("");
+  const [selectedApproveRole, setSelectedApproveRole] = useState<string>("Member");
+
   const approveMutation = useApproveJoinRequest();
   const rejectMutation = useRejectJoinRequest();
   const { toast } = useToast();
 
-  const handleApprove = (id: number) => {
-    // For now, mock assigning them to unit 1 position 7 (Member of Executive Committee) for simplicity
-    // In a real app this would open a dialog to select the unit and position
-    approveMutation.mutate({ id, unit_id: 1, position_id: 7, role: 'Member' }, {
+  const handleApproveConfirm = () => {
+    if (!approveDialogId || !selectedApproveUnit || !selectedApprovePosition) return;
+
+    approveMutation.mutate({
+      id: approveDialogId,
+      unit_id: parseInt(selectedApproveUnit),
+      position_id: parseInt(selectedApprovePosition),
+      role: selectedApproveRole
+    }, {
       onSuccess: () => {
+        setApproveDialogId(null);
+        setSelectedApproveUnit("");
+        setSelectedApprovePosition("");
+        setSelectedApproveRole("Member");
         toast({
           title: "Request Approved",
           description: "Member has been successfully added to the organization.",
@@ -92,9 +146,76 @@ const AdminOrganization = () => {
     }
   };
 
-  const filteredUnits = units.filter(unit =>
+  const handleCreatePositionType = () => {
+    if (!newPositionName || !newPositionWeight) return;
+    createPositionMutation.mutate({
+      name: newPositionName,
+      rank: parseInt(newPositionWeight),
+    }, {
+      onSuccess: () => {
+        setIsPositionDialogOpen(false);
+        setNewPositionName("");
+        setNewPositionWeight("5");
+        toast({ title: "Success", description: "Position Type created successfully." });
+      },
+      onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
+    });
+  };
+
+  const handleCreateUnitType = () => {
+    if (!newUnitTypeName) return;
+    createUnitTypeMutation.mutate({
+      name: newUnitTypeName,
+    }, {
+      onSuccess: () => {
+        setIsUnitTypeDialogOpen(false);
+        setNewUnitTypeName("");
+        toast({ title: "Success", description: "Unit Type defined successfully." });
+      },
+      onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
+    });
+  };
+
+  const handleDeleteUnit = (id: number) => {
+    if (confirm("Are you sure you want to delete this unit? All memberships tied to it will also be disabled.")) {
+      deleteUnitMutation.mutate(id, {
+        onSuccess: () => {
+          setSelectedUnit(null);
+          toast({ title: "Unit Deleted", description: "The unit has been removed." });
+        },
+        onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
+      });
+    }
+  };
+
+  const handleDeletePosition = (id: number) => {
+    if (confirm("Are you sure you want to delete this position type? All memberships with this position will also be disabled.")) {
+      deletePositionMutation.mutate(id, {
+        onSuccess: () => toast({ title: "Position Deleted", description: "The position type has been removed." }),
+        onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
+      });
+    }
+  };
+
+  const handleCreateUnit = () => {
+    if (!newUnitName || !newUnitTypeId) return;
+    createUnitMutation.mutate({
+      name: newUnitName,
+      type_id: parseInt(newUnitTypeId),
+    }, {
+      onSuccess: () => {
+        setIsUnitDialogOpen(false);
+        setNewUnitName("");
+        setNewUnitTypeId("");
+        toast({ title: "Success", description: "Organization Unit created successfully." });
+      },
+      onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
+    });
+  };
+
+  const filteredUnits = realUnits?.filter((unit: any) =>
     unit.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  ) || [];
 
   return (
     <div className="space-y-6">
@@ -104,8 +225,10 @@ const AdminOrganization = () => {
           <h1 className="text-2xl font-bold text-foreground">Organization Structure</h1>
           <p className="text-muted-foreground">Manage units, positions, and memberships</p>
         </div>
-        <div className="flex gap-2">
-          <Dialog>
+        <div className="flex gap-2 flex-wrap">
+
+          {/* Add Position Type Dialog */}
+          <Dialog open={isPositionDialogOpen} onOpenChange={setIsPositionDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline">
                 <Plus className="w-4 h-4 mr-2" />
@@ -115,34 +238,76 @@ const AdminOrganization = () => {
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Add Position Type</DialogTitle>
+                <DialogDescription>Define a new role that users can hold within the organization.</DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
                   <Label>Position Name</Label>
-                  <Input placeholder="e.g., Director" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Level</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select level" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="executive">Executive</SelectItem>
-                      <SelectItem value="legislative">Legislative</SelectItem>
-                      <SelectItem value="committee">Committee</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Input
+                    placeholder="e.g., Director"
+                    value={newPositionName}
+                    onChange={e => setNewPositionName(e.target.value)}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Weight (1-10)</Label>
-                  <Input type="number" min="1" max="10" placeholder="5" />
+                  <Input
+                    type="number"
+                    min="1" max="10"
+                    placeholder="5"
+                    value={newPositionWeight}
+                    onChange={e => setNewPositionWeight(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">Higher weight = higher ranking in the organization.</p>
                 </div>
-                <Button className="w-full">Add Position Type</Button>
+                <Button
+                  className="w-full"
+                  onClick={handleCreatePositionType}
+                  disabled={!newPositionName || !newPositionWeight || createPositionMutation.isPending}
+                >
+                  Create Position Type
+                </Button>
               </div>
             </DialogContent>
           </Dialog>
-          <Dialog>
+
+          {/* Add Unit Type (LUT) Dialog */}
+          <Dialog open={isUnitTypeDialogOpen} onOpenChange={setIsUnitTypeDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Unit Type
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add Unit Type</DialogTitle>
+                <DialogDescription>
+                  Define top-level categories for organization units. (e.g., 'Department', 'Commission', 'Committee')
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>Unit Type Name</Label>
+                  <Input
+                    placeholder="e.g., Committee"
+                    value={newUnitTypeName}
+                    onChange={e => setNewUnitTypeName(e.target.value)}
+                  />
+                </div>
+                <Button
+                  className="w-full"
+                  onClick={handleCreateUnitType}
+                  disabled={!newUnitTypeName || createUnitTypeMutation.isPending}
+                >
+                  Create Unit Type
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Add Unit Dialog */}
+          <Dialog open={isUnitDialogOpen} onOpenChange={setIsUnitDialogOpen}>
             <DialogTrigger asChild>
               <Button className="gradient-hero text-primary-foreground">
                 <Plus className="w-4 h-4 mr-2" />
@@ -152,27 +317,42 @@ const AdminOrganization = () => {
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Add Organization Unit</DialogTitle>
+                <DialogDescription>
+                  Create a new operational branch within your organization. Requires a predefined Unit Type.
+                </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
                   <Label>Unit Name</Label>
-                  <Input placeholder="e.g., Committee on Education" />
+                  <Input
+                    placeholder="e.g., Committee on Education"
+                    value={newUnitName}
+                    onChange={e => setNewUnitName(e.target.value)}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Unit Type</Label>
-                  <Select>
+                  <Select value={newUnitTypeId} onValueChange={setNewUnitTypeId}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="executive">Executive</SelectItem>
-                      <SelectItem value="legislative">Legislative</SelectItem>
-                      <SelectItem value="committee">Committee</SelectItem>
-                      <SelectItem value="commission">Commission</SelectItem>
+                      {realUnitTypes?.length === 0 && (
+                        <SelectItem value="none" disabled>No Unit Types defined yet. Please create one.</SelectItem>
+                      )}
+                      {realUnitTypes?.map((ut: any) => (
+                        <SelectItem key={ut.id} value={ut.id.toString()}>{ut.name}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
-                <Button className="w-full">Create Unit</Button>
+                <Button
+                  className="w-full"
+                  onClick={handleCreateUnit}
+                  disabled={!newUnitName || !newUnitTypeId || createUnitMutation.isPending}
+                >
+                  Create Unit
+                </Button>
               </div>
             </DialogContent>
           </Dialog>
@@ -188,17 +368,17 @@ const AdminOrganization = () => {
                 <Building2 className="w-7 h-7 text-primary-foreground" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-foreground">{organizationData.name}</h2>
-                <p className="text-muted-foreground">Term: {organizationData.term}</p>
+                <h2 className="text-xl font-semibold text-foreground">Organization Overview</h2>
+                <p className="text-muted-foreground">Manage your structural hierarchies</p>
               </div>
             </div>
             <div className="flex gap-6">
               <div className="text-center">
-                <p className="text-2xl font-bold text-foreground">{organizationData.totalMembers}</p>
+                <p className="text-2xl font-bold text-foreground">-</p>
                 <p className="text-sm text-muted-foreground">Total Members</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold text-foreground">{organizationData.activeUnits}</p>
+                <p className="text-2xl font-bold text-foreground">{realUnits?.length || 0}</p>
                 <p className="text-sm text-muted-foreground">Active Units</p>
               </div>
             </div>
@@ -236,32 +416,35 @@ const AdminOrganization = () => {
               </div>
 
               <div className="space-y-3">
-                {filteredUnits.map((unit) => (
-                  <Card
-                    key={unit.id}
-                    className={`cursor-pointer transition-all hover:shadow-md ${selectedUnit?.id === unit.id ? 'ring-2 ring-primary' : ''}`}
-                    onClick={() => setSelectedUnit(unit)}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                            <Users className="w-5 h-5 text-primary" />
+                {filteredUnits.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-4">No units found.</p>
+                ) : (
+                  filteredUnits.map((unit: any) => (
+                    <Card
+                      key={unit.id}
+                      className={`cursor-pointer transition-all hover:shadow-md ${selectedUnit?.id === unit.id ? 'ring-2 ring-primary' : ''}`}
+                      onClick={() => setSelectedUnit(unit)}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                              <Users className="w-5 h-5 text-primary" />
+                            </div>
+                            <div>
+                              <h3 className="font-medium text-foreground">{unit.name}</h3>
+                              <p className="text-sm text-muted-foreground line-clamp-1">{unit.description || 'No description provided'}</p>
+                            </div>
                           </div>
-                          <div>
-                            <h3 className="font-medium text-foreground">{unit.name}</h3>
-                            <p className="text-sm text-muted-foreground">Head: {unit.head}</p>
+                          <div className="flex items-center gap-3">
+                            <Badge variant="secondary">Type ID: {unit.type_id || 'None'}</Badge>
+                            <ChevronRight className="w-4 h-4 text-muted-foreground" />
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <Badge variant="secondary">{unit.type}</Badge>
-                          <span className="text-sm text-muted-foreground">{unit.members} members</span>
-                          <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
               </div>
             </div>
 
@@ -287,7 +470,7 @@ const AdminOrganization = () => {
                             <UserPlus className="w-4 h-4 mr-2" />
                             Add Member
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive">
+                          <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteUnit(selectedUnit.id)}>
                             <Trash2 className="w-4 h-4 mr-2" />
                             Delete Unit
                           </DropdownMenuItem>
@@ -297,20 +480,12 @@ const AdminOrganization = () => {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
-                      <p className="text-sm text-muted-foreground mb-1">Type</p>
-                      <Badge>{selectedUnit.type}</Badge>
+                      <p className="text-sm text-muted-foreground mb-1">Type ID</p>
+                      <Badge>{selectedUnit.type_id || 'None'}</Badge>
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground mb-1">Unit Head</p>
-                      <p className="font-medium">{selectedUnit.head}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-2">Positions ({selectedUnit.positions.length})</p>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedUnit.positions.map((pos, idx) => (
-                          <Badge key={idx} variant="outline">{pos}</Badge>
-                        ))}
-                      </div>
+                      <p className="text-sm text-muted-foreground mb-1">Description</p>
+                      <p className="font-medium">{selectedUnit.description || 'No description assigned.'}</p>
                     </div>
                     <Button className="w-full" variant="outline">
                       <UserPlus className="w-4 h-4 mr-2" />
@@ -325,15 +500,28 @@ const AdminOrganization = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {positionTypes.map((pos) => (
-                        <div key={pos.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                          <div>
-                            <p className="font-medium text-foreground">{pos.name}</p>
-                            <p className="text-sm text-muted-foreground">{pos.level}</p>
+                      {realPositions?.length === 0 ? (
+                        <p className="text-muted-foreground text-center py-4">No Position Types defined.</p>
+                      ) : (
+                        realPositions?.sort((a: any, b: any) => b.rank - a.rank).map((pos: any) => (
+                          <div key={pos.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                            <div>
+                              <p className="font-medium text-foreground">{pos.name}</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <Badge variant="secondary">Weight: {pos.rank}</Badge>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive outline-none border-none hover:bg-destructive/10 hover:text-destructive"
+                                onClick={() => handleDeletePosition(pos.id)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
                           </div>
-                          <Badge variant="secondary">Weight: {pos.weight}</Badge>
-                        </div>
-                      ))}
+                        ))
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -363,7 +551,7 @@ const AdminOrganization = () => {
                         <p className="text-xs text-muted-foreground mt-1">Requested: {new Date(req.created_at).toLocaleDateString()}</p>
                       </div>
                       <div className="flex flex-wrap gap-2 shrink-0">
-                        <Button size="sm" onClick={() => handleApprove(req.id)} disabled={approveMutation.isPending}>
+                        <Button size="sm" onClick={() => setApproveDialogId(req.id)} disabled={approveMutation.isPending}>
                           <Check className="w-4 h-4 mr-2" /> Approve
                         </Button>
                         <Button size="sm" variant="destructive" onClick={() => handleReject(req.id)} disabled={rejectMutation.isPending}>
