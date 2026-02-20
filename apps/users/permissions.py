@@ -6,8 +6,11 @@ class IsAdmin(permissions.BasePermission):
     """
 
     def has_permission(self, request, view):
-        return bool(
-            request.user and 
-            request.user.is_authenticated and 
-            (request.user.role.lower() == 'admin' or request.user.is_staff or request.user.is_superuser)
-        )
+        if not request.user or not request.user.is_authenticated:
+            return False
+            
+        if request.user.is_staff or request.user.is_superuser:
+            return True
+            
+        # Check if the user has an 'Admin' role in ANY active membership
+        return request.user.memberships.filter(is_active=True, role__iexact='admin').exists()
