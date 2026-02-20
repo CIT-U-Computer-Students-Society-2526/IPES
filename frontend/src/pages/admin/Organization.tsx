@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePendingJoinRequests, useApproveJoinRequest, useRejectJoinRequest } from "@/hooks/useOrganizations";
 import { useOrganizationState } from "@/contexts/OrganizationContext";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -133,21 +134,44 @@ const AdminOrganization = () => {
   const { data: pendingRequests, isLoading: isLoadingRequests } = usePendingJoinRequests(activeOrganizationId);
   const approveMutation = useApproveJoinRequest();
   const rejectMutation = useRejectJoinRequest();
+  const { toast } = useToast();
 
   const handleApprove = (id: number) => {
     // For now, mock assigning them to unit 1 position 7 (Member of Executive Committee) for simplicity
     // In a real app this would open a dialog to select the unit and position
     approveMutation.mutate({ id, unit_id: 1, position_id: 7, role: 'Member' }, {
-      onSuccess: () => alert("Member approved!"),
-      onError: (err: any) => alert(err.message)
+      onSuccess: () => {
+        toast({
+          title: "Request Approved",
+          description: "Member has been successfully added to the organization.",
+        });
+      },
+      onError: (err: any) => {
+        toast({
+          title: "Approval Failed",
+          description: err.message || "An error occurred while approving the request.",
+          variant: "destructive",
+        });
+      }
     });
   };
 
   const handleReject = (id: number) => {
     if (confirm("Are you sure you want to reject this request?")) {
       rejectMutation.mutate({ id }, {
-        onSuccess: () => alert("Request rejected!"),
-        onError: (err: any) => alert(err.message)
+        onSuccess: () => {
+          toast({
+            title: "Request Rejected",
+            description: "The join request was successfully rejected.",
+          });
+        },
+        onError: (err: any) => {
+          toast({
+            title: "Rejection Failed",
+            description: err.message || "An error occurred while rejecting the request.",
+            variant: "destructive",
+          });
+        }
       });
     }
   };

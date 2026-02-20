@@ -13,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { BuildingIcon, ArrowRight, ShieldIcon, UserIcon, PlusIcon } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
 import {
     Dialog,
     DialogContent,
@@ -28,6 +29,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 const SelectOrganization = () => {
     const navigate = useNavigate();
+    const { toast } = useToast();
     const { data: user, isLoading } = useCurrentUser();
     const { setActiveOrganizationId } = useOrganizationState();
 
@@ -78,12 +80,18 @@ const SelectOrganization = () => {
             onSuccess: () => {
                 setIsJoinOpen(false);
                 setJoinCode('');
-                // Displaying a toast instead of navigating immediately since it's just a request
-                // but since we don't have the toast hook imported, it will just close
-                alert("Join Request sent successfully! Waiting for Admin approval.");
+                toast({
+                    title: "Join Request Sent",
+                    description: "Waiting for Admin approval.",
+                });
             },
             onError: (err: any) => {
-                alert(err.message || "Failed to submit join request. Ensure the code is correct.");
+                const errorMessage = err.data?.error || err.message || "Ensure the code is correct.";
+                toast({
+                    title: "Failed to submit join request",
+                    description: errorMessage,
+                    variant: "destructive",
+                });
             }
         });
     };
