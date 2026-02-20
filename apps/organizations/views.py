@@ -25,29 +25,29 @@ class OrganizationViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     
     def perform_create(self, serializer):
-        """Log organization creation and set founder as Admin"""
+        """Log organization creation and set founder as Head Administrator"""
         org = serializer.save()
         
         # Create default functional structure
         unit_type = UnitType.objects.create(
             organization_id=org,
-            name="Executive Board"
+            name="System"
         )
         
         org_unit = OrganizationUnit.objects.create(
             organization_id=org,
             type_id=unit_type,
-            name="Executive Board",
-            description="Main governing body of the organization."
+            name="Administrators",
+            description="Core system administration and oversight."
         )
         
         position = PositionType.objects.create(
             organization_id=org,
-            name="Founder",
+            name="Head Administrator",
             rank=1
         )
         
-        # Automatically assign the creator as Admin
+        # Automatically assign the creator as Admin with rank 1
         Membership.objects.create(
             user_id=self.request.user,
             unit_id=org_unit,
