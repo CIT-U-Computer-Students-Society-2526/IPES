@@ -3,16 +3,18 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db.models import Count, Avg, Q
 from django.utils import timezone
+from django.shortcuts import get_object_or_404
 
 from apps.audit.utils import log_action, AuditActions
 
-from .models import Organization, UnitType, OrganizationUnit, PositionType, Membership
+from .models import Organization, UnitType, OrganizationUnit, PositionType, Membership, JoinRequest
 from .serializers import (
     OrganizationSerializer,
     UnitTypeSerializer,
     OrganizationUnitSerializer,
     PositionTypeSerializer,
-    MembershipSerializer
+    MembershipSerializer,
+    JoinRequestSerializer
 )
 
 
@@ -23,8 +25,38 @@ class OrganizationViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     
     def perform_create(self, serializer):
-        """Log organization creation"""
+        """Log organization creation and set founder as Admin"""
         org = serializer.save()
+        
+        # Create default functional structure
+        unit_type = UnitType.objects.create(
+            organization_id=org,
+            name="Executive Board"
+        )
+        
+        org_unit = OrganizationUnit.objects.create(
+            organization_id=org,
+            type_id=unit_type,
+            name="Executive Board",
+            description="Main governing body of the organization."
+        )
+        
+        position = PositionType.objects.create(
+            organization_id=org,
+            name="Founder",
+            rank=1
+        )
+        
+        # Automatically assign the creator as Admin
+        Membership.objects.create(
+            user_id=self.request.user,
+            unit_id=org_unit,
+            position_id=position,
+            role='Admin',
+            date_start=timezone.now().date(),
+            is_active=True
+        )
+        
         log_action(
             self.request.user,
             AuditActions.ORG_CREATED,
@@ -32,6 +64,37 @@ class OrganizationViewSet(viewsets.ModelViewSet):
             org_name=org.name,
             org_id=str(org.id)
         )
+        
+    @action(detail=False, methods=['post'])
+    def join_by_code(self, request):
+        """Allows users to submit a join request using a unique organization code"""
+        code = request.data.get('code')
+        if not code:
+            return Response({'error': 'Code is required'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        try:
+            org = Organization.objects.get(code=code, is_active=True)
+        except Organization.DoesNotExist:
+            return Response({'error': 'Invalid organization code'}, status=status.HTTP_404_NOT_FOUND)
+            
+        # Check if already a member
+        if Membership.objects.filter(user_id=request.user, unit_id__organization_id=org, is_active=True).exists():
+            return Response({'error': 'You are already a member of this organization'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        # Check if request already exists
+        if JoinRequest.objects.filter(user=request.user, organization=org, status='Pending').exists():
+            return Response({'error': 'You already have a pending join request'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        JoinRequest.objects.create(user=request.user, organization=org, status='Pending')
+        
+        log_action(
+            request.user,
+            AuditActions.ORG_JOIN_REQUESTED,
+            request,
+            org_name=org.name
+        )
+        
+        return Response({'message': 'Join request submitted successfully'}, status=status.HTTP_201_CREATED)
     
     @action(detail=False, methods=['get'])
     def unit_completion_stats(self, request):
@@ -216,3 +279,93 @@ class MembershipViewSet(viewsets.ModelViewSet):
         if unit_id:
             queryset = queryset.filter(unit_id=unit_id)
         return queryset
+
+
+class JoinRequestViewSet(viewsets.ModelViewSet):
+    """ViewSet for JoinRequest CRUD and approvals"""
+    queryset = JoinRequest.objects.all()
+    serializer_class = JoinRequestSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        org_id = self.request.query_params.get('organization_id')
+        user_id = self.request.query_params.get('user_id')
+        req_status = self.request.query_params.get('status')
+        if org_id:
+            queryset = queryset.filter(organization_id=org_id)
+        if user_id:
+            queryset = queryset.filter(user_id=user_id)
+        if req_status:
+            queryset = queryset.filter(status=req_status)
+        return queryset
+        
+    @action(detail=True, methods=['post'])
+    def approve(self, request, pk=None):
+        """Admin action to approve a join request and assign user to a unit and position."""
+        join_request = self.get_object()
+        
+        # Verify user is an admin of this specific org
+        if not Membership.objects.filter(user_id=request.user, unit_id__organization_id=join_request.organization, role='Admin', is_active=True).exists():
+            return Response({'error': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
+            
+        if join_request.status != 'Pending':
+            return Response({'error': 'Request is not pending'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        # Needs unit and position to create the actual membership
+        unit_id = request.data.get('unit_id')
+        position_id = request.data.get('position_id')
+        role_choice = request.data.get('role', 'Member')
+        
+        if not unit_id or not position_id:
+            return Response({'error': 'unit_id and position_id required to approve'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        try:
+            unit = OrganizationUnit.objects.get(id=unit_id, organization_id=join_request.organization)
+            position = PositionType.objects.get(id=position_id, organization_id=join_request.organization)
+        except (OrganizationUnit.DoesNotExist, PositionType.DoesNotExist):
+            return Response({'error': 'Invalid unit or position IDs'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        Membership.objects.create(
+            user_id=join_request.user,
+            unit_id=unit,
+            position_id=position,
+            role=role_choice,
+            date_start=timezone.now().date(),
+            is_active=True
+        )
+        
+        join_request.status = 'Approved'
+        join_request.save()
+        
+        log_action(
+            request.user,
+            AuditActions.ORG_JOIN_APPROVED,
+            request,
+            target_user_email=join_request.user.email,
+            org_name=join_request.organization.name
+        )
+        
+        return Response({'message': 'Member approved and added successfully'})
+
+    @action(detail=True, methods=['post'])
+    def reject(self, request, pk=None):
+        """Admin action to reject a pending join request"""
+        join_request = self.get_object()
+        
+        # Verify user is an admin of this specific org
+        if not Membership.objects.filter(user_id=request.user, unit_id__organization_id=join_request.organization, role='Admin', is_active=True).exists():
+            return Response({'error': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
+            
+        join_request.status = 'Rejected'
+        join_request.save()
+        
+        log_action(
+            request.user,
+            AuditActions.ORG_JOIN_REJECTED,
+            request,
+            target_user_email=join_request.user.email,
+            org_name=join_request.organization.name
+        )
+        
+        return Response({'message': 'Join request rejected'})

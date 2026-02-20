@@ -5,7 +5,8 @@ from .views import (
     UnitTypeViewSet,
     OrganizationUnitViewSet,
     PositionTypeViewSet,
-    MembershipViewSet
+    MembershipViewSet,
+    JoinRequestViewSet
 )
 
 router = DefaultRouter()
@@ -14,6 +15,7 @@ router.register(r'unit-types', UnitTypeViewSet, basename='unit-types')
 router.register(r'units', OrganizationUnitViewSet, basename='units')
 router.register(r'positions', PositionTypeViewSet, basename='positions')
 router.register(r'memberships', MembershipViewSet, basename='memberships')
+router.register(r'join-requests', JoinRequestViewSet, basename='join-requests')
 
 urlpatterns = [
     path('', include(router.urls)),
