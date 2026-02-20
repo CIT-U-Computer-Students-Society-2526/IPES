@@ -15,6 +15,21 @@ class UserSerializer(serializers.ModelSerializer):
             'display_picture', 'is_active', 'date_joined', 'memberships'
         ]
         read_only_fields = ['id', 'date_joined']
+        
+    def get_memberships(self, obj):
+        return [
+            {
+                'id': m.id,
+                'organization_id': m.unit_id.organization_id.id,
+                'organization_name': m.unit_id.organization_id.name,
+                'unit_id': m.unit_id.id,
+                'unit_name': m.unit_id.name,
+                'position_name': m.position_id.name,
+                'role': m.role,
+                'is_active': m.is_active
+            }
+            for m in obj.memberships.filter(is_active=True, unit_id__organization_id__is_active=True)
+        ]
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
