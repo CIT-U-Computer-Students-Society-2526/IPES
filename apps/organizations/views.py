@@ -251,6 +251,11 @@ class OrganizationUnitViewSet(viewsets.ModelViewSet):
         org_id = self.request.query_params.get('organization_id')
         if org_id:
             queryset = queryset.filter(organization_id=org_id)
+            
+        # Annotate with the number of active members in the unit
+        queryset = queryset.annotate(
+            members_count=Count('members', filter=Q(members__is_active=True))
+        )
         return queryset
 
     def perform_destroy(self, instance):
