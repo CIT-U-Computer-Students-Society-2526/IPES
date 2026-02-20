@@ -26,6 +26,8 @@ class APIRoot(APIView):
                 'memberships': '/api/organizations/memberships/',
                 'positions': '/api/organizations/positions/',
                 'unit_types': '/api/organizations/unit-types/',
+                'unit_completion_stats': '/api/organizations/unit_completion_stats/',
+                'analytics_summary': '/api/organizations/analytics_summary/',
             },
             'evaluations': {
                 'forms': '/api/evaluations/forms/',

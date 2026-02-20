@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Link, useLocation, Outlet } from "react-router-dom";
+import { Link, useLocation, Outlet, Navigate } from "react-router-dom";
+import { useCurrentUser } from "@/hooks/useUsers";
 import { 
   LayoutDashboard, 
   ClipboardList, 
@@ -10,7 +11,8 @@ import {
   LogOut,
   Menu,
   X,
-  ClipboardCheck
+  ClipboardCheck,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -26,6 +28,22 @@ const navigation = [
 const OfficerLayout = () => {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { data: user, isLoading, isError } = useCurrentUser();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (isError || !user || !['Officer', 'Admin'].includes(user.role)) {
+    return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  const initials = `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`.toUpperCase() || 'U';
+  const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email;
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -84,11 +102,11 @@ const OfficerLayout = () => {
           <div className="p-4 border-t border-border">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
-                <span className="text-sm font-medium text-primary">JD</span>
+                <span className="text-sm font-medium text-primary">{initials}</span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">Juan Dela Cruz</p>
-                <p className="text-xs text-muted-foreground truncate">Committee Head</p>
+                <p className="text-sm font-medium text-foreground truncate">{fullName}</p>
+                <p className="text-xs text-muted-foreground truncate">{user.role}</p>
               </div>
             </div>
             <Link to="/login">

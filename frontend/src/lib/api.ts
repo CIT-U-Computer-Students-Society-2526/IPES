@@ -17,6 +17,23 @@ export const getApiUrl = (endpoint: string): string => {
 };
 
 /**
+ * Custom API Error class to carry response data
+ */
+export class ApiError extends Error {
+  status: number;
+  statusText: string;
+  data: unknown;
+
+  constructor(status: number, statusText: string, data: unknown) {
+    super(`API request failed: ${status} ${statusText}`);
+    this.name = 'ApiError';
+    this.status = status;
+    this.statusText = statusText;
+    this.data = data;
+  }
+}
+
+/**
  * Make an authenticated API request
  */
 export const apiRequest = async (
@@ -24,7 +41,7 @@ export const apiRequest = async (
   options: RequestInit = {}
 ): Promise<Response> => {
   const url = getApiUrl(endpoint);
-  
+
   const defaultHeaders: HeadersInit = {
     'Content-Type': 'application/json',
   };
@@ -45,7 +62,13 @@ export const apiRequest = async (
   });
 
   if (!response.ok) {
-    throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+    let data;
+    try {
+      data = await response.json();
+    } catch {
+      data = null;
+    }
+    throw new ApiError(response.status, response.statusText, data);
   }
 
   return response;
@@ -70,25 +93,25 @@ const getCsrfToken = (): string | null => {
  */
 export const api = {
   get: (endpoint: string) => apiRequest(endpoint, { method: 'GET' }),
-  
+
   post: (endpoint: string, data?: unknown) =>
     apiRequest(endpoint, {
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined,
     }),
-  
+
   put: (endpoint: string, data?: unknown) =>
     apiRequest(endpoint, {
       method: 'PUT',
       body: data ? JSON.stringify(data) : undefined,
     }),
-  
+
   patch: (endpoint: string, data?: unknown) =>
     apiRequest(endpoint, {
       method: 'PATCH',
       body: data ? JSON.stringify(data) : undefined,
     }),
-  
+
   delete: (endpoint: string) => apiRequest(endpoint, { method: 'DELETE' }),
 };
 

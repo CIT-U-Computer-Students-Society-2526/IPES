@@ -4,7 +4,11 @@ from rest_framework.response import Response as DRFResponse
 from django.db import models
 from django.utils import timezone
 
+from django.contrib.auth import get_user_model
+
 from apps.audit.utils import log_action, AuditActions
+
+User = get_user_model()
 
 from .models import EvaluationForm, Question, EvaluationAssignment, Response
 from .serializers import (
@@ -159,6 +163,41 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
         )
         
         return DRFResponse(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'])
+    def auto_assign(self, request, pk=None):
+        """Automatically assign evaluation forms to all applicable users in the org."""
+        form = self.get_object()
+
+        # Generate a matrix assigning everyone in the organization to evaluate everyone else
+        org = form.organization_id
+        if not org:
+            return DRFResponse(
+                {'error': 'Form must belong to an Organization.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Retrieve all active users in that organization
+        users = User.objects.filter(organization=org, is_active=True)
+        assignments_created = 0
+
+        for evaluator in users:
+            for evaluatee in users:
+                if evaluator != evaluatee:
+                    # Prevent duplicates if they already exist
+                    assignment, created = EvaluationAssignment.objects.get_or_create(
+                        evaluator_id=evaluator,
+                        evaluatee_id=evaluatee,
+                        form_id=form,
+                        defaults={'status': 'Pending'}
+                    )
+                    if created:
+                        assignments_created += 1
+
+        return DRFResponse({
+            'message': f'Auto-assigned {assignments_created} evaluations.',
+            'created': assignments_created
+        }, status=status.HTTP_201_CREATED)
 
 
 class QuestionViewSet(viewsets.ModelViewSet):
@@ -427,13 +466,28 @@ class ResponseViewSet(viewsets.ModelViewSet):
         
         created_responses = []
         for response_data in responses_data:
-            response = Response.objects.create(
-                assignment_id=assignment,
-                question_id_id=response_data.get('question_id'),
-                score_value=response_data.get('score_value'),
-                text=response_data.get('text', '')
-            )
-            created_responses.append(response)
-        
+            # Check if updating an existing response rather than duplicating
+            question_id = response_data.get('question_id')
+            existing_response = Response.objects.filter(assignment_id=assignment, question_id_id=question_id).first()
+
+            if existing_response:
+                existing_response.score_value = response_data.get('score_value')
+                existing_response.text = response_data.get('text', '')
+                existing_response.save()
+                created_responses.append(existing_response)
+            else:
+                response = Response.objects.create(
+                    assignment_id=assignment,
+                    question_id_id=question_id,
+                    score_value=response_data.get('score_value'),
+                    text=response_data.get('text', '')
+                )
+                created_responses.append(response)
+
+        # Mark assignment as 'In Progress' if it was previously just 'Pending'
+        if assignment.status == 'Pending':
+            assignment.status = 'In Progress'
+            assignment.save()
+
         serializer = ResponseSerializer(created_responses, many=True)
         return DRFResponse(serializer.data, status=status.HTTP_201_CREATED)

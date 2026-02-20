@@ -20,6 +20,9 @@ class Question(models.Model):
     input_type = models.CharField(max_length=50)
     order = models.IntegerField()
     weight = models.FloatField(null=True, blank=True)
+    is_required = models.BooleanField(default=True)
+    min_value = models.IntegerField(null=True, blank=True)
+    max_value = models.IntegerField(null=True, blank=True)
 
 class EvaluationAssignment(models.Model):
     evaluator_id = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='assignments_as_evaluator')

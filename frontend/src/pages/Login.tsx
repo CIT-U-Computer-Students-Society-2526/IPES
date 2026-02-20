@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff } from "lucide-react";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
-import { getApiUrl } from "@/lib/api";
+import { api } from "@/lib/api";
 
 interface LoginResponse {
   user: {
@@ -28,6 +28,7 @@ const Login = () => {
   const [currentOrg, setCurrentOrg] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
 
   const organizations = [
     { logo: "/css-logo.svg", name: "Computer Students' Society" },
@@ -45,47 +46,11 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setFieldErrors({});
 
     try {
-      const getCsrfToken = (): string | null => {
-        const cookies = document.cookie.split(';');
-        for (const cookie of cookies) {
-          const [name, value] = cookie.trim().split('=');
-          if (name === 'csrftoken') return value || null;
-        }
-        return null;
-      };
-
-      const csrf = getCsrfToken();
-
-      const response = await fetch(getApiUrl("/auth/login/"), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(csrf ? { 'X-CSRFToken': csrf } : {}),
-        },
-        body: JSON.stringify({ email, password }),
-        credentials: "include",
-      });
-
+      const response = await api.post("/auth/login/", { email, password });
       const data: LoginResponse = await response.json();
-
-      if (!response.ok) {
-        // Construct error message from validation errors if available
-        let errorMsg = data.message || "Login failed";
-        if ((data as any).errors) {
-          const errorDetails = Object.entries((data as any).errors)
-            .map(([field, msgs]: [string, any]) => {
-              if (Array.isArray(msgs)) {
-                return `${field}: ${msgs.join(', ')}`;
-              }
-              return `${field}: ${msgs}`;
-            })
-            .join('; ');
-          errorMsg = errorDetails || errorMsg;
-        }
-        throw new Error(errorMsg);
-      }
 
       // Store user info in localStorage
       localStorage.setItem("user", JSON.stringify(data.user));
@@ -97,8 +62,46 @@ const Login = () => {
       } else {
         navigate("/officer/dashboard");
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
+    } catch (err: any) {
+      console.error('Login error:', err);
+      let errorMsg = "";
+
+      if (err.name === 'ApiError' && err.data) {
+        const errorData = err.data as any; // Cast to any to access properties
+
+        // Handle field-specific errors if available
+        if (errorData.errors) {
+          const newFieldErrors: Record<string, string[]> = {};
+          let hasFieldErrors = false;
+
+          Object.entries(errorData.errors).forEach(([field, msgs]: [string, any]) => {
+            if (field === 'non_field_errors') {
+              // Collect non-field errors to show in the main alert
+              const nonFieldMsgs = Array.isArray(msgs) ? msgs.join('; ') : msgs;
+              errorMsg = errorMsg ? `${errorMsg}; ${nonFieldMsgs}` : nonFieldMsgs;
+            } else {
+              // Collect field-specific errors
+              newFieldErrors[field] = Array.isArray(msgs) ? msgs : [msgs];
+              hasFieldErrors = true;
+            }
+          });
+
+          if (hasFieldErrors) {
+            setFieldErrors(newFieldErrors);
+          }
+        }
+
+        // Fallback to message if no specific errors parsed or if message is present
+        if (!errorMsg && !Object.keys(fieldErrors).length) {
+          errorMsg = errorData.message || "Login failed";
+        }
+      } else if (err instanceof Error) {
+        errorMsg = err.message;
+      }
+
+      if (errorMsg) {
+        setError(errorMsg);
+      }
     } finally {
       setLoading(false);
     }
@@ -122,18 +125,18 @@ const Login = () => {
 
       {/* LEFT SIDE - BRANDING PANEL */}
       <div className="hidden lg:flex lg:w-5/12 relative overflow-hidden flex-col justify-between"
-           style={{ backgroundColor: '#293F55' }}>
+        style={{ backgroundColor: '#293F55' }}>
 
         <div className="absolute inset-0  pointer-events-none flex items-center justify-center">
-            <DotLottieReact
-              src="/assets/anim_getthingsdone.json"
-              loop
-              autoplay
-              className="w-full h-full"
-              renderConfig={{
-                autoResize: true
-              }}
-            />
+          <DotLottieReact
+            src="/assets/anim_getthingsdone.json"
+            loop
+            autoplay
+            className="w-full h-full"
+            renderConfig={{
+              autoResize: true
+            }}
+          />
         </div>
 
         {/* Decorative Yellow Accent Sideline */}
@@ -183,8 +186,8 @@ const Login = () => {
 
         {/* Top Left Logo for Right Pane (Desktop/Tablet) */}
         <div className="hidden lg:flex absolute top-10 left-10 items-center gap-3 animate-fade-up">
-           <img src="/ipes-logo-colored.svg" alt="IPES Logo" className="w-10 h-10 object-contain" />
-           <span className="text-[#293F55] font-bold text-2xl tracking-tight">IPES</span>
+          <img src="/ipes-logo-colored.svg" alt="IPES Logo" className="w-10 h-10 object-contain" />
+          <span className="text-[#293F55] font-bold text-2xl tracking-tight">IPES</span>
         </div>
 
         <div className="w-full max-w-[420px] bg-white p-8 md:p-10 rounded-2xl shadow-xl border border-slate-100 animate-fade-up">
@@ -216,8 +219,13 @@ const Login = () => {
                 placeholder="firstname.lastname@cit.edu"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="h-12 bg-slate-50 border-slate-200 focus-visible:ring-[#293F55] focus-visible:ring-offset-0 focus-visible:border-[#293F55] transition-all"
+                className={`h-12 bg-slate-50 border-slate-200 focus-visible:ring-[#293F55] focus-visible:ring-offset-0 focus-visible:border-[#293F55] transition-all ${fieldErrors.email ? "border-red-500 focus-visible:border-red-500" : ""}`}
               />
+              {fieldErrors.email && (
+                <p className="text-sm text-red-500 mt-1 animate-fade-up">
+                  {fieldErrors.email[0]}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2 animate-fade-up delay-200">
@@ -230,7 +238,7 @@ const Login = () => {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="h-12 bg-slate-50 border-slate-200 focus-visible:ring-[#293F55] focus-visible:ring-offset-0 focus-visible:border-[#293F55] transition-all pr-10"
+                  className={`h-12 bg-slate-50 border-slate-200 focus-visible:ring-[#293F55] focus-visible:ring-offset-0 focus-visible:border-[#293F55] transition-all pr-10 ${fieldErrors.password ? "border-red-500 focus-visible:border-red-500" : ""}`}
                 />
                 <button
                   type="button"
@@ -240,6 +248,11 @@ const Login = () => {
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
+              {fieldErrors.password && (
+                <p className="text-sm text-red-500 mt-1 animate-fade-up">
+                  {fieldErrors.password[0]}
+                </p>
+              )}
             </div>
 
             <div className="pt-2 animate-fade-up delay-300">
@@ -259,7 +272,7 @@ const Login = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => navigate("/officer/dashboard")}
+                onClick={() => navigate("/preview/officer/dashboard")}
                 className="border-slate-200 text-[#293F55] hover:bg-slate-50 hover:text-[#293F55]"
               >
                 Officer View
@@ -267,7 +280,7 @@ const Login = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => navigate("/admin/dashboard")}
+                onClick={() => navigate("/preview/admin/dashboard")}
                 className="border-slate-200 text-[#293F55] hover:bg-slate-50 hover:text-[#293F55]"
               >
                 Admin View

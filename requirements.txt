@@ -3,3 +3,4 @@ psycopg[binary]
 pillow
 django-cors-headers
 djangorestframework
+flake8
