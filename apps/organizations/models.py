@@ -3,7 +3,7 @@ from django.db import models
 
 class Organization(models.Model):
     name = models.CharField(max_length=255)
-    code = models.CharField(max_length=50)
+    code = models.CharField(max_length=50, unique=True)
     display_picture = models.ImageField(upload_to='organizations/pictures/', blank=True, null=True)
     description = models.TextField()
     period_year_start = models.DateField()
