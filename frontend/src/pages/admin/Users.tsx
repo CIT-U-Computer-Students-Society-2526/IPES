@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { 
-  Users, 
-  Plus, 
-  Search, 
+import {
+  Users,
+  Plus,
+  Search,
   MoreHorizontal,
   Edit,
   Trash2,
@@ -11,8 +11,7 @@ import {
   ShieldCheck,
   UserCheck,
   UserX,
-  Key,
-  Loader2
+  Key
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,15 +25,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -74,79 +64,44 @@ const POSITIONS = [
   { value: "member", label: "Member" },
 ];
 
+import { useOrganizationState } from "@/contexts/OrganizationContext";
+
 const AdminUsers = () => {
+  const { activeOrganizationId } = useOrganizationState();
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  
-  // Form states
-  const [formData, setFormData] = useState<UserCreate>({
-    email: "",
-    first_name: "",
-    last_name: "",
-    role: "Officer",
-    organization_id: undefined,
-    password: "",
-  });
 
   const { toast } = useToast();
 
-  // Fetch users from API
-  const { data: users, isLoading, error, refetch } = useUsers();
+  // Fetch users from API (Filtered by Organization ID)
+  const { data: users, isLoading, error, refetch } = useUsers({ organization_id: activeOrganizationId });
 
   // Mutations
-  const createUser = useCreateUser();
   const updateUser = useUpdateUser();
   const deleteUser = useDeleteUser();
 
   // Filter users
-  const filteredUsers = users?.filter(user => {
+  const filteredUsers = users?.filter((user: User) => {
     const fullName = `${user.first_name} ${user.last_name}`.toLowerCase();
     const matchesSearch = fullName.includes(searchQuery.toLowerCase()) ||
-                          user.email.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesRole = roleFilter === "all" || user.role.toLowerCase() === roleFilter;
+      user.email.toLowerCase().includes(searchQuery.toLowerCase());
+
+    // Determine the user's role in the active organization
+    const activeMembership = user.memberships?.find(m => m.organization_id === activeOrganizationId);
+    const userRole = activeMembership ? activeMembership.role : "Member";
+
+    const matchesRole = roleFilter === "all" || userRole.toLowerCase() === roleFilter;
     return matchesSearch && matchesRole;
   }) || [];
 
   // Calculate stats
   const stats = {
-    total: users?.length || 0,
-    admins: users?.filter(u => u.role === "Admin").length || 0,
-    officers: users?.filter(u => u.role === "Officer").length || 0,
-    active: users?.filter(u => u.is_active).length || 0,
-  };
-
-  // Handle form input changes
-  const handleInputChange = (field: keyof UserCreate, value: string | number | undefined) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  // Handle create user
-  const handleCreateUser = async () => {
-    try {
-      await createUser.mutateAsync(formData);
-      toast({
-        title: "Success",
-        description: "User created successfully",
-      });
-      setIsAddDialogOpen(false);
-      setFormData({
-        email: "",
-        first_name: "",
-        last_name: "",
-        role: "Officer",
-        organization_id: undefined,
-        password: "",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to create user",
-        variant: "destructive",
-      });
-    }
+    total: filteredUsers.length || 0,
+    admins: filteredUsers.filter((u: User) => u.memberships?.some(m => m.organization_id === activeOrganizationId && m.role === 'Admin')).length || 0,
+    officers: filteredUsers.filter((u: User) => !u.memberships?.some(m => m.organization_id === activeOrganizationId && m.role === 'Admin')).length || 0,
+    active: filteredUsers.filter((u: User) => u.is_active).length || 0,
   };
 
   // Handle toggle user status
@@ -246,108 +201,9 @@ const AdminUsers = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">User Management</h1>
-          <p className="text-muted-foreground">Manage system users and their roles</p>
+          <h1 className="text-2xl font-bold text-foreground">Organization Members</h1>
+          <p className="text-muted-foreground">Manage system users currently enrolled in your organization.</p>
         </div>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="gradient-hero text-primary-foreground">
-              <Plus className="w-4 h-4 mr-2" />
-              Add User
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Add New User</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>First Name</Label>
-                  <Input 
-                    placeholder="Juan" 
-                    value={formData.first_name}
-                    onChange={(e) => handleInputChange("first_name", e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Last Name</Label>
-                  <Input 
-                    placeholder="Dela Cruz"
-                    value={formData.last_name}
-                    onChange={(e) => handleInputChange("last_name", e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Email</Label>
-                <Input 
-                  type="email" 
-                  placeholder="juan@university.edu"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange("email", e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Password</Label>
-                <Input 
-                  type="password"
-                  placeholder="Enter password"
-                  value={formData.password}
-                  onChange={(e) => handleInputChange("password", e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Role</Label>
-                <Select 
-                  value={formData.role} 
-                  onValueChange={(value) => handleInputChange("role", value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Admin">Admin</SelectItem>
-                    <SelectItem value="Officer">Officer</SelectItem>
-                    <SelectItem value="Evaluator">Evaluator</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Organization Unit</Label>
-                <Select 
-                  value={formData.organization_id?.toString() || ""}
-                  onValueChange={(value) => handleInputChange("organization_id", value ? parseInt(value) : undefined)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select unit" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ORGANIZATION_UNITS.map((unit) => (
-                      <SelectItem key={unit.value} value={unit.value}>
-                        {unit.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button 
-                className="w-full" 
-                onClick={handleCreateUser}
-                disabled={createUser.isLoading}
-              >
-                {createUser.isLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  "Create User"
-                )}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
       </div>
 
       {/* Stats */}
@@ -432,8 +288,8 @@ const AdminUsers = () => {
             <div className="flex items-center gap-2">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input 
-                  placeholder="Search users..." 
+                <Input
+                  placeholder="Search users..."
                   className="pl-10 w-64"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -492,14 +348,14 @@ const AdminUsers = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={user.role === "Admin" ? "default" : "secondary"}>
-                          {user.role === "Admin" && <Shield className="w-3 h-3 mr-1" />}
-                          {user.role}
+                        <Badge variant={user.memberships?.some(m => m.organization_id === activeOrganizationId && m.role === 'Admin') ? "default" : "secondary"}>
+                          {user.memberships?.some(m => m.organization_id === activeOrganizationId && m.role === 'Admin') && <Shield className="w-3 h-3 mr-1" />}
+                          {user.memberships?.some(m => m.organization_id === activeOrganizationId && m.role === 'Admin') ? "Admin" : "Member"}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge 
-                          variant={user.is_active ? "outline" : "secondary"} 
+                        <Badge
+                          variant={user.is_active ? "outline" : "secondary"}
                           className={user.is_active ? "text-green-600 border-green-600" : ""}
                         >
                           {user.is_active ? "Active" : "Inactive"}
@@ -542,7 +398,7 @@ const AdminUsers = () => {
                                 </>
                               )}
                             </DropdownMenuItem>
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                               className="text-destructive"
                               onClick={() => handleDeleteUser(user.id)}
                             >
