@@ -12,9 +12,12 @@ export interface Question {
   id: number;
   form_id: number;
   text: string;
-  input_type: 'rating' | 'text' | 'dropdown' | 'checkbox';
+  input_type: 'rating' | 'text' | 'dropdown' | 'checkbox' | 'number' | 'textarea';
   order: number;
   weight: number;
+  is_required?: boolean;
+  min_value?: number;
+  max_value?: number;
   options?: string[]; // For dropdown/checkbox types
 }
 
@@ -45,12 +48,14 @@ export interface Response {
 export interface EvaluationAssignment {
   id: number;
   evaluator_id: number;
+  evaluator_email?: string;
   evaluator_name?: string;
   evaluatee_id: number;
+  evaluatee_email?: string;
   evaluatee_name?: string;
   form_id: number;
   form_title?: string;
-  status: 'Pending' | 'In Progress' | 'Submitted' | 'Reviewed';
+  status: 'Pending' | 'In Progress' | 'Submitted' | 'Reviewed' | 'Completed';
   submitted_at?: string;
   total_score?: number;
   responses?: Response[];
@@ -72,8 +77,8 @@ export interface EvaluationSubmitData {
 export const useForms = (params?: { is_active?: boolean; is_published?: boolean; organization_id?: number }) => {
   const queryString = params
     ? '?' + new URLSearchParams(
-        Object.entries(params).filter(([, v]) => v !== undefined).reduce((acc, [k, v]) => ({ ...acc, [k]: String(v) }), {})
-      ).toString()
+      Object.entries(params).filter(([, v]) => v !== undefined).reduce((acc, [k, v]) => ({ ...acc, [k]: String(v) }), {})
+    ).toString()
     : '';
 
   return useQuery({
@@ -141,14 +146,31 @@ export const useDuplicateForm = () => {
   });
 };
 
+// Auto Assign form
+export const useAutoAssignForm = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ message: string, created: number }, Error, number>({
+    mutationFn: async (id: number) => {
+      const response = await api.post(`/forms/${id}/auto_assign/`);
+      return response.json() as Promise<{ message: string, created: number }>;
+    },
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ['forms'] });
+      queryClient.invalidateQueries({ queryKey: ['forms', id] });
+      queryClient.invalidateQueries({ queryKey: ['assignments'] });
+    },
+  });
+};
+
 // ===== Assignment Hooks =====
 
 // Fetch all assignments
 export const useAssignments = (params?: { status?: string; form_id?: number }) => {
   const queryString = params
     ? '?' + new URLSearchParams(
-        Object.entries(params).filter(([, v]) => v !== undefined).reduce((acc, [k, v]) => ({ ...acc, [k]: String(v) }), {})
-      ).toString()
+      Object.entries(params).filter(([, v]) => v !== undefined).reduce((acc, [k, v]) => ({ ...acc, [k]: String(v) }), {})
+    ).toString()
     : '';
 
   return useQuery({
@@ -225,5 +247,22 @@ export const useAssignmentResponses = (assignmentId: number) => {
       return Array.isArray(data) ? data : data.results || [];
     },
     enabled: !!assignmentId,
+  });
+};
+
+// Save draft responses without submitting
+export const useSaveDraftResponses = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<Response[], Error, { assignment_id: number; responses: { question_id: number; score_value?: number; text?: string; }[] }>({
+    mutationFn: async (data) => {
+      const response = await api.post(`/responses/bulk_create/`, data);
+      return response.json() as Promise<Response[]>;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['responses', 'by_assignment', variables.assignment_id] });
+      queryClient.invalidateQueries({ queryKey: ['assignments', variables.assignment_id] });
+      queryClient.invalidateQueries({ queryKey: ['assignments', 'my_pending'] });
+    },
   });
 };
