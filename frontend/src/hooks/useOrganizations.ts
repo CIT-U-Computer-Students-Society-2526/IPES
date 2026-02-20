@@ -325,3 +325,19 @@ export const useRejectJoinRequest = () => {
     }
   });
 };
+
+// Update a membership record
+export const useUpdateMembership = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ message: string }, Error, { id: number; data: Partial<any> }>({
+    mutationFn: async ({ id, data }) => {
+      const response = await api.patch(`/memberships/${id}/`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['organizations', 'analytics'] });
+    }
+  });
+};
