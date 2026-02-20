@@ -54,13 +54,8 @@ const Login = () => {
       // Store user info in localStorage
       localStorage.setItem("user", JSON.stringify(data.user));
 
-      // Redirect based on role
-      const role = data.user.role?.toLowerCase();
-      if (role === "admin" || role === "super_admin") {
-        navigate("/admin/dashboard");
-      } else {
-        navigate("/officer/dashboard");
-      }
+      // Redirect to Organization Selector Hub
+      navigate("/select-organization");
     } catch (err: any) {
       console.error('Login error:', err);
       let errorMsg = "";
