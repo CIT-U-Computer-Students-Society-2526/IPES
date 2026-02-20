@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { Link, useLocation, Outlet, Navigate } from "react-router-dom";
 import { useCurrentUser } from "@/hooks/useUsers";
-import { 
-  LayoutDashboard, 
-  ClipboardList, 
-  Trophy, 
-  BarChart3, 
-  User, 
-  Bell, 
+import { useOrganizationState } from "@/contexts/OrganizationContext";
+import {
+  LayoutDashboard,
+  ClipboardList,
+  Trophy,
+  BarChart3,
+  User,
+  Bell,
   LogOut,
   Menu,
   X,
@@ -29,6 +30,7 @@ const OfficerLayout = () => {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { data: user, isLoading, isError } = useCurrentUser();
+  const { activeOrganizationId } = useOrganizationState();
 
   if (isLoading) {
     return (
@@ -38,8 +40,19 @@ const OfficerLayout = () => {
     );
   }
 
-  if (isError || !user || !['Officer', 'Admin'].includes(user.role)) {
+  // Validate User Context
+  if (isError || !user || !activeOrganizationId) {
     return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  // Find their membership in the currently active organization
+  const activeMembership = user.memberships?.find(
+    (m) => m.organization_id === activeOrganizationId
+  );
+
+  // Deny access if they don't have membership permissions within THIS specific org
+  if (!activeMembership || !['Member', 'Admin'].includes(activeMembership.role)) {
+    return <Navigate to="/select-organization" replace />;
   }
 
   const initials = `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`.toUpperCase() || 'U';
@@ -49,7 +62,7 @@ const OfficerLayout = () => {
     <div className="min-h-screen bg-background flex">
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
@@ -63,11 +76,16 @@ const OfficerLayout = () => {
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="h-16 flex items-center justify-between px-4 border-b border-border">
-            <Link to="/officer/dashboard" className="flex items-center gap-2.5">
-              <img src="/ipes-logo-colored.svg" alt="IPES Logo" className="w-7 h-7 object-contain" />
-              <span className="text-[#293F55] font-bold text-2xl tracking-tight">IPES</span>
+            <Link to="/member/dashboard" className="flex items-center gap-2.5">
+              <img src="/ipes-logo-colored.svg" alt="IPES Logo" className="w-7 h-7 object-contain shrink-0" />
+              <div className="flex items-center gap-2 max-w-[130px]">
+                <span className="text-[#293F55] font-bold text-lg truncate tracking-tight" title={activeMembership.organization_name}>
+                  {activeMembership.organization_name}
+                </span>
+                <span className="text-[10px] bg-blue-500/10 text-blue-500 px-1.5 py-0.5 rounded font-medium shrink-0">Member</span>
+              </div>
             </Link>
-            <button 
+            <button
               onClick={() => setSidebarOpen(false)}
               className="lg:hidden text-muted-foreground hover:text-foreground"
             >
@@ -86,8 +104,8 @@ const OfficerLayout = () => {
                   onClick={() => setSidebarOpen(false)}
                   className={cn(
                     "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                    isActive 
-                      ? "bg-primary text-primary-foreground" 
+                    isActive
+                      ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted"
                   )}
                 >
@@ -123,7 +141,7 @@ const OfficerLayout = () => {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar */}
         <header className="h-16 bg-card border-b border-border flex items-center justify-between px-4 lg:px-6">
-          <button 
+          <button
             onClick={() => setSidebarOpen(true)}
             className="lg:hidden text-muted-foreground hover:text-foreground"
           >

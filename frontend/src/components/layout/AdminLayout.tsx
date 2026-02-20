@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation, Outlet, Navigate } from "react-router-dom";
 import { useCurrentUser } from "@/hooks/useUsers";
+import { useOrganizationState } from "@/contexts/OrganizationContext";
 import {
   LayoutDashboard,
   Users,
@@ -37,6 +38,7 @@ const AdminLayout = () => {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { data: user, isLoading, isError } = useCurrentUser();
+  const { activeOrganizationId } = useOrganizationState();
 
   if (isLoading) {
     return (
@@ -46,8 +48,19 @@ const AdminLayout = () => {
     );
   }
 
-  if (isError || !user || user.role !== 'Admin') {
+  // Validate User Context
+  if (isError || !user || !activeOrganizationId) {
     return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  // Find their membership in the currently active organization
+  const activeMembership = user.memberships?.find(
+    (m) => m.organization_id === activeOrganizationId
+  );
+
+  // Deny access if they don't have Admin permissions within THIS specific org
+  if (!activeMembership || activeMembership.role !== 'Admin') {
+    return <Navigate to="/select-organization" replace />;
   }
 
   const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email;
@@ -72,9 +85,11 @@ const AdminLayout = () => {
           <div className="h-16 flex items-center justify-between px-4 border-b border-border">
             <Link to="/admin/dashboard" className="flex items-center gap-2.5">
               <img src="/ipes-logo-colored.svg" alt="IPES Logo" className="w-7 h-7 object-contain" />
-              <div className="flex items-center gap-2">
-                <span className="text-[#293F55] font-bold text-2xl tracking-tight">IPES</span>
-                <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium">Admin</span>
+              <div className="flex items-center gap-2 max-w-[130px]">
+                <span className="text-[#293F55] font-bold text-lg truncate tracking-tight" title={activeMembership.organization_name}>
+                  {activeMembership.organization_name}
+                </span>
+                <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium shrink-0">Admin</span>
               </div>
             </Link>
             <button
