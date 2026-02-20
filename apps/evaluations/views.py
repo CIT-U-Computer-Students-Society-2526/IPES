@@ -160,6 +160,41 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
         
         return DRFResponse(serializer.data, status=status.HTTP_201_CREATED)
 
+    @action(detail=True, methods=['post'])
+    def auto_assign(self, request, pk=None):
+        """Automatically assign evaluation forms to all applicable users in the org."""
+        form = self.get_object()
+
+        # Generate a matrix assigning everyone in the organization to evaluate everyone else
+        org = form.organization_id
+        if not org:
+            return DRFResponse(
+                {'error': 'Form must belong to an Organization.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Retrieve all active users in that organization
+        users = User.objects.filter(organization=org, is_active=True)
+        assignments_created = 0
+
+        for evaluator in users:
+            for evaluatee in users:
+                if evaluator != evaluatee:
+                    # Prevent duplicates if they already exist
+                    assignment, created = EvaluationAssignment.objects.get_or_create(
+                        evaluator_id=evaluator,
+                        evaluatee_id=evaluatee,
+                        form_id=form,
+                        defaults={'status': 'Pending'}
+                    )
+                    if created:
+                        assignments_created += 1
+
+        return DRFResponse({
+            'message': f'Auto-assigned {assignments_created} evaluations.',
+            'created': assignments_created
+        }, status=status.HTTP_201_CREATED)
+
 
 class QuestionViewSet(viewsets.ModelViewSet):
     """ViewSet for Question CRUD operations"""
