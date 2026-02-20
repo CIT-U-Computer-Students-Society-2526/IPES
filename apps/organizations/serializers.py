@@ -28,12 +28,13 @@ class OrganizationUnitSerializer(serializers.ModelSerializer):
     """Serializer for OrganizationUnit model"""
     organization_name = serializers.CharField(source='organization_id.name', read_only=True)
     type_name = serializers.CharField(source='type_id.name', read_only=True)
+    members_count = serializers.IntegerField(read_only=True, default=0)
     
     class Meta:
         model = OrganizationUnit
         fields = [
             'id', 'organization_id', 'organization_name', 
-            'type_id', 'type_name', 'name', 'description'
+            'type_id', 'type_name', 'name', 'description', 'members_count'
         ]
         read_only_fields = ['id']
 
