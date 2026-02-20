@@ -6,6 +6,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { useOrganizationState } from '@/contexts/OrganizationContext';
 
 // Evaluation Form types
 export interface Question {
@@ -260,15 +261,18 @@ export const useDeleteQuestion = () => {
 // ===== Assignment Hooks =====
 
 // Fetch all assignments
-export const useAssignments = (params?: { status?: string; form_id?: number }) => {
-  const queryString = params
+export const useAssignments = (params?: { status?: string; form_id?: number; organization_id?: number }) => {
+  const { activeOrganizationId } = useOrganizationState();
+  const effectiveParams = { ...params, organization_id: params?.organization_id || activeOrganizationId || undefined };
+
+  const queryString = Object.keys(effectiveParams).length > 0
     ? '?' + new URLSearchParams(
-      Object.entries(params).filter(([, v]) => v !== undefined).reduce((acc, [k, v]) => ({ ...acc, [k]: String(v) }), {})
+      Object.entries(effectiveParams).filter(([, v]) => v !== undefined).reduce((acc, [k, v]) => ({ ...acc, [k]: String(v) }), {})
     ).toString()
     : '';
 
   return useQuery({
-    queryKey: ['assignments', params],
+    queryKey: ['assignments', effectiveParams],
     queryFn: async () => {
       const response = await api.get(`/assignments/${queryString}`);
       const data = await response.json() as { results: EvaluationAssignment[] } | EvaluationAssignment[];
