@@ -116,6 +116,7 @@ export interface OrganizationUnit {
   description: string;
   type_id?: number;
   organization_id: number;
+  members_count?: number;
 }
 
 export const useOrganizationUnits = (organizationId?: number) => {
