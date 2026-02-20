@@ -29,6 +29,13 @@ class Membership(models.Model):
     user_id = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='memberships')
     unit_id = models.ForeignKey(OrganizationUnit, on_delete=models.CASCADE, related_name='members')
     position_id = models.ForeignKey(PositionType, on_delete=models.PROTECT)
+    
+    ROLE_CHOICES = (
+        ('Admin', 'Admin'),
+        ('Member', 'Member'),
+    )
+    role = models.CharField(max_length=50, choices=ROLE_CHOICES, default='Member')
+    
     date_start = models.DateField()
     date_end = models.DateField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
