@@ -259,6 +259,11 @@ class OrganizationUnitViewSet(viewsets.ModelViewSet):
         return queryset
 
     def perform_destroy(self, instance):
+        # Prevent deletion if there are active members
+        if instance.members.filter(is_active=True).exists():
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError("Cannot delete unit with active members.")
+            
         # Soft delete the unit
         instance.is_active = False
         instance.save()
