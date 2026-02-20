@@ -47,6 +47,7 @@ erDiagram
         int user_id FK
         int unit_id FK
         int position_id FK
+        string role "Admin, Officer"
         date date_start
         date date_end "Nullable (Null means currently active)"
         boolean is_active
@@ -90,7 +91,6 @@ erDiagram
         string first_name
         string last_name
         image display_picture "link to a CDN"
-        string role "Admin, Officer"
         boolean is_active
     }
     ACCOMPLISHMENT {
