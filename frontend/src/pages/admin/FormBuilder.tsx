@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   FileEdit,
   Plus,
@@ -126,16 +126,26 @@ const AdminFormBuilder = () => {
     exclude_self: true,
   });
 
-  // Load questions when form selected
-  // NOTE: intentionally omit `formQuestions` from deps — React Query returns a new array
-  // reference on every render, which would cause an infinite setState loop.
-  // We only want to sync on form/tab changes; the refetch after save handles fresh data.
+  // Use a ref to track which form ID was last seeded into localQuestions.
+  // This prevents two failure modes:
+  //   a) Infinite loop: formQuestions reference changes every render even when data is the same
+  //   b) Race condition: effect fires before fetch completes (questionsLoading=true), seeds [] into
+  //      localQuestions, then when fetch resolves there's no dep change to re-trigger seeding.
+  const seededFormIdRef = useRef<number | null>(null);
   useEffect(() => {
-    if (selectedForm && activeTab === 'builder') {
+    if (!selectedForm) {
+      seededFormIdRef.current = null;
+      return;
+    }
+    if (activeTab === 'builder' && !questionsLoading && seededFormIdRef.current !== selectedForm.id) {
+      seededFormIdRef.current = selectedForm.id;
       setLocalQuestions(formQuestions);
     }
+    // formQuestions deliberately NOT in deps — its reference changes every render.
+    // We capture the current value when the stable deps (id, tab, loading) change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedForm?.id, activeTab]);
+  }, [selectedForm?.id, activeTab, questionsLoading]);
+
 
 
   const filteredForms = forms.filter(f =>
