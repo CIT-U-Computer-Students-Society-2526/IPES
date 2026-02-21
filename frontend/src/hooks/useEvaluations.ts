@@ -232,6 +232,7 @@ export const useFormRules = (formId: number) => {
       return Array.isArray(data) ? data : data.results || [];
     },
     enabled: !!formId,
+    staleTime: 30_000, // rules rarely change – avoid re-fetch on every tab switch
   });
 };
 
