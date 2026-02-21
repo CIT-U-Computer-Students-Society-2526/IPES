@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import EvaluationForm, Question, EvaluationAssignment, Response
+from .models import EvaluationForm, Question, EvaluationAssignment, AssignmentRule, Response
 
 
 class QuestionSerializer(serializers.ModelSerializer):
@@ -77,6 +77,26 @@ class EvaluationFormCreateSerializer(serializers.ModelSerializer):
             Question.objects.create(form_id=form, **question_data)
         
         return form
+
+
+class AssignmentRuleSerializer(serializers.ModelSerializer):
+    """Serializer for AssignmentRule model"""
+    evaluator_unit_name     = serializers.CharField(source='evaluator_unit.name', read_only=True, default=None)
+    evaluator_position_name = serializers.CharField(source='evaluator_position.name', read_only=True, default=None)
+    evaluatee_unit_name     = serializers.CharField(source='evaluatee_unit.name', read_only=True, default=None)
+    evaluatee_position_name = serializers.CharField(source='evaluatee_position.name', read_only=True, default=None)
+
+    class Meta:
+        model = AssignmentRule
+        fields = [
+            'id', 'form_id',
+            'evaluator_unit', 'evaluator_unit_name',
+            'evaluator_position', 'evaluator_position_name',
+            'evaluatee_unit', 'evaluatee_unit_name',
+            'evaluatee_position', 'evaluatee_position_name',
+            'exclude_self',
+        ]
+        read_only_fields = ['id']
 
 
 class EvaluationAssignmentSerializer(serializers.ModelSerializer):
