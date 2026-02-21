@@ -96,15 +96,22 @@ class OrganizationViewSet(viewsets.ModelViewSet):
         except Organization.DoesNotExist:
             return Response({'error': 'Invalid organization code'}, status=status.HTTP_404_NOT_FOUND)
             
-        # Check if already a member
+        # Check if already an active member
         if Membership.objects.filter(user_id=request.user, unit_id__organization_id=org, is_active=True).exists():
             return Response({'error': 'You are already a member of this organization'}, status=status.HTTP_400_BAD_REQUEST)
             
-        # Check if request already exists
+        # Check explicitly for an already-pending request first.
         if JoinRequest.objects.filter(user=request.user, organization=org, status='Pending').exists():
             return Response({'error': 'You already have a pending join request'}, status=status.HTTP_400_BAD_REQUEST)
-            
-        JoinRequest.objects.create(user=request.user, organization=org, status='Pending')
+
+        # Use update_or_create to gracefully handle users who previously had a
+        # Rejected or Approved request (e.g. they were removed and are rejoining).
+        # This prevents a 500 IntegrityError from the unique_together constraint.
+        JoinRequest.objects.update_or_create(
+            user=request.user,
+            organization=org,
+            defaults={'status': 'Pending'}
+        )
         
         log_action(
             request.user,
@@ -511,19 +518,42 @@ class JoinRequestViewSet(viewsets.ModelViewSet):
             return Response({'error': 'unit_id and position_id required to approve'}, status=status.HTTP_400_BAD_REQUEST)
             
         try:
-            unit = OrganizationUnit.objects.get(id=unit_id, organization_id=join_request.organization)
-            position = PositionType.objects.get(id=position_id, organization_id=join_request.organization)
+            unit = OrganizationUnit.objects.get(id=unit_id, organization_id=join_request.organization, is_active=True)
+            position = PositionType.objects.get(id=position_id, organization_id=join_request.organization, is_active=True)
         except (OrganizationUnit.DoesNotExist, PositionType.DoesNotExist):
-            return Response({'error': 'Invalid unit or position IDs'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Invalid unit or position IDs — they may have been deleted'}, status=status.HTTP_400_BAD_REQUEST)
             
-        Membership.objects.create(
-            user_id=join_request.user,
-            unit_id=unit,
-            position_id=position,
-            role=role_choice,
-            date_start=timezone.now().date(),
-            is_active=True
-        )
+        # Re-activate the user account in case they were deactivated
+        rejoining_user = join_request.user
+        if not rejoining_user.is_active:
+            rejoining_user.is_active = True
+            rejoining_user.save(update_fields=['is_active'])
+
+        # If the user has a prior deactivated membership in this org, re-activate
+        # it rather than creating a duplicate record.
+        existing_membership = Membership.objects.filter(
+            user_id=rejoining_user,
+            unit_id__organization_id=join_request.organization,
+            is_active=False
+        ).order_by('-date_end').first()
+
+        if existing_membership:
+            existing_membership.unit_id = unit
+            existing_membership.position_id = position
+            existing_membership.role = role_choice
+            existing_membership.date_start = timezone.now().date()
+            existing_membership.date_end = None
+            existing_membership.is_active = True
+            existing_membership.save()
+        else:
+            Membership.objects.create(
+                user_id=rejoining_user,
+                unit_id=unit,
+                position_id=position,
+                role=role_choice,
+                date_start=timezone.now().date(),
+                is_active=True
+            )
         
         join_request.status = 'Approved'
         join_request.save()
