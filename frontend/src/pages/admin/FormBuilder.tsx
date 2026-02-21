@@ -46,6 +46,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 import {
   useForms, useCreateForm, useDeleteForm, useDuplicateForm, usePublishForm,
@@ -364,6 +367,9 @@ const AdminFormBuilder = () => {
           <DialogContent className="max-w-lg">
             <DialogHeader>
               <DialogTitle>Create New Form</DialogTitle>
+              <DialogDescription className="sr-only">
+                Fill in the details below to create a new evaluation form.
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
