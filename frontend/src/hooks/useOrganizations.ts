@@ -85,6 +85,24 @@ export const useCreateOrganization = () => {
   });
 };
 
+// Delete Current Organization
+export const useDeleteOrganization = () => {
+  const queryClient = useQueryClient();
+  const { clearOrganizationState } = useOrganizationState();
+
+  return useMutation<{ message: string }, Error, { id: number; data: { code: string; password: string } }>({
+    mutationFn: async ({ id, data }) => {
+      const response = await api.post(`/organizations/${id}/delete-organization/`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      clearOrganizationState();
+      queryClient.invalidateQueries({ queryKey: ['users', 'current'] });
+      queryClient.invalidateQueries({ queryKey: ['organizations'] });
+    },
+  });
+};
+
 // Join Request Types
 export interface JoinRequest {
   id: number;

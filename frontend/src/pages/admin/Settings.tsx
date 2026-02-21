@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { 
-  Settings, 
+import {
+  Settings,
   Save,
   Calendar,
   Eye,
@@ -24,6 +24,23 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Alert } from "@/components/ui/alert";
+import { useDeleteOrganization } from "@/hooks/useOrganizations";
+import { useCurrentMembership } from "@/hooks/useUsers";
+import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
+import {useOrganizationState} from "@/contexts/OrganizationContext.tsx";
 
 const AdminSettings = () => {
   const [settings, setSettings] = useState({
@@ -38,6 +55,45 @@ const AdminSettings = () => {
     allowResultsViewing: true,
     resultsVisibleAfterClose: true,
   });
+
+  const navigate = useNavigate();
+  const { activeOrganizationId } = useOrganizationState();
+  const { data: currentMembership } = useCurrentMembership();
+  const { mutate: deleteOrganization, isPending: isDeleting } = useDeleteOrganization();
+
+  // Dialog states for deleting organization
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteOrgCode, setDeleteOrgCode] = useState("");
+  const [deleteAdminPassword, setDeleteAdminPassword] = useState("");
+
+  const isHeadAdmin = currentMembership?.position_rank === 1;
+
+  const handleDeleteOrganization = () => {
+    if (!activeOrganizationId) return;
+
+    deleteOrganization(
+      {
+        id: activeOrganizationId,
+        data: { code: deleteOrgCode, password: deleteAdminPassword }
+      },
+      {
+        onSuccess: (response) => {
+          toast.success(response.message || "Organization successfully deleted.", {
+            description: "You have been redirected.",
+          });
+          setDeleteDialogOpen(false);
+          setDeleteOrgCode("");
+          setDeleteAdminPassword("");
+          navigate("/select-organization");
+        },
+        onError: (error) => {
+          toast.error("Failed to delete organization.", {
+            description: error.message || "Please check your code and password and try again.",
+          });
+        }
+      }
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -77,16 +133,16 @@ const AdminSettings = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Start Date</Label>
-                  <Input 
-                    type="date" 
+                  <Input
+                    type="date"
                     value={settings.evaluationPeriodStart}
                     onChange={(e) => setSettings({ ...settings, evaluationPeriodStart: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>End Date</Label>
-                  <Input 
-                    type="date" 
+                  <Input
+                    type="date"
                     value={settings.evaluationPeriodEnd}
                     onChange={(e) => setSettings({ ...settings, evaluationPeriodEnd: e.target.value })}
                   />
@@ -129,6 +185,88 @@ const AdminSettings = () => {
               </div>
             </CardContent>
           </Card>
+
+          {/* Danger Zone */}
+          <Card className="border-destructive bg-destructive/5">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Shield className="w-5 h-5 text-destructive" />
+                <CardTitle className="text-destructive">Danger Zone</CardTitle>
+              </div>
+              <CardDescription className="text-destructive/80">
+                Destructive actions that permanently affect the organization and its data.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border border-destructive/20 rounded-lg bg-background">
+                <div className="space-y-1">
+                  <h4 className="font-medium text-destructive">Delete Organization</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Permanently close this organization and deactivate all associated accounts, units, and structural models. <strong>This action cannot be undone.</strong>
+                  </p>
+                  {!isHeadAdmin && (
+                    <p className="text-xs font-semibold text-destructive mt-2">
+                      You must be the Head Administrator (Rank 1) to perform this action.
+                    </p>
+                  )}
+                </div>
+
+                <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" disabled={!isHeadAdmin}>
+                      Delete Organization
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="text-destructive">Are you absolutely sure?</AlertDialogTitle>
+                      <AlertDialogDescription className="space-y-4">
+                        <p>
+                          This action cannot be undone. This will permanently soft-delete the organization, deactivate all active unit architectures, and instantly log out all current members.
+                        </p>
+                        <Alert className="bg-destructive/10 text-destructive border-destructive/30 border">
+                          Please enter the <strong>Organization Code</strong> and your <strong>Admin Password</strong> to confirm destruction.
+                        </Alert>
+                        <div className="space-y-4 mt-4">
+                          <div className="space-y-2">
+                            <Label className="text-foreground">Organization Code</Label>
+                            <Input
+                              placeholder="e.g. 5x8TqP"
+                              value={deleteOrgCode}
+                              onChange={(e) => setDeleteOrgCode(e.target.value)}
+                              autoComplete="off"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-foreground">Your Password</Label>
+                            <Input
+                              type="password"
+                              placeholder="Enter your password"
+                              value={deleteAdminPassword}
+                              onChange={(e) => setDeleteAdminPassword(e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel onClick={() => {
+                        setDeleteOrgCode("");
+                        setDeleteAdminPassword("");
+                      }}>Cancel</AlertDialogCancel>
+                      <Button
+                        variant="destructive"
+                        onClick={handleDeleteOrganization}
+                        disabled={!deleteOrgCode || !deleteAdminPassword || isDeleting}
+                      >
+                        {isDeleting ? "Deleting..." : "Permanently Delete"}
+                      </Button>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="evaluation" className="space-y-6">
@@ -151,7 +289,7 @@ const AdminSettings = () => {
                     Officers can evaluate themselves
                   </p>
                 </div>
-                <Switch 
+                <Switch
                   checked={settings.allowSelfEvaluation}
                   onCheckedChange={(checked) => setSettings({ ...settings, allowSelfEvaluation: checked })}
                 />
@@ -164,7 +302,7 @@ const AdminSettings = () => {
                     Text feedback is anonymous to evaluatees
                   </p>
                 </div>
-                <Switch 
+                <Switch
                   checked={settings.anonymousFeedback}
                   onCheckedChange={(checked) => setSettings({ ...settings, anonymousFeedback: checked })}
                 />
@@ -177,7 +315,7 @@ const AdminSettings = () => {
                     Officers must provide proof links for accomplishments
                   </p>
                 </div>
-                <Switch 
+                <Switch
                   checked={settings.requireProofForAccomplishments}
                   onCheckedChange={(checked) => setSettings({ ...settings, requireProofForAccomplishments: checked })}
                 />
@@ -206,7 +344,7 @@ const AdminSettings = () => {
                     Display officer rankings based on scores
                   </p>
                 </div>
-                <Switch 
+                <Switch
                   checked={settings.showRankings}
                   onCheckedChange={(checked) => setSettings({ ...settings, showRankings: checked })}
                 />
@@ -219,7 +357,7 @@ const AdminSettings = () => {
                     Officers can view their own evaluation results
                   </p>
                 </div>
-                <Switch 
+                <Switch
                   checked={settings.allowResultsViewing}
                   onCheckedChange={(checked) => setSettings({ ...settings, allowResultsViewing: checked })}
                 />
@@ -232,7 +370,7 @@ const AdminSettings = () => {
                     Only show results after evaluation period ends
                   </p>
                 </div>
-                <Switch 
+                <Switch
                   checked={settings.resultsVisibleAfterClose}
                   onCheckedChange={(checked) => setSettings({ ...settings, resultsVisibleAfterClose: checked })}
                 />
@@ -261,7 +399,7 @@ const AdminSettings = () => {
                     Send email reminders for pending evaluations
                   </p>
                 </div>
-                <Switch 
+                <Switch
                   checked={settings.autoReminders}
                   onCheckedChange={(checked) => setSettings({ ...settings, autoReminders: checked })}
                 />
@@ -269,7 +407,7 @@ const AdminSettings = () => {
               <Separator />
               <div className="space-y-2">
                 <Label>Reminder Days Before Deadline</Label>
-                <Select 
+                <Select
                   value={settings.reminderDaysBefore}
                   onValueChange={(value) => setSettings({ ...settings, reminderDaysBefore: value })}
                 >

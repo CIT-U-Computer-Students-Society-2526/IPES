@@ -95,6 +95,102 @@ class OrganizationViewSet(viewsets.ModelViewSet):
         )
         
         return Response({'message': 'Join request submitted successfully'}, status=status.HTTP_201_CREATED)
+        
+    @action(detail=True, methods=['post'], url_path='delete-organization')
+    def delete_organization(self, request, pk=None):
+        """
+        Permanently soft-delete an organization and cascade deactivations.
+        Requires the Head Administrator's password and the correct organization code.
+        """
+        org = self.get_object()
+        code = request.data.get('code')
+        password = request.data.get('password')
+
+        if not code or not password:
+            return Response(
+                {'error': 'Both organization code and your admin password are required.'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 1. Verify Organization Code matches
+        if code != org.code:
+            return Response(
+                {'error': 'The provided organization code does not match.'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 2. Verify User Password matches
+        if not request.user.check_password(password):
+            return Response(
+                {'error': 'Incorrect password.'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 3. Verify the requesting user is a Head Admin (rank = 1) for this specific Org
+        is_head_admin = Membership.objects.filter(
+            user_id=request.user,
+            unit_id__organization_id=org,
+            position_id__rank=1,
+            is_active=True
+        ).exists()
+
+        if not is_head_admin:
+            return Response(
+                {'error': 'Only the Head Administrator can delete this organization.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # 4. Execute Cascading Soft Deletes
+        current_date = timezone.now().date()
+        
+        # Deactivate Memberships
+        Membership.objects.filter(
+            unit_id__organization_id=org, 
+            is_active=True
+        ).update(is_active=False, date_end=current_date)
+        
+        # Deactivate Position Types
+        PositionType.objects.filter(
+            organization_id=org, 
+            is_active=True
+        ).update(is_active=False)
+        
+        # Deactivate Units
+        OrganizationUnit.objects.filter(
+            organization_id=org, 
+            is_active=True
+        ).update(is_active=False)
+        
+        # Deactivate Unit Types
+        UnitType.objects.filter(
+            organization_id=org, 
+            is_active=True
+        ).update(is_active=False)
+
+        # Deactivate pending join requests
+        JoinRequest.objects.filter(
+            organization=org,
+            status='Pending'
+        ).update(status='Rejected')
+
+        # Deactivate the Org itself
+        org.is_active = False
+        org.save()
+
+        # Audit Log
+        log_action(
+            request.user,
+            AuditActions.ORG_UPDATED,
+            request,
+            detail="Organization formally deleted (soft-deactivated) by Head Admin",
+            org_name=org.name,
+            org_id=str(org.id)
+        )
+
+        return Response(
+            {'message': f'Organization {org.name} has been successfully deleted.'}, 
+            status=status.HTTP_200_OK
+        )
     
     @action(detail=False, methods=['get'])
     def unit_completion_stats(self, request):

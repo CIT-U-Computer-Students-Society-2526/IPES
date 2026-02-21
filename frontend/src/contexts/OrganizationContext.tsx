@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 interface OrganizationContextType {
     activeOrganizationId: number | null;
     setActiveOrganizationId: (id: number | null) => void;
+    clearOrganizationState: () => void;
 }
 
 const OrganizationContext = createContext<OrganizationContextType | undefined>(undefined);
@@ -21,8 +22,13 @@ export const OrganizationProvider = ({ children }: { children: ReactNode }) => {
         }
     }, [activeOrganizationId]);
 
+    const clearOrganizationState = () => {
+        setActiveOrganizationId(null);
+        localStorage.removeItem('activeOrganizationId');
+    };
+
     return (
-        <OrganizationContext.Provider value={{ activeOrganizationId, setActiveOrganizationId }}>
+        <OrganizationContext.Provider value={{ activeOrganizationId, setActiveOrganizationId, clearOrganizationState }}>
             {children}
         </OrganizationContext.Provider>
     );
