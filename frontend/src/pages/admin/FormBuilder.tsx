@@ -57,6 +57,7 @@ import {
   useOrganizationUnits, usePositionTypes,
   type OrganizationUnit, type PositionType
 } from "@/hooks/useOrganizations";
+import { useOrganizationState } from "@/contexts/OrganizationContext";
 
 const questionTypes = [
   { id: "rating", name: "Rating Scale", icon: Star, description: "Numeric rating boundaries" },
@@ -78,6 +79,9 @@ const AdminFormBuilder = () => {
 
   // Selected Form State
   const [selectedForm, setSelectedForm] = useState<EvaluationForm | null>(null);
+
+  // Active organization
+  const { activeOrganizationId } = useOrganizationState();
 
   // Questions State
   const [localQuestions, setLocalQuestions] = useState<Partial<Question>[]>([]);
@@ -153,13 +157,16 @@ const AdminFormBuilder = () => {
       toast({ title: "Validation Error", description: "Title is required", variant: "destructive" });
       return;
     }
+    if (!activeOrganizationId) {
+      toast({ title: "No Organization Selected", description: "Please select an organization first.", variant: "destructive" });
+      return;
+    }
     try {
-      // Assuming organization_id = 1 for now, a proper implementation would fetch user's org
       const res = await createFormMutation.mutateAsync({
         title: newFormTitle,
         description: newFormDesc,
         type: newFormType,
-        organization_id: 1,
+        organization_id: activeOrganizationId,
         start_date: new Date().toISOString().split('T')[0],
         end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         is_active: true,

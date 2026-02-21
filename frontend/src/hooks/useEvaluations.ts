@@ -27,7 +27,7 @@ export interface EvaluationForm {
   organization_id: number;
   title: string;
   description: string;
-  type: 'self' | 'peer' | 'supervisor' | '360';
+  type: 'self' | 'peer' | 'supervisor' | '360' | 'executive' | string;
   start_date: string;
   end_date: string;
   created_by: number;
@@ -35,6 +35,7 @@ export interface EvaluationForm {
   is_published: boolean;
   questions?: Question[];
   created_at: string;
+  updated_at: string;
 }
 
 // Evaluation Assignment types
