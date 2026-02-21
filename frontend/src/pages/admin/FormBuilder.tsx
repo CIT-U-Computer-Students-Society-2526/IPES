@@ -32,9 +32,11 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -47,9 +49,6 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 import { formatApiError } from "@/lib/api";
-import {
-  DialogDescription,
-} from "@/components/ui/dialog";
 
 import {
   useForms, useCreateForm, useUpdateForm, useDeleteForm, useDuplicateForm, usePublishForm,
@@ -86,6 +85,9 @@ const AdminFormBuilder = () => {
 
   // Active organization
   const { activeOrganizationId } = useOrganizationState();
+
+  // Publish confirmation dialog
+  const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
 
   // Edit Details State
   const [isEditingDetails, setIsEditingDetails] = useState(false);
@@ -235,6 +237,7 @@ const AdminFormBuilder = () => {
 
   const handlePublishForm = async () => {
     if (!selectedForm) return;
+    setIsPublishDialogOpen(false);
     try {
       await publishFormMutation.mutateAsync(selectedForm.id);
       toast({ title: "Form Published", description: "This form can now be assigned." });
@@ -594,10 +597,34 @@ const AdminFormBuilder = () => {
                         Save Draft
                       </Button>
                       {!selectedForm?.is_published && (
-                        <Button className="gradient-hero text-primary-foreground" onClick={handlePublishForm}>
-                          <Send className="w-4 h-4 mr-2" />
-                          Publish
-                        </Button>
+                        <>
+                          <Button className="gradient-hero text-primary-foreground" onClick={() => setIsPublishDialogOpen(true)}>
+                            <Send className="w-4 h-4 mr-2" />
+                            Publish
+                          </Button>
+                          <Dialog open={isPublishDialogOpen} onOpenChange={setIsPublishDialogOpen}>
+                            <DialogContent className="max-w-md">
+                              <DialogHeader>
+                                <DialogTitle>Publish "{selectedForm?.title}"?</DialogTitle>
+                                <DialogDescription>
+                                  Publishing is <strong>permanent</strong> — questions and form details will be
+                                  locked and can no longer be edited. Make sure everything looks correct before proceeding.
+                                </DialogDescription>
+                              </DialogHeader>
+                              <DialogFooter className="gap-2">
+                                <Button variant="outline" onClick={() => setIsPublishDialogOpen(false)}>Cancel</Button>
+                                <Button
+                                  className="gradient-hero text-primary-foreground"
+                                  onClick={handlePublishForm}
+                                  disabled={publishFormMutation.isPending}
+                                >
+                                  {publishFormMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
+                                  Yes, Publish
+                                </Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+                        </>
                       )}
                     </div>
                   </div>
