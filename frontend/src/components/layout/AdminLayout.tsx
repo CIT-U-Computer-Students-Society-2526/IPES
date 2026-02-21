@@ -25,11 +25,11 @@ import { cn } from "@/lib/utils";
 const navigation = [
   { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
   { name: "Organization", href: "/admin/organization", icon: Building2 },
+  { name: "Users", href: "/admin/users", icon: Users },
+  { name: "Accomplishments", href: "/admin/accomplishments", icon: Trophy },
   { name: "Form Builder", href: "/admin/forms", icon: FileEdit },
   { name: "Assignments", href: "/admin/assignments", icon: ClipboardList },
   { name: "Analytics", href: "/admin/analytics", icon: BarChart3 },
-  { name: "Accomplishments", href: "/admin/accomplishments", icon: Trophy },
-  { name: "Users", href: "/admin/users", icon: Users },
   { name: "Audit Log", href: "/admin/audit-log", icon: Shield },
   { name: "Settings", href: "/admin/settings", icon: Settings },
 ];
