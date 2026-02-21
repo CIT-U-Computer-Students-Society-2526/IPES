@@ -46,6 +46,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
+import { formatApiError } from "@/lib/api";
 import {
   DialogDescription,
 } from "@/components/ui/dialog";
@@ -193,7 +194,7 @@ const AdminFormBuilder = () => {
       setSelectedForm(res);
       setActiveTab("builder");
     } catch (e: unknown) {
-      toast({ title: "Error Creating Form", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+      toast({ title: "Error Creating Form", description: formatApiError(e), variant: "destructive" });
     }
   };
 
@@ -207,7 +208,7 @@ const AdminFormBuilder = () => {
           setActiveTab("forms");
         }
       } catch (e: unknown) {
-        toast({ title: "Error Deleting Form", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+        toast({ title: "Error Deleting Form", description: formatApiError(e), variant: "destructive" });
       }
     }
   };
@@ -217,7 +218,7 @@ const AdminFormBuilder = () => {
       await duplicateFormMutation.mutateAsync(id);
       toast({ title: "Form Duplicated" });
     } catch (e: unknown) {
-      toast({ title: "Error Duplicating Form", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+      toast({ title: "Error Duplicating Form", description: formatApiError(e), variant: "destructive" });
     }
   };
 
@@ -228,7 +229,7 @@ const AdminFormBuilder = () => {
       toast({ title: "Form Published", description: "This form can now be assigned." });
       setSelectedForm({ ...selectedForm, is_published: true });
     } catch (e: unknown) {
-      toast({ title: "Error Publishing Form", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+      toast({ title: "Error Publishing Form", description: formatApiError(e), variant: "destructive" });
     }
   };
 
@@ -240,7 +241,7 @@ const AdminFormBuilder = () => {
       setNewRule({ evaluator_unit: null, evaluator_position: null, evaluatee_unit: null, evaluatee_position: null, exclude_self: true });
       toast({ title: "Rule Added" });
     } catch (e: unknown) {
-      toast({ title: "Error Adding Rule", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+      toast({ title: "Error Adding Rule", description: formatApiError(e), variant: "destructive" });
     }
   };
 
@@ -250,7 +251,7 @@ const AdminFormBuilder = () => {
       await deleteRuleMutation.mutateAsync({ id: rule.id, form_id: selectedForm.id });
       toast({ title: "Rule Removed" });
     } catch (e: unknown) {
-      toast({ title: "Error Removing Rule", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+      toast({ title: "Error Removing Rule", description: formatApiError(e), variant: "destructive" });
     }
   };
 
@@ -261,7 +262,7 @@ const AdminFormBuilder = () => {
       const res = await generateMutation.mutateAsync(selectedForm.id);
       toast({ title: "Assignments Generated", description: res.message });
     } catch (e: unknown) {
-      toast({ title: "Error Generating Assignments", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+      toast({ title: "Error Generating Assignments", description: formatApiError(e), variant: "destructive" });
     }
   };
 
@@ -291,7 +292,7 @@ const AdminFormBuilder = () => {
       try {
         await deleteQuestionMutation.mutateAsync({ id: qToRemove.id, form_id: selectedForm!.id });
       } catch (e: unknown) {
-        toast({ title: "Error Deleting Question", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+        toast({ title: "Error Deleting Question", description: formatApiError(e), variant: "destructive" });
         return;
       }
     }
@@ -351,7 +352,7 @@ const AdminFormBuilder = () => {
       toast({ title: "Draft Saved", description: "All questions have been saved successfully." });
       refetchQuestions();
     } catch (e: unknown) {
-      toast({ title: "Error Saving", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+      toast({ title: "Error Saving", description: formatApiError(e), variant: "destructive" });
     }
   };
 
