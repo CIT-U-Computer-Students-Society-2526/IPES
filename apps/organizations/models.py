@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 class Organization(models.Model):
     name = models.CharField(max_length=255)
@@ -25,7 +26,10 @@ class OrganizationUnit(models.Model):
 class PositionType(models.Model):
     organization_id = models.ForeignKey(Organization, on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
-    rank = models.IntegerField(help_text='1 for Head, higher numbers for lower rank')
+    rank = models.IntegerField(
+        help_text='1 for Head, higher numbers for lower rank',
+        validators=[MinValueValidator(1), MaxValueValidator(100)]
+    )
     is_active = models.BooleanField(default=True)
 
 class Membership(models.Model):

@@ -371,15 +371,15 @@ const AdminOrganization = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Weight (1-10)</Label>
+                  <Label>Rank Level (1-100)</Label>
                   <Input
                     type="number"
-                    min="1" max="10"
+                    min="1" max="100"
                     placeholder="5"
                     value={newPositionWeight}
                     onChange={e => setNewPositionWeight(e.target.value)}
                   />
-                  <p className="text-xs text-muted-foreground">Higher weight = higher ranking in the organization.</p>
+                  <p className="text-xs text-muted-foreground">1 represents the highest rank in. Higher numbers indicate lower ranks.</p>
                 </div>
                 <Button
                   className="w-full"
@@ -818,13 +818,14 @@ const AdminOrganization = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label>Weight (1-10)</Label>
+              <Label>Rank Level (1-100)</Label>
               <Input
                 type="number"
-                min="1" max="10"
+                min="1" max="100"
                 value={editPositionWeight}
                 onChange={e => setEditPositionWeight(e.target.value)}
               />
+              <p className="text-xs text-muted-foreground">1 represents the highest rank (Head Administrator). Higher numbers indicate lower ranks.</p>
             </div>
           </div>
           <DialogFooter>
