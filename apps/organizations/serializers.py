@@ -62,7 +62,7 @@ class MembershipSerializer(serializers.ModelSerializer):
             'position_id', 'position_name', 'role', 'date_start', 
             'date_end', 'is_active'
         ]
-        read_only_fields = ['id', 'date_start', 'date_end', 'user_email', 'unit_name', 'position_name']
+        read_only_fields = ['id', 'date_start', 'date_end']
 
 class JoinRequestSerializer(serializers.ModelSerializer):
     """Serializer for JoinRequest model"""
