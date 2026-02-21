@@ -120,11 +120,16 @@ const AdminFormBuilder = () => {
   });
 
   // Load questions when form selected
+  // NOTE: intentionally omit `formQuestions` from deps — React Query returns a new array
+  // reference on every render, which would cause an infinite setState loop.
+  // We only want to sync on form/tab changes; the refetch after save handles fresh data.
   useEffect(() => {
-    if (selectedForm && activeTab === 'builder' && formQuestions) {
+    if (selectedForm && activeTab === 'builder') {
       setLocalQuestions(formQuestions);
     }
-  }, [selectedForm, formQuestions, activeTab]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedForm?.id, activeTab]);
+
 
   const filteredForms = forms.filter(f =>
     f.title.toLowerCase().includes(searchQuery.toLowerCase())
