@@ -52,7 +52,7 @@ import {
 } from "@/components/ui/dialog";
 
 import {
-  useForms, useCreateForm, useDeleteForm, useDuplicateForm, usePublishForm,
+  useForms, useCreateForm, useUpdateForm, useDeleteForm, useDuplicateForm, usePublishForm,
   useFormQuestions, useCreateQuestions, useUpdateQuestion, useDeleteQuestion,
   useFormRules, useCreateRule, useDeleteRule, useGenerateAssignments,
   type EvaluationForm, type Question, type AssignmentRule
@@ -87,12 +87,23 @@ const AdminFormBuilder = () => {
   // Active organization
   const { activeOrganizationId } = useOrganizationState();
 
+  // Edit Details State
+  const [isEditingDetails, setIsEditingDetails] = useState(false);
+  const [editFormData, setEditFormData] = useState<{
+    title: string;
+    description: string;
+    type: string;
+    start_date: string;
+    end_date: string;
+  }>({ title: '', description: '', type: 'peer', start_date: '', end_date: '' });
+
   // Questions State
   const [localQuestions, setLocalQuestions] = useState<Partial<Question>[]>([]);
 
   // API Hooks
   const { data: forms = [], isLoading: formsLoading } = useForms();
   const createFormMutation = useCreateForm();
+  const updateFormMutation = useUpdateForm();
   const deleteFormMutation = useDeleteForm();
   const duplicateFormMutation = useDuplicateForm();
   const publishFormMutation = usePublishForm();
@@ -230,6 +241,35 @@ const AdminFormBuilder = () => {
       setSelectedForm({ ...selectedForm, is_published: true });
     } catch (e: unknown) {
       toast({ title: "Error Publishing Form", description: formatApiError(e), variant: "destructive" });
+    }
+  };
+
+  // Open the details panel, pre-populating with current form data
+  const handleOpenEditDetails = () => {
+    if (!selectedForm) return;
+    setEditFormData({
+      title: selectedForm.title,
+      description: selectedForm.description ?? '',
+      type: selectedForm.type,
+      start_date: selectedForm.start_date,
+      end_date: selectedForm.end_date,
+    });
+    setIsEditingDetails(true);
+  };
+
+  const handleSaveDetails = async () => {
+    if (!selectedForm) return;
+    if (!editFormData.title.trim()) {
+      toast({ title: "Validation Error", description: "Title cannot be empty.", variant: "destructive" });
+      return;
+    }
+    try {
+      const updated = await updateFormMutation.mutateAsync({ id: selectedForm.id, data: editFormData });
+      setSelectedForm(updated);
+      setIsEditingDetails(false);
+      toast({ title: "Details Saved", description: "Form details updated successfully." });
+    } catch (e: unknown) {
+      toast({ title: "Error Saving Details", description: formatApiError(e), variant: "destructive" });
     }
   };
 
@@ -442,7 +482,12 @@ const AdminFormBuilder = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredForms.map((form) => (
-              <Card key={form.id} className="hover:shadow-md transition-shadow">
+              <Card
+                key={form.id}
+                className="hover:shadow-md transition-shadow cursor-pointer select-none"
+                onDoubleClick={() => { setSelectedForm(form); setActiveTab("builder"); }}
+                title="Double-click to open in Form Editor"
+              >
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
@@ -528,14 +573,22 @@ const AdminFormBuilder = () => {
               <Card>
                 <CardHeader>
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <CardTitle className="flex items-center gap-2">
                         {selectedForm?.title}
                         {selectedForm?.is_published && <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Published</Badge>}
                       </CardTitle>
-                      <p className="text-sm text-muted-foreground mt-1">{selectedForm?.description}</p>
+                      {selectedForm?.description && (
+                        <p className="text-sm text-muted-foreground mt-1 truncate">{selectedForm.description}</p>
+                      )}
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 shrink-0">
+                      {!selectedForm?.is_published && (
+                        <Button variant="outline" size="sm" onClick={handleOpenEditDetails}>
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit Details
+                        </Button>
+                      )}
                       <Button variant="outline" onClick={handleSaveDraft} disabled={selectedForm?.is_published}>
                         <Save className="w-4 h-4 mr-2" />
                         Save Draft
@@ -548,6 +601,70 @@ const AdminFormBuilder = () => {
                       )}
                     </div>
                   </div>
+
+                  {/* Inline Edit Details Panel */}
+                  {isEditingDetails && (
+                    <div className="mt-4 p-4 rounded-lg border border-border bg-muted/30 space-y-4">
+                      <p className="text-sm font-semibold">Edit Form Details</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="sm:col-span-2 space-y-1">
+                          <Label className="text-xs">Title</Label>
+                          <Input
+                            value={editFormData.title}
+                            onChange={(e) => setEditFormData(d => ({ ...d, title: e.target.value }))}
+                            placeholder="Form title"
+                          />
+                        </div>
+                        <div className="sm:col-span-2 space-y-1">
+                          <Label className="text-xs">Description</Label>
+                          <Textarea
+                            value={editFormData.description}
+                            onChange={(e) => setEditFormData(d => ({ ...d, description: e.target.value }))}
+                            placeholder="Brief description (optional)"
+                            rows={2}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Evaluation Type</Label>
+                          <Select value={editFormData.type} onValueChange={(v) => setEditFormData(d => ({ ...d, type: v }))}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="peer">Peer Evaluation</SelectItem>
+                              <SelectItem value="executive">Executive Evaluation</SelectItem>
+                              <SelectItem value="self">Self-Assessment</SelectItem>
+                              <SelectItem value="360">360-Degree Evaluation</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          {/* spacer */}
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Start Date</Label>
+                          <Input
+                            type="date"
+                            value={editFormData.start_date}
+                            onChange={(e) => setEditFormData(d => ({ ...d, start_date: e.target.value }))}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">End Date</Label>
+                          <Input
+                            type="date"
+                            value={editFormData.end_date}
+                            onChange={(e) => setEditFormData(d => ({ ...d, end_date: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex gap-2 justify-end">
+                        <Button variant="outline" size="sm" onClick={() => setIsEditingDetails(false)}>Cancel</Button>
+                        <Button size="sm" onClick={handleSaveDetails} disabled={updateFormMutation.isPending}>
+                          {updateFormMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                          Save Changes
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {questionsLoading ? (
