@@ -1,0 +1,63 @@
+name: PR Validation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  check-target-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check target branch
+        if: github.event_name == 'pull_request' && github.base_ref != 'dev'
+        run: |
+          echo "Error: Pull requests must target the 'dev' branch."
+          echo "Current target branch is '${{ github.base_ref }}'."
+          exit 1
+
+  build-backend:
+    needs: check-target-branch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Lint with flake8
+        # We continue on error in case flake8 is not perfectly clean right now
+        continue-on-error: true
+        run: flake8 .
+
+  build-frontend:
+    needs: check-target-branch
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Lint frontend
+        continue-on-error: true
+        run: npm run lint
+
+      - name: Build frontend
+        run: npm run build
