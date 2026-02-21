@@ -449,6 +449,18 @@ class MembershipViewSet(viewsets.ModelViewSet):
             is_active=True
         )
 
+    def perform_update(self, serializer):
+        """Automatically set end date when deactivating a membership"""
+        instance = serializer.save()
+        if not instance.is_active and not instance.date_end:
+            instance.date_end = timezone.now().date()
+            instance.save(update_fields=['date_end'])
+
+    def perform_destroy(self, instance):
+        instance.is_active = False
+        instance.date_end = timezone.now().date()
+        instance.save(update_fields=['is_active', 'date_end'])
+
 
 class JoinRequestViewSet(viewsets.ModelViewSet):
     """ViewSet for JoinRequest CRUD and approvals"""
