@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import { api } from "@/lib/api";
 
@@ -182,7 +183,10 @@ const Login = () => {
       </div>
 
       {/* RIGHT SIDE - LOGIN FORM */}
-      <div className="flex-1 flex items-center justify-center p-6 bg-[#293F55] lg:bg-[#F8FAFC] relative">
+      <div className="flex-1 flex items-center justify-center p-6 bg-[#293F55] lg:bg-[#F8FAFC] relative dark:bg-background">
+        <div className="absolute top-4 right-4 z-50">
+          <ThemeToggle />
+        </div>
 
         {/* Top Left Logo for Right Pane (Desktop/Tablet) */}
         <div className="hidden lg:flex absolute top-10 left-10 items-center gap-3 animate-fade-up">
@@ -190,17 +194,17 @@ const Login = () => {
           <span className="text-[#293F55] font-bold text-2xl tracking-tight">IPES</span>
         </div>
 
-        <div className="w-full max-w-[420px] bg-white p-8 md:p-10 rounded-2xl shadow-xl border border-slate-100 animate-fade-up">
+        <div className="w-full max-w-[420px] bg-white dark:bg-card p-8 md:p-10 rounded-2xl shadow-xl border border-slate-100 dark:border-border animate-fade-up">
 
           {/* Mobile Header */}
-          <div className="lg:hidden flex items-center gap-2 mb-8 justify-center text-[#293F55]">
+          <div className="lg:hidden flex items-center gap-2 mb-8 justify-center text-[#293F55] dark:text-foreground">
             <img src="/ipes-logo-colored.svg" alt="Logo" className="w-8 h-8" />
             <span className="text-xl font-bold tracking-tight">IPES Portal</span>
           </div>
 
           <div className="mb-8">
-            <h2 className="text-3xl font-bold text-[#293F55] mb-2">Sign In</h2>
-            <p className="text-slate-500 text-sm">Please enter your official credentials to continue.</p>
+            <h2 className="text-3xl font-bold text-[#293F55] dark:text-foreground mb-2">Sign In</h2>
+            <p className="text-slate-500 dark:text-muted-foreground text-sm">Please enter your official credentials to continue.</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-6">
@@ -210,7 +214,7 @@ const Login = () => {
               </div>
             )}
             <div className="space-y-2 animate-fade-up delay-100">
-              <Label htmlFor="email" className="text-[#293F55] font-semibold text-sm">
+              <Label htmlFor="email" className="text-[#293F55] dark:text-foreground font-semibold text-sm">
                 Institutional Email
               </Label>
               <Input
@@ -219,7 +223,7 @@ const Login = () => {
                 placeholder="firstname.lastname@cit.edu"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className={`h-12 bg-slate-50 border-slate-200 focus-visible:ring-[#293F55] focus-visible:ring-offset-0 focus-visible:border-[#293F55] transition-all ${fieldErrors.email ? "border-red-500 focus-visible:border-red-500" : ""}`}
+                className={`h-12 bg-slate-50 dark:bg-muted dark:border-border border-slate-200 focus-visible:ring-[#293F55] dark:focus-visible:ring-primary focus-visible:ring-offset-0 focus-visible:border-[#293F55] dark:focus-visible:border-primary transition-all ${fieldErrors.email ? "border-red-500 focus-visible:border-red-500" : ""}`}
               />
               {fieldErrors.email && (
                 <p className="text-sm text-red-500 mt-1 animate-fade-up">
@@ -230,7 +234,7 @@ const Login = () => {
 
             <div className="space-y-2 animate-fade-up delay-200">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-[#293F55] font-semibold text-sm">Password</Label>
+                <Label htmlFor="password" className="text-[#293F55] dark:text-foreground font-semibold text-sm">Password</Label>
               </div>
               <div className="relative">
                 <Input
@@ -238,12 +242,12 @@ const Login = () => {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className={`h-12 bg-slate-50 border-slate-200 focus-visible:ring-[#293F55] focus-visible:ring-offset-0 focus-visible:border-[#293F55] transition-all pr-10 ${fieldErrors.password ? "border-red-500 focus-visible:border-red-500" : ""}`}
+                  className={`h-12 bg-slate-50 dark:bg-muted dark:border-border border-slate-200 focus-visible:ring-[#293F55] dark:focus-visible:ring-primary focus-visible:ring-offset-0 focus-visible:border-[#293F55] dark:focus-visible:border-primary transition-all pr-10 ${fieldErrors.password ? "border-red-500 focus-visible:border-red-500" : ""}`}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#293F55] transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-muted-foreground hover:text-[#293F55] dark:hover:text-foreground transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -259,21 +263,21 @@ const Login = () => {
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full h-12 text-base font-bold bg-[#FCBD78] hover:bg-[#faa94f] text-[#293F55] shadow-md hover:shadow-lg transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed"
+                className="w-full h-12 text-base font-bold bg-[#FCBD78] hover:bg-[#faa94f] text-[#293F55] dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90 shadow-md hover:shadow-lg transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {loading ? "Signing in..." : "Sign In"}
               </Button>
             </div>
           </form>
 
-          <div className="mt-8 pt-6 border-t border-slate-100 text-center animate-fade-up delay-300">
-            <p className="text-xs text-slate-400 mb-4 uppercase tracking-widest">System Preview</p>
+          <div className="mt-8 pt-6 border-t border-slate-100 dark:border-border text-center animate-fade-up delay-300">
+            <p className="text-xs text-slate-400 dark:text-muted-foreground mb-4 uppercase tracking-widest">System Preview</p>
             <div className="flex gap-3 justify-center">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => navigate("/preview/officer/dashboard")}
-                className="border-slate-200 text-[#293F55] hover:bg-slate-50 hover:text-[#293F55]"
+                className="border-slate-200 dark:border-border text-[#293F55] dark:text-foreground hover:bg-slate-50 dark:hover:bg-accent hover:text-[#293F55] dark:hover:text-accent-foreground"
               >
                 Officer View
               </Button>
@@ -281,7 +285,7 @@ const Login = () => {
                 variant="outline"
                 size="sm"
                 onClick={() => navigate("/preview/admin/dashboard")}
-                className="border-slate-200 text-[#293F55] hover:bg-slate-50 hover:text-[#293F55]"
+                className="border-slate-200 dark:border-border text-[#293F55] dark:text-foreground hover:bg-slate-50 dark:hover:bg-accent hover:text-[#293F55] dark:hover:text-accent-foreground"
               >
                 Admin View
               </Button>

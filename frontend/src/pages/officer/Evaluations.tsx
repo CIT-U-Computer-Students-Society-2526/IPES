@@ -1,19 +1,33 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Clock, CheckCircle2, AlertCircle, Search, Filter, Loader2 } from "lucide-react";
+import {
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  Search,
+  Filter,
+  Loader2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { useMyPendingEvaluations, useAssignments, type EvaluationAssignment } from "@/hooks/useEvaluations";
+import {
+  useMyPendingEvaluations,
+  useAssignments,
+  type EvaluationAssignment,
+} from "@/hooks/useEvaluations";
 
 // Helper to format status
 const getStatusInfo = (status: string) => {
   switch (status.toLowerCase()) {
     case "pending":
-      return { label: "Not Started", className: "bg-yellow-100 text-yellow-800" };
+      return {
+        label: "Not Started",
+        className: "bg-yellow-100 text-yellow-800",
+      };
     case "in progress":
       return { label: "In Progress", className: "bg-blue-100 text-blue-800" };
     case "submitted":
@@ -36,11 +50,19 @@ const isUrgent = (dueDate: string) => {
 // Format date for display
 const formatDate = (dateString: string) => {
   const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 };
 
 // Evaluation card component
-const EvaluationCard = ({ evaluation }: { evaluation: EvaluationAssignment }) => {
+const EvaluationCard = ({
+  evaluation,
+}: {
+  evaluation: EvaluationAssignment;
+}) => {
   const statusInfo = getStatusInfo(evaluation.status);
   const urgent = evaluation.due_date ? isUrgent(evaluation.due_date) : false;
   const isSelfEvaluation = evaluation.evaluatee_id === evaluation.evaluator_id;
@@ -52,16 +74,15 @@ const EvaluationCard = ({ evaluation }: { evaluation: EvaluationAssignment }) =>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <h3 className="font-medium text-foreground truncate">
-                {evaluation.form_title || `Evaluation Form #${evaluation.form_id}`}
+                {evaluation.form_title ||
+                  `Evaluation Form #${evaluation.form_id}`}
               </h3>
               {urgent && (
                 <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0" />
               )}
             </div>
             <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-              <Badge className={statusInfo.className}>
-                {statusInfo.label}
-              </Badge>
+              <Badge className={statusInfo.className}>{statusInfo.label}</Badge>
               <Badge variant="outline">
                 {evaluation.form_id ? "Evaluation" : "Form"}
               </Badge>
@@ -74,7 +95,10 @@ const EvaluationCard = ({ evaluation }: { evaluation: EvaluationAssignment }) =>
             </div>
             {!isSelfEvaluation && evaluation.evaluatee_name && (
               <p className="text-sm text-muted-foreground mt-2">
-                Evaluating: <span className="text-foreground">{evaluation.evaluatee_name}</span>
+                Evaluating:{" "}
+                <span className="text-foreground">
+                  {evaluation.evaluatee_name}
+                </span>
               </p>
             )}
             {isSelfEvaluation && (
@@ -129,7 +153,8 @@ const OfficerEvaluations = () => {
   const [searchQuery, setSearchQuery] = useState("");
 
   // Fetch assignments from API
-  const { data: pendingAssignments, isLoading: pendingLoading } = useMyPendingEvaluations();
+  const { data: pendingAssignments, isLoading: pendingLoading } =
+    useMyPendingEvaluations();
   const { data: allAssignments, isLoading: allLoading } = useAssignments();
 
   // Combine and filter assignments
@@ -139,16 +164,20 @@ const OfficerEvaluations = () => {
     if (status === "pending") {
       evaluations = pendingAssignments || [];
     } else if (status === "completed") {
-      evaluations = allAssignments?.filter(a => a.status === "Submitted") || [];
+      evaluations =
+        allAssignments?.filter((a) => a.status === "Submitted") || [];
     } else {
       evaluations = allAssignments || [];
     }
 
     // Apply search filter
     if (searchQuery) {
-      evaluations = evaluations.filter(e =>
-        (e.form_title?.toLowerCase().includes(searchQuery.toLowerCase()) || false) ||
-        (e.evaluatee_name?.toLowerCase().includes(searchQuery.toLowerCase()) || false)
+      evaluations = evaluations.filter(
+        (e) =>
+          e.form_title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          false ||
+          e.evaluatee_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          false,
       );
     }
 
@@ -156,10 +185,14 @@ const OfficerEvaluations = () => {
   };
 
   const pendingCount = pendingAssignments?.length || 0;
-  const completedCount = allAssignments?.filter(a => a.status === "Submitted").length || 0;
+  const completedCount =
+    allAssignments?.filter((a) => a.status === "Submitted").length || 0;
   const totalCount = allAssignments?.length || 0;
 
-  const renderEvaluationsList = (evaluations: EvaluationAssignment[], isLoading: boolean) => (
+  const renderEvaluationsList = (
+    evaluations: EvaluationAssignment[],
+    isLoading: boolean,
+  ) => (
     <div className="space-y-3">
       {isLoading ? (
         <>
@@ -183,14 +216,16 @@ const OfficerEvaluations = () => {
     <div className="space-y-6 animate-fade-in">
       <div className="page-header">
         <h1 className="page-title">My Evaluations</h1>
-        <p className="page-description">Complete your assigned evaluation forms</p>
+        <p className="page-description">
+          Complete your assigned evaluation forms
+        </p>
       </div>
 
       {/* Search and filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input 
+          <Input
             placeholder="Search evaluations..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -217,11 +252,17 @@ const OfficerEvaluations = () => {
         </TabsList>
 
         <TabsContent value="pending" className="mt-4">
-          {renderEvaluationsList(getFilteredEvaluations("pending"), pendingLoading)}
+          {renderEvaluationsList(
+            getFilteredEvaluations("pending"),
+            pendingLoading,
+          )}
         </TabsContent>
 
         <TabsContent value="completed" className="mt-4">
-          {renderEvaluationsList(getFilteredEvaluations("completed"), allLoading)}
+          {renderEvaluationsList(
+            getFilteredEvaluations("completed"),
+            allLoading,
+          )}
         </TabsContent>
 
         <TabsContent value="all" className="mt-4">
