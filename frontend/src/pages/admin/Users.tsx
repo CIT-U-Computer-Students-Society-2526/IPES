@@ -178,6 +178,17 @@ const AdminUsers = () => {
 
     const isCurrentlyAdmin = membership.role === 'Admin';
 
+    // Prevent anyone from revoking the Head Admin's privileges (including themselves)
+    const isTargetHeadAdmin = membership.position_rank === 1;
+    if (isCurrentlyAdmin && isTargetHeadAdmin) {
+      toast({
+        title: "Action Blocked",
+        description: "The Head Administrator's admin privileges cannot be revoked by anyone, including themselves.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (isCurrentlyAdmin && !isHeadAdmin) {
       toast({
         title: "Permission Denied",
@@ -422,6 +433,8 @@ const AdminUsers = () => {
 
                     const isSelf = user.id === currentUserProfile?.id;
                     const isSelfHeadAdmin = isSelf && activeMemberships.some(m => m.role === 'Admin' && m.position_rank === 1);
+                    // The Head Admin's privileges are protected from everyone — including themselves
+                    const isTargetHeadAdmin = activeMemberships.some(m => m.role === 'Admin' && m.position_rank === 1);
 
                     return (
                       <TableRow key={user.id}>
@@ -482,11 +495,14 @@ const AdminUsers = () => {
                                 <Settings2 className="w-4 h-4 mr-2" />
                                 Manage Roles
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleToggleAdminStatus(user)}>
+                              <DropdownMenuItem
+                                onClick={() => handleToggleAdminStatus(user)}
+                                disabled={isTargetHeadAdmin}
+                              >
                                 {isAdmin ? (
                                   <>
                                     <UserMinus className="w-4 h-4 mr-2" />
-                                    <span className={!isHeadAdmin ? "opacity-50" : ""}>Revoke Admin Privileges</span>
+                                    <span>Revoke Admin Privileges</span>
                                   </>
                                 ) : (
                                   <>
