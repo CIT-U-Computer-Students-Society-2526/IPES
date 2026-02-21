@@ -16,7 +16,8 @@ import {
   Star,
   Save,
   Send,
-  Loader2
+  Loader2,
+  Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -851,7 +852,7 @@ const AdminFormBuilder = () => {
 
                   {!selectedForm?.is_published && (
                     <div className="bg-blue-50/50 text-blue-800 text-sm p-3 rounded border border-blue-100 flex items-start gap-2">
-                      <Loader2 className="w-4 h-4 mt-0.5 text-blue-500" />
+                      <Info className="w-4 h-4 mt-0.5 text-blue-500 shrink-0" />
                       <p>Remember to click <strong>Save Draft</strong> after making changes to questions.</p>
                     </div>
                   )}
