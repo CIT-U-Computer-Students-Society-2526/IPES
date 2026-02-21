@@ -949,7 +949,7 @@ const AdminOrganization = () => {
             </div>
 
             <div className="space-y-2">
-              <Label>Role</Label>
+              <Label>System Role</Label>
               <Select value={selectedApproveRole} onValueChange={setSelectedApproveRole}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select a role" />
