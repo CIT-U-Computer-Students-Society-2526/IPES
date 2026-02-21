@@ -134,6 +134,9 @@ const AdminFormBuilder = () => {
   const { data: units = [] } = useOrganizationUnits();
   const { data: positions = [] } = usePositionTypes();
 
+  // Track which rule ID is currently being deleted (for per-row loading state)
+  const [deletingRuleId, setDeletingRuleId] = useState<number | null>(null);
+
   // Rule builder state
   const [newRule, setNewRule] = useState<{
     evaluator_unit: number | null;
@@ -307,11 +310,14 @@ const AdminFormBuilder = () => {
 
   const handleDeleteRule = async (rule: AssignmentRule) => {
     if (!selectedForm) return;
+    setDeletingRuleId(rule.id);
     try {
       await deleteRuleMutation.mutateAsync({ id: rule.id, form_id: selectedForm.id });
       toast({ title: "Rule Removed" });
     } catch (e: unknown) {
       toast({ title: "Error Removing Rule", description: formatApiError(e), variant: "destructive" });
+    } finally {
+      setDeletingRuleId(null);
     }
   };
 
@@ -976,25 +982,28 @@ const AdminFormBuilder = () => {
                       variant="ghost" size="icon"
                       className="text-destructive h-8 w-8"
                       onClick={() => handleDeleteRule(rule)}
-                      disabled={deleteRuleMutation.isPending}
+                      disabled={deletingRuleId === rule.id}
                     >
-                      <Trash2 className="w-4 h-4" />
+                      {deletingRuleId === rule.id
+                        ? <Loader2 className="w-4 h-4 animate-spin" />
+                        : <Trash2 className="w-4 h-4" />}
                     </Button>
                   </div>
                 ))}
               </div>
 
-              {/* Generate Button */}
-              {formRules.length > 0 && (
+              {/* Generate Button — shown when rules exist OR while loading so it doesn't pop in late */}
+              {(formRules.length > 0 || rulesLoading) && (
                 <div className="pt-2 border-t border-border flex items-center justify-between">
                   <p className="text-sm text-muted-foreground">
-                    Applies {formRules.length} rule(s) to generate concrete person-to-person assignments.
-                    Existing assignments are never duplicated.
+                    {rulesLoading
+                      ? "Loading rules…"
+                      : `Applies ${formRules.length} rule(s) to generate concrete person-to-person assignments. Existing assignments are never duplicated.`}
                   </p>
                   <Button
                     className="gradient-hero text-primary-foreground"
                     onClick={handleGenerateAssignments}
-                    disabled={generateMutation.isPending}
+                    disabled={generateMutation.isPending || rulesLoading}
                   >
                     {generateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
                     Generate Assignments
