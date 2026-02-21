@@ -211,13 +211,23 @@ class AssignmentRuleViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'delete', 'head', 'options']  # no PUT/PATCH
 
     def get_queryset(self):
+        user = self.request.user
         qs = AssignmentRule.objects.all().select_related(
             'evaluator_unit', 'evaluator_position',
             'evaluatee_unit', 'evaluatee_position',
+            'form_id',
         )
         form_id = self.request.query_params.get('form_id')
         if form_id:
             qs = qs.filter(form_id=form_id)
+
+        # Scope to forms the user's org owns
+        from apps.organizations.models import Membership
+        user_org_ids = Membership.objects.filter(
+            user_id=user, is_active=True
+        ).values_list('unit_id__organization_id', flat=True).distinct()
+        qs = qs.filter(form_id__organization_id__in=user_org_ids)
+
         return qs
 
     @action(detail=False, methods=['post'])
