@@ -299,6 +299,17 @@ const AdminFormBuilder = () => {
   // Assignment Rule Actions
   const handleAddRule = async () => {
     if (!selectedForm) return;
+    // #4: client-side duplicate rule guard
+    const isDuplicate = formRules.some(r =>
+      r.evaluator_unit === newRule.evaluator_unit &&
+      r.evaluator_position === newRule.evaluator_position &&
+      r.evaluatee_unit === newRule.evaluatee_unit &&
+      r.evaluatee_position === newRule.evaluatee_position
+    );
+    if (isDuplicate) {
+      toast({ title: "Duplicate Rule", description: "An identical rule already exists for this form.", variant: "destructive" });
+      return;
+    }
     try {
       await createRuleMutation.mutateAsync({ form_id: selectedForm.id, ...newRule });
       setNewRule({ evaluator_unit: null, evaluator_position: null, evaluatee_unit: null, evaluatee_position: null, exclude_self: true });
