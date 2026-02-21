@@ -280,23 +280,6 @@ export const useGenerateAssignments = () => {
 };
 
 
-// Auto Assign form
-export const useAutoAssignForm = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation<{ message: string, created: number }, Error, number>({
-    mutationFn: async (id: number) => {
-      const response = await api.post(`/forms/${id}/auto_assign/`);
-      return response.json() as Promise<{ message: string, created: number }>;
-    },
-    onSuccess: (_, id) => {
-      queryClient.invalidateQueries({ queryKey: ['forms'] });
-      queryClient.invalidateQueries({ queryKey: ['forms', id] });
-      queryClient.invalidateQueries({ queryKey: ['assignments'] });
-    },
-  });
-};
-
 // ===== Question Hooks =====
 
 // Bulk create questions for a form
