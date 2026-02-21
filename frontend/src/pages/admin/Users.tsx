@@ -108,7 +108,10 @@ const AdminUsers = () => {
     const activeMembership = user.memberships?.find(m => m.organization_id === activeOrganizationId);
     const userRole = activeMembership ? activeMembership.role : "Member";
 
-    const matchesRole = roleFilter === "all" || userRole.toLowerCase() === roleFilter;
+    // When filtering by "member", show users who are NOT admin
+    const matchesRole = roleFilter === "all" ||
+      (roleFilter === "admin" && userRole.toLowerCase() === "admin") ||
+      (roleFilter === "member" && userRole.toLowerCase() !== "admin");
     return matchesSearch && matchesRole;
   }) || [];
 
@@ -116,7 +119,7 @@ const AdminUsers = () => {
   const stats = {
     total: filteredUsers.length || 0,
     admins: filteredUsers.filter((u: User) => u.memberships?.some(m => m.organization_id === activeOrganizationId && m.role === 'Admin')).length || 0,
-    officers: filteredUsers.filter((u: User) => !u.memberships?.some(m => m.organization_id === activeOrganizationId && m.role === 'Admin')).length || 0,
+    nonAdmins: filteredUsers.filter((u: User) => !u.memberships?.some(m => m.organization_id === activeOrganizationId && m.role === 'Admin')).length || 0,
     active: filteredUsers.filter((u: User) => u.is_active).length || 0,
   };
 
@@ -326,8 +329,8 @@ const AdminUsers = () => {
                   <UserCheck className="w-5 h-5 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-foreground">{stats.officers}</p>
-                  <p className="text-sm text-muted-foreground">Officers</p>
+                  <p className="text-2xl font-bold text-foreground">{stats.nonAdmins}</p>
+                  <p className="text-sm text-muted-foreground">Non-Admins</p>
                 </div>
               </div>
             </CardContent>
@@ -384,7 +387,7 @@ const AdminUsers = () => {
                 <SelectContent>
                   <SelectItem value="all">All Roles</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="officer">Officer</SelectItem>
+                  <SelectItem value="member">Non-Admin</SelectItem>
                 </SelectContent>
               </Select>
             </div>
