@@ -13,6 +13,8 @@ class EvaluationForm(models.Model):
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
     is_active = models.BooleanField(default=True)
     is_published = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
 class Question(models.Model):
     form_id = models.ForeignKey(EvaluationForm, on_delete=models.CASCADE, related_name='questions')
@@ -31,6 +33,9 @@ class EvaluationAssignment(models.Model):
     status = models.CharField(max_length=50, default='Pending')
     submitted_at = models.DateTimeField(null=True, blank=True)
     total_score = models.FloatField(null=True, blank=True)
+
+    class Meta:
+        unique_together = [('evaluator_id', 'evaluatee_id', 'form_id')]
 
 class AssignmentRule(models.Model):
     """Defines which groups should evaluate which groups for a given form."""
