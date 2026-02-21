@@ -15,7 +15,6 @@ def auto_assign_on_membership_activation(sender, instance, created, **kwargs):
 
     # Lazy import to avoid circular dependency
     from apps.evaluations.models import EvaluationForm
-    from apps.evaluations.views import _apply_rule
 
     org = instance.unit_id.organization_id
     forms = EvaluationForm.objects.filter(
