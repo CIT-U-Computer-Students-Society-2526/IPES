@@ -149,7 +149,10 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
                 text=question.text,
                 input_type=question.input_type,
                 order=question.order,
-                weight=question.weight
+                weight=question.weight,
+                is_required=question.is_required,
+                min_value=question.min_value,
+                max_value=question.max_value,
             )
         
         serializer = EvaluationFormSerializer(new_form)
