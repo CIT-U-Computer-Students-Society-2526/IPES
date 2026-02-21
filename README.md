@@ -47,9 +47,19 @@ erDiagram
         int user_id FK
         int unit_id FK
         int position_id FK
+        string role "Admin, Member"
         date date_start
         date date_end "Nullable (Null means currently active)"
         boolean is_active
+    }
+    
+    JOIN_REQUEST {
+        int id PK
+        int user_id FK
+        int organization_id FK
+        string status "Pending, Approved, Rejected"
+        datetime created_at
+        datetime updated_at
     }
 
     %% LUT for ORG_UNIT
@@ -75,6 +85,7 @@ erDiagram
     ORGANIZATION ||--|{ UNIT_TYPE : "defines"
     ORGANIZATION ||--|{ POSITION_TYPE : "defines"
     ORGANIZATION ||--|{ ORGANIZATION_UNIT : "consists of"
+    ORGANIZATION ||--o{ JOIN_REQUEST : "receives"
 
     UNIT_TYPE ||--|{ ORGANIZATION_UNIT : "defines type"
     POSITION_TYPE ||--|{ MEMBERSHIP : "defines role"
@@ -90,7 +101,6 @@ erDiagram
         string first_name
         string last_name
         image display_picture "link to a CDN"
-        string role "Admin, Officer"
         boolean is_active
     }
     ACCOMPLISHMENT {
@@ -106,6 +116,7 @@ erDiagram
     }
 
     USER ||--|{ MEMBERSHIP : "holds"
+    USER ||--o{ JOIN_REQUEST : "submits"
     USER ||--o{ ACCOMPLISHMENT : "logs"
     USER ||--o{ ACCOMPLISHMENT : "verifies (Admin)"
 

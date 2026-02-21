@@ -14,7 +14,6 @@ interface LoginResponse {
     username: string;
     first_name: string;
     last_name: string;
-    role: string;
     is_active: boolean;
   };
   message: string;
@@ -55,13 +54,8 @@ const Login = () => {
       // Store user info in localStorage
       localStorage.setItem("user", JSON.stringify(data.user));
 
-      // Redirect based on role
-      const role = data.user.role?.toLowerCase();
-      if (role === "admin" || role === "super_admin") {
-        navigate("/admin/dashboard");
-      } else {
-        navigate("/officer/dashboard");
-      }
+      // Redirect to Organization Selector Hub
+      navigate("/select-organization");
     } catch (err: any) {
       console.error('Login error:', err);
       let errorMsg = "";
@@ -266,16 +260,28 @@ const Login = () => {
             </div>
           </form>
 
+          <div className="mt-6 text-center animate-fade-up delay-300">
+            <p className="text-sm text-slate-500">
+              Don't have an account?{' '}
+              <button
+                onClick={() => navigate("/register")}
+                className="font-semibold text-[#FCBD78] hover:text-[#faa94f] transition-colors"
+              >
+                Sign Up
+              </button>
+            </p>
+          </div>
+
           <div className="mt-8 pt-6 border-t border-slate-100 text-center animate-fade-up delay-300">
             <p className="text-xs text-slate-400 mb-4 uppercase tracking-widest">System Preview</p>
             <div className="flex gap-3 justify-center">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => navigate("/preview/officer/dashboard")}
+                onClick={() => navigate("/preview/member/dashboard")}
                 className="border-slate-200 text-[#293F55] hover:bg-slate-50 hover:text-[#293F55]"
               >
-                Officer View
+                Member View
               </Button>
               <Button
                 variant="outline"

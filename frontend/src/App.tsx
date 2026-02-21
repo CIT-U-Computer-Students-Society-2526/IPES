@@ -2,10 +2,13 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { OrganizationProvider } from "./contexts/OrganizationContext";
 
 // Pages
 import Index from "./pages/Index";
 import Login from "./pages/Login";
+import Register from "./pages/Register";
+import SelectOrganization from "./pages/SelectOrganization";
 import NotFound from "./pages/NotFound";
 
 // Officer pages
@@ -54,58 +57,62 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/login" element={<Login />} />
+      <OrganizationProvider>
+        <Toaster />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/select-organization" element={<SelectOrganization />} />
 
-          {/* System Preview routes (No Auth) */}
-          <Route path="/preview/officer" element={<OfficerPreviewLayout />}>
-            <Route path="dashboard" element={<OfficerDashboardPreview />} />
-            <Route path="evaluations" element={<OfficerEvaluationsPreview />} />
-            <Route path="results" element={<OfficerResultsPreview />} />
-            <Route path="accomplishments" element={<OfficerAccomplishmentsPreview />} />
-            <Route path="profile" element={<OfficerProfilePreview />} />
-          </Route>
-          <Route path="/preview/admin" element={<AdminPreviewLayout />}>
-            <Route path="dashboard" element={<AdminDashboardPreview />} />
-            <Route path="organization" element={<AdminOrganizationPreview />} />
-            <Route path="forms" element={<AdminFormBuilderPreview />} />
-            <Route path="assignments" element={<AdminAssignmentsPreview />} />
-            <Route path="analytics" element={<AdminAnalyticsPreview />} />
-            <Route path="accomplishments" element={<AdminAccomplishmentsPreview />} />
-            <Route path="users" element={<AdminUsersPreview />} />
-            <Route path="audit-log" element={<AdminAuditLogPreview />} />
-            <Route path="settings" element={<AdminSettingsPreview />} />
-          </Route>
+            {/* System Preview routes (No Auth) */}
+            <Route path="/preview/member" element={<OfficerPreviewLayout />}>
+              <Route path="dashboard" element={<OfficerDashboardPreview />} />
+              <Route path="evaluations" element={<OfficerEvaluationsPreview />} />
+              <Route path="results" element={<OfficerResultsPreview />} />
+              <Route path="accomplishments" element={<OfficerAccomplishmentsPreview />} />
+              <Route path="profile" element={<OfficerProfilePreview />} />
+            </Route>
+            <Route path="/preview/admin" element={<AdminPreviewLayout />}>
+              <Route path="dashboard" element={<AdminDashboardPreview />} />
+              <Route path="organization" element={<AdminOrganizationPreview />} />
+              <Route path="forms" element={<AdminFormBuilderPreview />} />
+              <Route path="assignments" element={<AdminAssignmentsPreview />} />
+              <Route path="analytics" element={<AdminAnalyticsPreview />} />
+              <Route path="accomplishments" element={<AdminAccomplishmentsPreview />} />
+              <Route path="users" element={<AdminUsersPreview />} />
+              <Route path="audit-log" element={<AdminAuditLogPreview />} />
+              <Route path="settings" element={<AdminSettingsPreview />} />
+            </Route>
 
-          {/* Officer routes */}
-          <Route path="/officer" element={<OfficerLayout />}>
-            <Route path="dashboard" element={<OfficerDashboard />} />
-            <Route path="evaluations" element={<OfficerEvaluations />} />
-            <Route path="evaluations/:id" element={<EvaluationForm />} />
-            <Route path="results" element={<OfficerResults />} />
-            <Route path="accomplishments" element={<OfficerAccomplishments />} />
-            <Route path="profile" element={<OfficerProfile />} />
-          </Route>
+            {/* Member routes */}
+            <Route path="/member" element={<OfficerLayout />}>
+              <Route path="dashboard" element={<OfficerDashboard />} />
+              <Route path="evaluations" element={<OfficerEvaluations />} />
+              <Route path="evaluations/:id" element={<EvaluationForm />} />
+              <Route path="results" element={<OfficerResults />} />
+              <Route path="accomplishments" element={<OfficerAccomplishments />} />
+              <Route path="profile" element={<OfficerProfile />} />
+            </Route>
 
-          {/* Admin routes */}
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route path="dashboard" element={<AdminDashboard />} />
-            <Route path="organization" element={<AdminOrganization />} />
-            <Route path="forms" element={<AdminFormBuilder />} />
-            <Route path="assignments" element={<AdminAssignments />} />
-            <Route path="analytics" element={<AdminAnalytics />} />
-            <Route path="accomplishments" element={<AdminAccomplishments />} />
-            <Route path="users" element={<AdminUsers />} />
-            <Route path="audit-log" element={<AdminAuditLog />} />
-            <Route path="settings" element={<AdminSettings />} />
-          </Route>
+            {/* Admin routes */}
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route path="dashboard" element={<AdminDashboard />} />
+              <Route path="organization" element={<AdminOrganization />} />
+              <Route path="forms" element={<AdminFormBuilder />} />
+              <Route path="assignments" element={<AdminAssignments />} />
+              <Route path="analytics" element={<AdminAnalytics />} />
+              <Route path="accomplishments" element={<AdminAccomplishments />} />
+              <Route path="users" element={<AdminUsers />} />
+              <Route path="audit-log" element={<AdminAuditLog />} />
+              <Route path="settings" element={<AdminSettings />} />
+            </Route>
 
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </OrganizationProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

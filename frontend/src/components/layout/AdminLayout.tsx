@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation, Outlet, Navigate } from "react-router-dom";
 import { useCurrentUser } from "@/hooks/useUsers";
+import { useOrganizationState } from "@/contexts/OrganizationContext";
 import {
   LayoutDashboard,
   Users,
@@ -37,6 +38,7 @@ const AdminLayout = () => {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { data: user, isLoading, isError } = useCurrentUser();
+  const { activeOrganizationId } = useOrganizationState();
 
   if (isLoading) {
     return (
@@ -46,8 +48,19 @@ const AdminLayout = () => {
     );
   }
 
-  if (isError || !user || user.role !== 'Admin') {
+  // Validate User Context
+  if (isError || !user || !activeOrganizationId) {
     return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  // Find their membership in the currently active organization
+  const activeMembership = user.memberships?.find(
+    (m) => m.organization_id === activeOrganizationId
+  );
+
+  // Deny access if they don't have Admin permissions within THIS specific org
+  if (!activeMembership || activeMembership.role !== 'Admin') {
+    return <Navigate to="/select-organization" replace />;
   }
 
   const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email;

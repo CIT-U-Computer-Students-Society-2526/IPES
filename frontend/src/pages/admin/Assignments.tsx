@@ -1,8 +1,8 @@
-import { useState } from "react";
-import { 
-  ClipboardList, 
-  Plus, 
-  Search, 
+import { useState, useMemo } from "react";
+import {
+  ClipboardList,
+  Plus,
+  Search,
   Filter,
   MoreHorizontal,
   Edit,
@@ -12,13 +12,15 @@ import {
   Calendar,
   CheckCircle2,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Zap
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { useToast } from "@/components/ui/use-toast";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,66 +51,27 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-const assignments = [
-  { 
-    id: 1, 
-    name: "Mid-Year Peer Evaluation",
-    form: "Peer Evaluation Form",
-    type: "Peer",
-    evaluators: 48,
-    completed: 35,
-    dueDate: "2024-01-20",
-    status: "Active"
-  },
-  { 
-    id: 2, 
-    name: "Executive Committee Review",
-    form: "Executive Evaluation Form",
-    type: "Executive",
-    evaluators: 12,
-    completed: 8,
-    dueDate: "2024-01-25",
-    status: "Active"
-  },
-  { 
-    id: 3, 
-    name: "Self-Assessment Q1",
-    form: "Self-Assessment Form",
-    type: "Self",
-    evaluators: 48,
-    completed: 48,
-    dueDate: "2024-01-10",
-    status: "Completed"
-  },
-  { 
-    id: 4, 
-    name: "Cross-Committee Evaluation",
-    form: "Committee Cross-Evaluation",
-    type: "Cross",
-    evaluators: 30,
-    completed: 0,
-    dueDate: "2024-02-01",
-    status: "Scheduled"
-  },
-];
-
-const evaluatorDetails = [
-  { id: 1, name: "Maria Santos", unit: "Executive", target: "Juan Dela Cruz", status: "Completed", submittedAt: "2024-01-12" },
-  { id: 2, name: "Carlos Garcia", unit: "Finance", target: "Ana Reyes", status: "Completed", submittedAt: "2024-01-13" },
-  { id: 3, name: "Rosa Mendoza", unit: "External", target: "Pedro Lim", status: "In Progress", submittedAt: null },
-  { id: 4, name: "Luis Tan", unit: "Sports", target: "Elena Cruz", status: "Not Started", submittedAt: null },
-  { id: 5, name: "Ana Reyes", unit: "Academics", target: "Carlos Garcia", status: "Completed", submittedAt: "2024-01-14" },
-];
+import { useForms, useAssignments, useAutoAssignForm, type EvaluationForm } from "@/hooks/useEvaluations";
 
 const AdminAssignments = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedAssignment, setSelectedAssignment] = useState<typeof assignments[0] | null>(null);
+  const [selectedForm, setSelectedForm] = useState<EvaluationForm | null>(null);
+  const { toast } = useToast();
+
+  // API Hooks
+  // We use the empty params to fetch all forms. If we want only active ones we could pass {is_active: true}
+  const { data: forms = [], isLoading: formsLoading } = useForms();
+  // Fetch all assignments across the org to aggregate stats
+  const { data: allAssignments = [], isLoading: assignmentsLoading } = useAssignments();
+
+  const autoAssignMutation = useAutoAssignForm();
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "Active": return "bg-green-100 text-green-700";
       case "Completed": return "bg-blue-100 text-blue-700";
       case "Scheduled": return "bg-yellow-100 text-yellow-700";
+      case "Draft": return "bg-gray-100 text-gray-700";
       default: return "bg-muted text-muted-foreground";
     }
   };
@@ -121,12 +84,56 @@ const AdminAssignments = () => {
     }
   };
 
-  const filteredAssignments = assignments.filter(a =>
-    a.name.toLowerCase().includes(searchQuery.toLowerCase())
+  // Compile active forms and their mapped assignments
+  const enrichedForms = useMemo(() => {
+    return forms.map(form => {
+      const formAssignments = allAssignments.filter(a => a.form_id === form.id);
+      const completedCount = formAssignments.filter(a => a.status === 'Completed').length;
+
+      let status = "Draft";
+      if (form.is_active) status = "Active";
+      if (form.is_published) status = "Completed";
+
+      return {
+        ...form,
+        displayStatus: status,
+        evaluatorsCount: formAssignments.length,
+        completedCount: completedCount,
+      };
+    });
+  }, [forms, allAssignments]);
+
+  const filteredForms = enrichedForms.filter(f =>
+    f.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const activeCount = enrichedForms.filter(f => f.is_active && !f.is_published).length;
+  const totalEvaluatorsCount = allAssignments.length;
+
+  const handleAutoAssign = async (formId: number) => {
+    try {
+      const res = await autoAssignMutation.mutateAsync(formId);
+      toast({
+        title: "Auto-Assigned Successfully",
+        description: res.message
+      });
+    } catch (e: any) {
+      toast({
+        title: "Failed to Auto-Assign",
+        description: e.message || "An error occurred during mapping.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const selectedFormAssignments = allAssignments.filter(a => a.form_id === selectedForm?.id);
+
+  if (formsLoading || assignmentsLoading) {
+    return <div className="p-12 text-center text-muted-foreground animate-pulse">Loading administrative dashboard...</div>;
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -137,7 +144,7 @@ const AdminAssignments = () => {
           <DialogTrigger asChild>
             <Button className="gradient-hero text-primary-foreground">
               <Plus className="w-4 h-4 mr-2" />
-              Create Assignment
+              Create Assignment Matrix
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg">
@@ -146,25 +153,20 @@ const AdminAssignments = () => {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label>Assignment Name</Label>
-                <Input placeholder="e.g., Q1 Peer Evaluation" />
-              </div>
-              <div className="space-y-2">
-                <Label>Evaluation Form</Label>
+                <Label>Evaluation Form Template</Label>
                 <Select>
                   <SelectTrigger>
                     <SelectValue placeholder="Select form" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="peer">Peer Evaluation Form</SelectItem>
-                    <SelectItem value="exec">Executive Evaluation Form</SelectItem>
-                    <SelectItem value="self">Self-Assessment Form</SelectItem>
-                    <SelectItem value="cross">Cross-Committee Evaluation</SelectItem>
+                    {forms.map(f => (
+                      <SelectItem key={f.id} value={String(f.id)}>{f.title}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Assignment Type</Label>
+                <Label>Assignment Rule</Label>
                 <Select>
                   <SelectTrigger>
                     <SelectValue placeholder="Select type" />
@@ -178,24 +180,10 @@ const AdminAssignments = () => {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Due Date</Label>
+                <Label>Due Date Override (Optional)</Label>
                 <Input type="date" />
               </div>
-              <div className="space-y-2">
-                <Label>Assign To</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select target" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Officers</SelectItem>
-                    <SelectItem value="exec">Executive Committee</SelectItem>
-                    <SelectItem value="legislative">Legislative Council</SelectItem>
-                    <SelectItem value="committees">All Committees</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button className="w-full">Create Assignment</Button>
+              <Button className="w-full">Create Matrix Manually</Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -210,8 +198,8 @@ const AdminAssignments = () => {
                 <ClipboardList className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-foreground">{assignments.length}</p>
-                <p className="text-sm text-muted-foreground">Total Assignments</p>
+                <p className="text-2xl font-bold text-foreground">{forms.length}</p>
+                <p className="text-sm text-muted-foreground">Total Form Cycles</p>
               </div>
             </div>
           </CardContent>
@@ -223,8 +211,8 @@ const AdminAssignments = () => {
                 <CheckCircle2 className="w-5 h-5 text-green-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-foreground">2</p>
-                <p className="text-sm text-muted-foreground">Active</p>
+                <p className="text-2xl font-bold text-foreground">{activeCount}</p>
+                <p className="text-sm text-muted-foreground">Active Cycles</p>
               </div>
             </div>
           </CardContent>
@@ -236,8 +224,8 @@ const AdminAssignments = () => {
                 <Users className="w-5 h-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-foreground">138</p>
-                <p className="text-sm text-muted-foreground">Total Evaluators</p>
+                <p className="text-2xl font-bold text-foreground">{totalEvaluatorsCount}</p>
+                <p className="text-sm text-muted-foreground">Total Matrices</p>
               </div>
             </div>
           </CardContent>
@@ -249,7 +237,7 @@ const AdminAssignments = () => {
                 <Calendar className="w-5 h-5 text-yellow-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-foreground">1</p>
+                <p className="text-2xl font-bold text-foreground">0</p>
                 <p className="text-sm text-muted-foreground">Scheduled</p>
               </div>
             </div>
@@ -263,8 +251,8 @@ const AdminAssignments = () => {
           <div className="flex items-center gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input 
-                placeholder="Search assignments..." 
+              <Input
+                placeholder="Search forms..."
                 className="pl-10"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -276,20 +264,20 @@ const AdminAssignments = () => {
           </div>
 
           <div className="space-y-3">
-            {filteredAssignments.map((assignment) => (
-              <Card 
-                key={assignment.id}
-                className={`cursor-pointer transition-all hover:shadow-md ${selectedAssignment?.id === assignment.id ? 'ring-2 ring-primary' : ''}`}
-                onClick={() => setSelectedAssignment(assignment)}
+            {filteredForms.map((form) => (
+              <Card
+                key={form.id}
+                className={`cursor-pointer transition-all hover:shadow-md ${selectedForm?.id === form.id ? 'ring-2 ring-primary' : ''}`}
+                onClick={() => setSelectedForm(form)}
               >
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between mb-3">
                     <div>
-                      <h3 className="font-medium text-foreground">{assignment.name}</h3>
-                      <p className="text-sm text-muted-foreground">{assignment.form}</p>
+                      <h3 className="font-medium text-foreground">{form.title}</h3>
+                      <p className="text-sm text-muted-foreground">{form.type.toUpperCase()} EVALUATION</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge className={getStatusColor(assignment.status)}>{assignment.status}</Badge>
+                      <Badge className={getStatusColor(form.displayStatus)}>{form.displayStatus}</Badge>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
@@ -297,13 +285,13 @@ const AdminAssignments = () => {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <Edit className="w-4 h-4 mr-2" />
-                            Edit
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAutoAssign(form.id); }}>
+                            <Zap className="w-4 h-4 mr-2" />
+                            Auto-Assign Matrix
                           </DropdownMenuItem>
                           <DropdownMenuItem>
-                            <Send className="w-4 h-4 mr-2" />
-                            Send Reminders
+                            <Edit className="w-4 h-4 mr-2" />
+                            Edit Settings
                           </DropdownMenuItem>
                           <DropdownMenuItem className="text-destructive">
                             <Trash2 className="w-4 h-4 mr-2" />
@@ -316,71 +304,109 @@ const AdminAssignments = () => {
                   <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
                     <span className="flex items-center gap-1">
                       <Users className="w-4 h-4" />
-                      {assignment.evaluators} evaluators
+                      {form.evaluatorsCount} evaluators paired
                     </span>
                     <span className="flex items-center gap-1">
                       <Calendar className="w-4 h-4" />
-                      Due {assignment.dueDate}
+                      Due {form.end_date ? new Date(form.end_date).toLocaleDateString() : 'N/A'}
                     </span>
                   </div>
                   <div className="space-y-1">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">Completion</span>
-                      <span className="font-medium">{assignment.completed}/{assignment.evaluators}</span>
+                      <span className="font-medium">{form.completedCount}/{form.evaluatorsCount || 0}</span>
                     </div>
-                    <Progress value={(assignment.completed / assignment.evaluators) * 100} className="h-2" />
+                    <Progress value={form.evaluatorsCount ? (form.completedCount / form.evaluatorsCount) * 100 : 0} className="h-2" />
                   </div>
+
+                  {/* Inline Auto Assign Hint */}
+                  {form.evaluatorsCount === 0 && (
+                    <div className="mt-4 flex items-center justify-between border-t border-border/50 pt-3">
+                      <span className="text-sm text-muted-foreground flex items-center">
+                        <AlertCircle className="w-4 h-4 mr-2 text-yellow-500" />
+                        No evaluators assigned yet.
+                      </span>
+                      <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); handleAutoAssign(form.id); }} disabled={autoAssignMutation.isPending}>
+                        <Zap className="w-4 h-4 mr-2 text-primary" />
+                        Auto-Assign Now
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))}
+
+            {filteredForms.length === 0 && (
+              <div className="text-center py-12 text-muted-foreground border rounded-lg border-dashed">
+                No evaluation cycles found.
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Assignment Details */}
+        {/* Assignment Details Panel */}
         <div>
-          {selectedAssignment ? (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Evaluator Status</CardTitle>
+          {selectedForm ? (
+            <Card className="sticky top-6 lg:max-h-[calc(100vh-120px)] flex flex-col overflow-hidden">
+              <CardHeader className="flex-shrink-0 border-b pb-4">
+                <CardTitle className="text-lg">Evaluator Matrix</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Viewing pairings for <strong>{selectedForm.title}</strong>
+                </p>
               </CardHeader>
-              <CardContent>
+              <div className="flex-1 overflow-auto">
                 <Table>
-                  <TableHeader>
+                  <TableHeader className="sticky top-0 bg-card z-10 shadow-sm">
                     <TableRow>
-                      <TableHead>Evaluator</TableHead>
+                      <TableHead>Evaluator / Evaluatee</TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {evaluatorDetails.map((evaluator) => (
-                      <TableRow key={evaluator.id}>
+                    {selectedFormAssignments.map((assignment) => (
+                      <TableRow key={assignment.id}>
                         <TableCell>
                           <div>
-                            <p className="font-medium text-foreground">{evaluator.name}</p>
-                            <p className="text-xs text-muted-foreground">→ {evaluator.target}</p>
+                            <p className="font-medium text-foreground text-sm">
+                              {assignment.evaluator_email}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              → {assignment.evaluatee_email}
+                            </p>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2">
-                            {getEvaluatorStatusIcon(evaluator.status)}
-                            <span className="text-sm">{evaluator.status}</span>
+                          <div className="flex items-center gap-1.5 whitespace-nowrap">
+                            {getEvaluatorStatusIcon(assignment.status)}
+                            <span className="text-xs font-medium">{assignment.status}</span>
                           </div>
                         </TableCell>
                       </TableRow>
                     ))}
+                    {selectedFormAssignments.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={2} className="text-center py-8 text-muted-foreground">
+                          No matrix generated for this form.
+                        </TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
-                <Button variant="outline" className="w-full mt-4">
-                  <Send className="w-4 h-4 mr-2" />
-                  Send Reminder to Pending
-                </Button>
-              </CardContent>
+              </div>
+              {selectedFormAssignments.length > 0 && (
+                <div className="p-4 border-t bg-muted/20 flex-shrink-0">
+                  <Button variant="outline" className="w-full">
+                    <Send className="w-4 h-4 mr-2" />
+                    Send Reminder to Pending
+                  </Button>
+                </div>
+              )}
             </Card>
           ) : (
-            <Card>
+            <Card className="sticky top-6">
               <CardContent className="p-8 text-center">
-                <ClipboardList className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
-                <p className="text-muted-foreground">Select an assignment to view details</p>
+                <ClipboardList className="w-12 h-12 mx-auto text-muted-foreground mb-3 opacity-20" />
+                <p className="text-muted-foreground">Select a form cycle to view its detailed assignment matrix</p>
               </CardContent>
             </Card>
           )}

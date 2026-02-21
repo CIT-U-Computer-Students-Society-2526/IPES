@@ -16,8 +16,10 @@ const getStatusInfo = (status: string) => {
       return { label: "Not Started", className: "bg-yellow-100 text-yellow-800" };
     case "in progress":
       return { label: "In Progress", className: "bg-blue-100 text-blue-800" };
-    case "submitted":
+    case "completed":
       return { label: "Completed", className: "bg-green-100 text-green-800" };
+    case "submitted":
+      return { label: "Submitted", className: "bg-green-100 text-green-800" };
     case "reviewed":
       return { label: "Reviewed", className: "bg-purple-100 text-purple-800" };
     default:
@@ -72,9 +74,9 @@ const EvaluationCard = ({ evaluation }: { evaluation: EvaluationAssignment }) =>
                 </span>
               )}
             </div>
-            {!isSelfEvaluation && evaluation.evaluatee_name && (
+            {(!isSelfEvaluation && (evaluation.evaluatee_name || evaluation.evaluatee_email)) && (
               <p className="text-sm text-muted-foreground mt-2">
-                Evaluating: <span className="text-foreground">{evaluation.evaluatee_name}</span>
+                Evaluating: <span className="text-foreground">{evaluation.evaluatee_name || evaluation.evaluatee_email}</span>
               </p>
             )}
             {isSelfEvaluation && (
@@ -84,7 +86,7 @@ const EvaluationCard = ({ evaluation }: { evaluation: EvaluationAssignment }) =>
             )}
           </div>
           <div className="flex items-center gap-2">
-            {evaluation.status === "Submitted" ? (
+            {evaluation.status === "Completed" ? (
               <Button variant="outline" size="sm" disabled>
                 <CheckCircle2 className="w-4 h-4 mr-1" />
                 Submitted
@@ -139,7 +141,7 @@ const OfficerEvaluations = () => {
     if (status === "pending") {
       evaluations = pendingAssignments || [];
     } else if (status === "completed") {
-      evaluations = allAssignments?.filter(a => a.status === "Submitted") || [];
+      evaluations = allAssignments?.filter(a => a.status === "Completed") || [];
     } else {
       evaluations = allAssignments || [];
     }
@@ -148,7 +150,8 @@ const OfficerEvaluations = () => {
     if (searchQuery) {
       evaluations = evaluations.filter(e =>
         (e.form_title?.toLowerCase().includes(searchQuery.toLowerCase()) || false) ||
-        (e.evaluatee_name?.toLowerCase().includes(searchQuery.toLowerCase()) || false)
+        (e.evaluatee_name?.toLowerCase().includes(searchQuery.toLowerCase()) || false) ||
+        (e.evaluatee_email?.toLowerCase().includes(searchQuery.toLowerCase()) || false)
       );
     }
 
@@ -156,7 +159,7 @@ const OfficerEvaluations = () => {
   };
 
   const pendingCount = pendingAssignments?.length || 0;
-  const completedCount = allAssignments?.filter(a => a.status === "Submitted").length || 0;
+  const completedCount = allAssignments?.filter(a => a.status === "Completed").length || 0;
   const totalCount = allAssignments?.length || 0;
 
   const renderEvaluationsList = (evaluations: EvaluationAssignment[], isLoading: boolean) => (
@@ -190,7 +193,7 @@ const OfficerEvaluations = () => {
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input 
+          <Input
             placeholder="Search evaluations..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}

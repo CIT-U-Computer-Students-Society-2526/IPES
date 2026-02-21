@@ -60,6 +60,9 @@ class AuditActions:
     ORG_CREATED = 'organization.created'
     ORG_UPDATED = 'organization.updated'
     ORG_DEACTIVATED = 'organization.deactivated'
+    ORG_JOIN_REQUESTED = 'organization.join_requested'
+    ORG_JOIN_APPROVED = 'organization.join_approved'
+    ORG_JOIN_REJECTED = 'organization.join_rejected'
     
     # Evaluation form actions
     FORM_CREATED = 'evaluation.form_created'
