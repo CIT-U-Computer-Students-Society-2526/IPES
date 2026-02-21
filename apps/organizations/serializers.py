@@ -59,10 +59,10 @@ class MembershipSerializer(serializers.ModelSerializer):
         model = Membership
         fields = [
             'id', 'user_id', 'user_email', 'unit_id', 'unit_name',
-            'position_id', 'position_name', 'date_start', 
+            'position_id', 'position_name', 'role', 'date_start', 
             'date_end', 'is_active'
         ]
-        read_only_fields = ['id']
+        read_only_fields = ['id', 'date_start', 'date_end', 'user_email', 'unit_name', 'position_name']
 
 class JoinRequestSerializer(serializers.ModelSerializer):
     """Serializer for JoinRequest model"""
