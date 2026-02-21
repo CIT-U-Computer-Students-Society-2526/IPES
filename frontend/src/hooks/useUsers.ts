@@ -6,6 +6,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { useOrganizationState } from '@/contexts/OrganizationContext';
 
 // User type definition
 export interface Membership {
@@ -129,6 +130,21 @@ export const useCurrentUser = () => {
       const response = await api.get('/auth/me/');
       return response.json() as Promise<User>;
     },
+  });
+};
+
+// Get current user's membership for active organization
+export const useCurrentMembership = () => {
+  const { data: currentUser } = useCurrentUser();
+  const { activeOrganizationId } = useOrganizationState();
+
+  return useQuery({
+    queryKey: ['users', 'current', 'membership', activeOrganizationId],
+    queryFn: () => {
+      if (!currentUser?.memberships || !activeOrganizationId) return null;
+      return currentUser.memberships.find(m => m.organization_id === activeOrganizationId) || null;
+    },
+    enabled: !!currentUser && !!activeOrganizationId,
   });
 };
 
