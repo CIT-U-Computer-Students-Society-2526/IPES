@@ -10,12 +10,13 @@ from apps.audit.utils import log_action, AuditActions
 
 User = get_user_model()
 
-from .models import EvaluationForm, Question, EvaluationAssignment, Response
+from .models import EvaluationForm, Question, EvaluationAssignment, AssignmentRule, Response
 from .serializers import (
     EvaluationFormSerializer,
     EvaluationFormCreateSerializer,
     QuestionSerializer,
     QuestionCreateSerializer,
+    AssignmentRuleSerializer,
     EvaluationAssignmentSerializer,
     ResponseSerializer,
     EvaluationSubmitSerializer
@@ -164,40 +165,98 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
         
         return DRFResponse(serializer.data, status=status.HTTP_201_CREATED)
 
-    @action(detail=True, methods=['post'])
-    def auto_assign(self, request, pk=None):
-        """Automatically assign evaluation forms to all applicable users in the org."""
-        form = self.get_object()
 
-        # Generate a matrix assigning everyone in the organization to evaluate everyone else
-        org = form.organization_id
-        if not org:
+def _apply_rule(rule, form):
+    """Apply a single AssignmentRule, creating missing EvaluationAssignments.
+    Returns the count of newly created assignments."""
+    from apps.organizations.models import Membership
+
+    def memberships_for(unit, position):
+        qs = Membership.objects.filter(
+            unit_id__organization_id=form.organization_id,
+            is_active=True,
+        ).select_related('user_id')
+        if unit:
+            qs = qs.filter(unit_id=unit)
+        if position:
+            qs = qs.filter(position_id=position)
+        return qs
+
+    evaluators = memberships_for(rule.evaluator_unit, rule.evaluator_position)
+    evaluatees = memberships_for(rule.evaluatee_unit, rule.evaluatee_position)
+
+    created_count = 0
+    for ev_membership in evaluators:
+        for ee_membership in evaluatees:
+            ev_user = ev_membership.user_id
+            ee_user = ee_membership.user_id
+            if rule.exclude_self and ev_user == ee_user:
+                continue
+            _, created = EvaluationAssignment.objects.get_or_create(
+                evaluator_id=ev_user,
+                evaluatee_id=ee_user,
+                form_id=form,
+                defaults={'status': 'Pending'}
+            )
+            if created:
+                created_count += 1
+    return created_count
+
+
+class AssignmentRuleViewSet(viewsets.ModelViewSet):
+    """ViewSet for AssignmentRule CRUD and assignment generation."""
+    queryset = AssignmentRule.objects.all()
+    serializer_class = AssignmentRuleSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    http_method_names = ['get', 'post', 'delete', 'head', 'options']  # no PUT/PATCH
+
+    def get_queryset(self):
+        qs = AssignmentRule.objects.all().select_related(
+            'evaluator_unit', 'evaluator_position',
+            'evaluatee_unit', 'evaluatee_position',
+        )
+        form_id = self.request.query_params.get('form_id')
+        if form_id:
+            qs = qs.filter(form_id=form_id)
+        return qs
+
+    @action(detail=False, methods=['post'])
+    def generate(self, request):
+        """Apply all rules for a form and generate EvaluationAssignment rows."""
+        form_id = request.data.get('form_id')
+        if not form_id:
             return DRFResponse(
-                {'error': 'Form must belong to an Organization.'},
+                {'error': 'form_id is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        try:
+            form = EvaluationForm.objects.get(id=form_id)
+        except EvaluationForm.DoesNotExist:
+            return DRFResponse({'error': 'Form not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        rules = form.assignment_rules.all()
+        if not rules.exists():
+            return DRFResponse(
+                {'error': 'No assignment rules defined for this form.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Retrieve all active users in that organization
-        users = User.objects.filter(organization=org, is_active=True)
-        assignments_created = 0
+        total_created = 0
+        for rule in rules:
+            total_created += _apply_rule(rule, form)
 
-        for evaluator in users:
-            for evaluatee in users:
-                if evaluator != evaluatee:
-                    # Prevent duplicates if they already exist
-                    assignment, created = EvaluationAssignment.objects.get_or_create(
-                        evaluator_id=evaluator,
-                        evaluatee_id=evaluatee,
-                        form_id=form,
-                        defaults={'status': 'Pending'}
-                    )
-                    if created:
-                        assignments_created += 1
+        log_action(
+            request.user,
+            AuditActions.FORM_PUBLISHED,  # closest existing action; replace with a dedicated one later
+            request,
+            form_id=str(form.id),
+            assignments_created=str(total_created)
+        )
 
-        return DRFResponse({
-            'message': f'Auto-assigned {assignments_created} evaluations.',
-            'created': assignments_created
-        }, status=status.HTTP_201_CREATED)
+        return DRFResponse(
+            {'message': f'{total_created} assignment(s) created.', 'created': total_created},
+            status=status.HTTP_201_CREATED
+        )
 
 
 class QuestionViewSet(viewsets.ModelViewSet):
