@@ -1,0 +1,21 @@
+name: Enforce Dev Branch Target
+
+on:
+  pull_request_target:
+    types: [opened, edited]
+
+jobs:
+  check-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce target branch rules
+        uses: Vankka/pr-target-branch-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          target: "main" # Triggers if someone tries to PR directly to main
+          comment: |
+            ⚠️ **Target Branch Error**
+            Your PR is currently targeting the `main` branch. 
+            All new features and fixes should target the `dev` branch instead. 
+            Please update the base branch of this PR to `dev` to proceed.
