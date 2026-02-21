@@ -50,8 +50,13 @@ import { useToast } from "@/components/ui/use-toast";
 import {
   useForms, useCreateForm, useDeleteForm, useDuplicateForm, usePublishForm,
   useFormQuestions, useCreateQuestions, useUpdateQuestion, useDeleteQuestion,
-  type EvaluationForm, type Question
+  useFormRules, useCreateRule, useDeleteRule, useGenerateAssignments,
+  type EvaluationForm, type Question, type AssignmentRule
 } from "@/hooks/useEvaluations";
+import {
+  useOrganizationUnits, usePositionTypes,
+  type OrganizationUnit, type PositionType
+} from "@/hooks/useOrganizations";
 
 const questionTypes = [
   { id: "rating", name: "Rating Scale", icon: Star, description: "Numeric rating boundaries" },
@@ -88,6 +93,31 @@ const AdminFormBuilder = () => {
   const createQuestionsMutation = useCreateQuestions();
   const updateQuestionMutation = useUpdateQuestion();
   const deleteQuestionMutation = useDeleteQuestion();
+
+  // Assignment Rules hooks
+  const { data: formRules = [], isLoading: rulesLoading } = useFormRules(selectedForm?.id || 0);
+  const createRuleMutation = useCreateRule();
+  const deleteRuleMutation = useDeleteRule();
+  const generateMutation = useGenerateAssignments();
+
+  // Organization structure (for rule builder dropdowns)
+  const { data: units = [] } = useOrganizationUnits();
+  const { data: positions = [] } = usePositionTypes();
+
+  // Rule builder state
+  const [newRule, setNewRule] = useState<{
+    evaluator_unit: number | null;
+    evaluator_position: number | null;
+    evaluatee_unit: number | null;
+    evaluatee_position: number | null;
+    exclude_self: boolean;
+  }>({
+    evaluator_unit: null,
+    evaluator_position: null,
+    evaluatee_unit: null,
+    evaluatee_position: null,
+    exclude_self: true,
+  });
 
   // Load questions when form selected
   useEffect(() => {
@@ -175,6 +205,45 @@ const AdminFormBuilder = () => {
     } catch (e: unknown) {
       toast({ title: "Error Publishing Form", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
     }
+  };
+
+  // Assignment Rule Actions
+  const handleAddRule = async () => {
+    if (!selectedForm) return;
+    try {
+      await createRuleMutation.mutateAsync({ form_id: selectedForm.id, ...newRule });
+      setNewRule({ evaluator_unit: null, evaluator_position: null, evaluatee_unit: null, evaluatee_position: null, exclude_self: true });
+      toast({ title: "Rule Added" });
+    } catch (e: unknown) {
+      toast({ title: "Error Adding Rule", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteRule = async (rule: AssignmentRule) => {
+    if (!selectedForm) return;
+    try {
+      await deleteRuleMutation.mutateAsync({ id: rule.id, form_id: selectedForm.id });
+      toast({ title: "Rule Removed" });
+    } catch (e: unknown) {
+      toast({ title: "Error Removing Rule", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+    }
+  };
+
+  const handleGenerateAssignments = async () => {
+    if (!selectedForm) return;
+    if (!confirm(`Generate assignments for "${selectedForm.title}" based on ${formRules.length} rule(s)? Existing assignments will not be duplicated.`)) return;
+    try {
+      const res = await generateMutation.mutateAsync(selectedForm.id);
+      toast({ title: "Assignments Generated", description: res.message });
+    } catch (e: unknown) {
+      toast({ title: "Error Generating Assignments", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+    }
+  };
+
+  const ruleLabel = (rule: AssignmentRule) => {
+    const ev = `${rule.evaluator_unit_name ?? 'Any Unit'} / ${rule.evaluator_position_name ?? 'Any Position'}`;
+    const ee = `${rule.evaluatee_unit_name ?? 'Any Unit'} / ${rule.evaluatee_position_name ?? 'Any Position'}`;
+    return `[${ev}] → [${ee}]`;
   };
 
   // Question Actions
@@ -328,6 +397,7 @@ const AdminFormBuilder = () => {
         <TabsList>
           <TabsTrigger value="forms">All Forms</TabsTrigger>
           <TabsTrigger value="builder" disabled={!selectedForm}>Form Editor {selectedForm && `(${selectedForm.title})`}</TabsTrigger>
+          <TabsTrigger value="assignments" disabled={!selectedForm}>Assignments {selectedForm && formRules.length > 0 && `(${formRules.length} rule${formRules.length !== 1 ? 's' : ''})`}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="forms" className="space-y-4 pt-4">
@@ -551,6 +621,151 @@ const AdminFormBuilder = () => {
             </div>
           </div>
         </TabsContent>
+
+        {/* ── Assignments Tab ── */}
+        <TabsContent value="assignments" className="space-y-6 pt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Assignment Rules for: {selectedForm?.title}</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Define who evaluates whom. Each rule cross-matches all matching evaluators with all matching evaluatees.
+                Leave a field blank to match <em>any</em> unit or position.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-6">
+
+              {/* Rule Builder */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-muted/30 rounded-lg border border-border">
+                {/* Evaluator Side */}
+                <div className="space-y-3">
+                  <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Evaluator (Who evaluates)</p>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Organization Unit</Label>
+                    <Select
+                      value={newRule.evaluator_unit?.toString() ?? "__any_unit__"}
+                      onValueChange={(v) => setNewRule(r => ({ ...r, evaluator_unit: v === '__any_unit__' ? null : parseInt(v) }))}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Any unit" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__any_unit__">Any unit</SelectItem>
+                        {(units as OrganizationUnit[]).map(u => <SelectItem key={u.id} value={u.id.toString()}>{u.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Position</Label>
+                    <Select
+                      value={newRule.evaluator_position?.toString() ?? "__any_pos__"}
+                      onValueChange={(v) => setNewRule(r => ({ ...r, evaluator_position: v === '__any_pos__' ? null : parseInt(v) }))}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Any position" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__any_pos__">Any position</SelectItem>
+                        {(positions as PositionType[]).map(p => <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Evaluatee Side */}
+                <div className="space-y-3">
+                  <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Evaluatee (Who gets evaluated)</p>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Organization Unit</Label>
+                    <Select
+                      value={newRule.evaluatee_unit?.toString() ?? "__any_unit__"}
+                      onValueChange={(v) => setNewRule(r => ({ ...r, evaluatee_unit: v === '__any_unit__' ? null : parseInt(v) }))}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Any unit" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__any_unit__">Any unit</SelectItem>
+                        {(units as OrganizationUnit[]).map(u => <SelectItem key={u.id} value={u.id.toString()}>{u.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Position</Label>
+                    <Select
+                      value={newRule.evaluatee_position?.toString() ?? "__any_pos__"}
+                      onValueChange={(v) => setNewRule(r => ({ ...r, evaluatee_position: v === '__any_pos__' ? null : parseInt(v) }))}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Any position" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__any_pos__">Any position</SelectItem>
+                        {(positions as PositionType[]).map(p => <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Exclude Self + Add Button */}
+                <div className="md:col-span-2 flex items-center justify-between pt-2">
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={newRule.exclude_self}
+                      onChange={(e) => setNewRule(r => ({ ...r, exclude_self: e.target.checked }))}
+                      className="rounded border-gray-300 text-primary"
+                    />
+                    Exclude self-evaluation (evaluator ≠ evaluatee)
+                  </label>
+                  <Button onClick={handleAddRule} disabled={createRuleMutation.isPending}>
+                    {createRuleMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+                    Add Rule
+                  </Button>
+                </div>
+              </div>
+
+              {/* Saved Rules List */}
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Saved Rules {formRules.length > 0 && <span className="text-muted-foreground">({formRules.length})</span>}</p>
+                {rulesLoading && <div className="text-muted-foreground text-sm animate-pulse">Loading rules...</div>}
+                {!rulesLoading && formRules.length === 0 && (
+                  <div className="py-6 text-center border-2 border-dashed border-border rounded-lg text-muted-foreground text-sm">
+                    No rules yet. Add one above to define who evaluates whom.
+                  </div>
+                )}
+                {formRules.map((rule) => (
+                  <div key={rule.id} className="flex items-center justify-between p-3 rounded-lg border border-border bg-card">
+                    <div className="flex items-center gap-3">
+                      <div className="w-2 h-2 rounded-full bg-primary" />
+                      <p className="text-sm font-mono">{ruleLabel(rule)}</p>
+                      {rule.exclude_self && <Badge variant="outline" className="text-xs">No self-eval</Badge>}
+                    </div>
+                    <Button
+                      variant="ghost" size="icon"
+                      className="text-destructive h-8 w-8"
+                      onClick={() => handleDeleteRule(rule)}
+                      disabled={deleteRuleMutation.isPending}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Generate Button */}
+              {formRules.length > 0 && (
+                <div className="pt-2 border-t border-border flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    Applies {formRules.length} rule(s) to generate concrete person-to-person assignments.
+                    Existing assignments are never duplicated.
+                  </p>
+                  <Button
+                    className="gradient-hero text-primary-foreground"
+                    onClick={handleGenerateAssignments}
+                    disabled={generateMutation.isPending}
+                  >
+                    {generateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
+                    Generate Assignments
+                  </Button>
+                </div>
+              )}
+
+            </CardContent>
+          </Card>
+        </TabsContent>
+
       </Tabs>
     </div>
   );
