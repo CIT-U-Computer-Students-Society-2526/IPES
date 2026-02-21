@@ -69,6 +69,18 @@ const SelectOrganization = () => {
                     description: '',
                     period_year_start: new Date().toISOString().split('T')[0]
                 });
+                toast({
+                    title: "Organization Created",
+                    description: `${createForm.name} was set up successfully.`,
+                });
+            },
+            onError: (err: any) => {
+                const errorMessage = err.data?.error || err.data?.code?.[0] || err.message || "Ensure your code is unique and try again.";
+                toast({
+                    title: "Failed to create organization",
+                    description: errorMessage,
+                    variant: "destructive",
+                });
             }
         });
     };

@@ -74,8 +74,8 @@ export const useCreateOrganization = () => {
 
   return useMutation<any, Error, { name: string; code: string; description: string; period_year_start: string; period_year_end?: string }>({
     mutationFn: async (data) => {
-      const response = await api.post('/organizations/', data);
-      return response.json();
+      const result = await api.post('/organizations/', data);
+      return result;
     },
     onSuccess: () => {
       // Refresh user's memberships since creating an org gives them a new membership

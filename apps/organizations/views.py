@@ -24,6 +24,25 @@ class OrganizationViewSet(viewsets.ModelViewSet):
     serializer_class = OrganizationSerializer
     permission_classes = [permissions.IsAuthenticated]
     
+    def create(self, request, *args, **kwargs):
+        """Override create to provide specific validation errors for duplicate codes."""
+        code = request.data.get('code')
+        if code:
+            existing_org = Organization.objects.filter(code=code).first()
+            if existing_org:
+                if existing_org.is_active:
+                    return Response(
+                        {'error': f'The code "{code}" is currently in use by another active organization.'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                else:
+                    return Response(
+                        {'error': f'The code "{code}" belonged to a deleted organization and is permanently retired.'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            
+        return super().create(request, *args, **kwargs)
+
     def perform_create(self, serializer):
         """Log organization creation and set founder as Head Administrator"""
         org = serializer.save()
