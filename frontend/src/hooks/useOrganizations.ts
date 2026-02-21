@@ -406,3 +406,19 @@ export const useUpdateMembership = () => {
     }
   });
 };
+
+// Create a membership record
+export const useCreateMembership = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ message: string }, Error, { user_id: number; unit_id: number; position_id: number; role?: string }>({
+    mutationFn: async (data) => {
+      const response = await api.post(`/memberships/`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['organizations', 'analytics'] });
+    }
+  });
+};

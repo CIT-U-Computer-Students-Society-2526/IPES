@@ -422,6 +422,33 @@ class MembershipViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(unit_id=unit_id)
         return queryset
 
+    def create(self, request, *args, **kwargs):
+        """Override create to validate Admin role before allowing new membership creation"""
+        unit_id = request.data.get('unit_id')
+        user_id = request.data.get('user_id')
+        
+        if not unit_id or not user_id:
+            return Response({'error': 'unit_id and user_id are required'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        try:
+            unit = OrganizationUnit.objects.get(id=unit_id)
+            org = unit.organization_id
+        except OrganizationUnit.DoesNotExist:
+            return Response({'error': 'Invalid unit'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        # Verify caller is an Admin in this org
+        if not Membership.objects.filter(user_id=request.user, unit_id__organization_id=org, role='Admin', is_active=True).exists():
+            return Response({'error': 'Not authorized to add memberships to this organization'}, status=status.HTTP_403_FORBIDDEN)
+            
+        return super().create(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
+        """Automatically set start date when creating a membership"""
+        serializer.save(
+            date_start=timezone.now().date(),
+            is_active=True
+        )
+
 
 class JoinRequestViewSet(viewsets.ModelViewSet):
     """ViewSet for JoinRequest CRUD and approvals"""

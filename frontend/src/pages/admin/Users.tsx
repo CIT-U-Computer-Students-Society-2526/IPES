@@ -70,7 +70,7 @@ const POSITIONS = [
 ];
 
 import { useOrganizationState } from "@/contexts/OrganizationContext";
-import { useUpdateMembership, useOrganizationUnits, usePositionTypes } from "@/hooks/useOrganizations";
+import { useUpdateMembership, useOrganizationUnits, usePositionTypes, useCreateMembership } from "@/hooks/useOrganizations";
 
 const AdminUsers = () => {
   const { activeOrganizationId } = useOrganizationState();
@@ -96,6 +96,7 @@ const AdminUsers = () => {
 
   // Mutations
   const updateMembership = useUpdateMembership();
+  const createMembership = useCreateMembership();
 
   // Filter users
   const filteredUsers = users?.filter((user: User) => {
@@ -123,30 +124,45 @@ const AdminUsers = () => {
   const currentUserMembership = currentUserProfile?.memberships?.find(m => m.organization_id === activeOrganizationId);
   const isHeadAdmin = currentUserMembership?.position_rank === 1;
 
-  // Handle unit and position updates
-  const handleUpdateMembership = async () => {
-    if (!selectedUser) return;
-
-    const membership = selectedUser.memberships?.find(m => m.organization_id === activeOrganizationId);
-    if (!membership) return;
+  // Handle adding new role
+  const handleAddRole = async () => {
+    if (!selectedUser || !formData.unit_id || !formData.position_id) return;
 
     try {
-      await updateMembership.mutateAsync({
-        id: membership.id,
-        data: {
-          unit_id: formData.unit_id,
-          position_id: formData.position_id
-        }
+      await createMembership.mutateAsync({
+        user_id: selectedUser.id,
+        unit_id: formData.unit_id,
+        position_id: formData.position_id
       });
       toast({
         title: "Success",
-        description: "Membership updated successfully",
+        description: "Role added successfully",
       });
-      setIsManageMembershipOpen(false);
+      setFormData({ unit_id: undefined, position_id: undefined });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.data?.error || "Failed to add role",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle removing a specific role
+  const handleRemoveRole = async (membershipId: number) => {
+    try {
+      await updateMembership.mutateAsync({
+        id: membershipId,
+        data: { is_active: false }
+      });
+      toast({
+        title: "Success",
+        description: "Role removed successfully",
+      });
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to update membership",
+        description: "Failed to remove role",
         variant: "destructive",
       });
     }
@@ -396,88 +412,101 @@ const AdminUsers = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredUsers.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Avatar>
-                            <AvatarFallback className="bg-primary/10 text-primary">
-                              {user.first_name[0]}{user.last_name[0]}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-medium text-foreground">
-                              {user.first_name} {user.last_name}
-                            </p>
-                            <p className="text-sm text-muted-foreground">{user.email}</p>
+                  filteredUsers.map((user) => {
+                    const activeMemberships = user.memberships?.filter(m => m.organization_id === activeOrganizationId) || [];
+                    const isAdmin = activeMemberships.some(m => m.role === 'Admin');
+                    const isActive = activeMemberships.some(m => m.is_active);
+
+                    const isSelf = user.id === currentUserProfile?.id;
+                    const isSelfHeadAdmin = isSelf && activeMemberships.some(m => m.role === 'Admin' && m.position_rank === 1);
+
+                    return (
+                      <TableRow key={user.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar>
+                              <AvatarFallback className="bg-primary/10 text-primary">
+                                {user.first_name[0]}{user.last_name[0]}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium text-foreground">
+                                {user.first_name} {user.last_name}
+                              </p>
+                              <p className="text-sm text-muted-foreground">{user.email}</p>
+                            </div>
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={user.memberships?.some(m => m.organization_id === activeOrganizationId && m.role === 'Admin') ? "default" : "secondary"}>
-                          {user.memberships?.some(m => m.organization_id === activeOrganizationId && m.role === 'Admin') && <Shield className="w-3 h-3 mr-1" />}
-                          {user.memberships?.some(m => m.organization_id === activeOrganizationId && m.role === 'Admin') ? "Admin" : "Member"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={user.memberships?.find(m => m.organization_id === activeOrganizationId)?.is_active ? "outline" : "secondary"}
-                          className={user.memberships?.find(m => m.organization_id === activeOrganizationId)?.is_active ? "text-green-600 border-green-600" : ""}
-                        >
-                          {user.memberships?.find(m => m.organization_id === activeOrganizationId)?.is_active ? "Active" : "Inactive"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {user.memberships?.find(m => m.organization_id === activeOrganizationId)?.unit_name || "Unassigned"}
-                        <br />
-                        <span className="text-xs">{user.memberships?.find(m => m.organization_id === activeOrganizationId)?.position_name}</span>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => {
-                              setSelectedUser(user);
-                              const membership = user.memberships?.find(m => m.organization_id === activeOrganizationId);
-                              setFormData({
-                                unit_id: membership?.unit_id,
-                                position_id: membership?.position_id
-                              });
-                              setIsManageMembershipOpen(true);
-                            }}>
-                              <Settings2 className="w-4 h-4 mr-2" />
-                              Manage Membership
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleToggleAdminStatus(user)}>
-                              {user.memberships?.find(m => m.organization_id === activeOrganizationId)?.role === 'Admin' ? (
-                                <>
-                                  <UserMinus className="w-4 h-4 mr-2" />
-                                  <span className={!isHeadAdmin ? "opacity-50" : ""}>Revoke Admin Privileges</span>
-                                </>
-                              ) : (
-                                <>
-                                  <UserPlus className="w-4 h-4 mr-2" />
-                                  Grant Admin Privileges
-                                </>
-                              )}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() => handleRemoveFromOrganization(user)}
-                            >
-                              <AlertTriangle className="w-4 h-4 mr-2" />
-                              Remove from Organization
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={isAdmin ? "default" : "secondary"}>
+                            {isAdmin && <Shield className="w-3 h-3 mr-1" />}
+                            {isAdmin ? "Admin" : "Member"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={isActive ? "outline" : "secondary"}
+                            className={isActive ? "text-green-600 border-green-600" : ""}
+                          >
+                            {isActive ? "Active" : "Inactive"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          {activeMemberships.length === 0 ? "Unassigned" : (
+                            <div className="space-y-2">
+                              {activeMemberships.map((m: any, idx: number) => (
+                                <div key={idx} className="leading-tight">
+                                  {m.unit_name}
+                                  <br />
+                                  <span className="text-xs opacity-80">{m.position_name}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => {
+                                setSelectedUser(user);
+                                setIsManageMembershipOpen(true);
+                              }}>
+                                <Settings2 className="w-4 h-4 mr-2" />
+                                Manage Roles
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleToggleAdminStatus(user)}>
+                                {isAdmin ? (
+                                  <>
+                                    <UserMinus className="w-4 h-4 mr-2" />
+                                    <span className={!isHeadAdmin ? "opacity-50" : ""}>Revoke Admin Privileges</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <UserPlus className="w-4 h-4 mr-2" />
+                                    Grant Admin Privileges
+                                  </>
+                                )}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={() => handleRemoveFromOrganization(user)}
+                                disabled={isSelfHeadAdmin}
+                              >
+                                <AlertTriangle className="w-4 h-4 mr-2" />
+                                Remove from Organization
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
                 )}
               </TableBody>
             </Table>
@@ -485,57 +514,106 @@ const AdminUsers = () => {
         </CardContent>
       </Card>
 
-      {/* Manage Membership Dialog */}
+      {/* Manage Roles Dialog */}
       <Dialog open={isManageMembershipOpen} onOpenChange={setIsManageMembershipOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Manage Membership: {selectedUser?.first_name} {selectedUser?.last_name}</DialogTitle>
+            <DialogTitle>Manage Roles: {selectedUser?.first_name} {selectedUser?.last_name}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Organization Unit</Label>
-              <Select
-                value={formData.unit_id?.toString() || ""}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, unit_id: value ? parseInt(value) : undefined }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select unit..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {units?.map((unit) => (
-                    <SelectItem key={unit.id} value={unit.id.toString()}>
-                      {unit.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+
+          <div className="space-y-6 py-4">
+            {/* Current Roles Section */}
+            <div className="space-y-3">
+              <Label>Current Assignments</Label>
+              {(() => {
+                const activeRoles = selectedUser?.memberships?.filter(m => m.organization_id === activeOrganizationId && m.is_active) || [];
+
+                if (activeRoles.length === 0) {
+                  return <p className="text-sm text-muted-foreground italic">No active roles in this organization.</p>;
+                }
+
+                return (
+                  <div className="space-y-2">
+                    {activeRoles.map(role => {
+                      const isSelf = selectedUser?.id === currentUserProfile?.id;
+                      const isThisRoleHeadAdmin = role.role === 'Admin' && role.position_rank === 1;
+                      const isDisableRemove = isSelf && isThisRoleHeadAdmin;
+
+                      return (
+                        <div key={role.id} className="flex items-center justify-between p-3 border rounded-lg bg-card text-card-foreground">
+                          <div>
+                            <p className="font-medium text-sm">{role.unit_name}</p>
+                            <p className="text-xs text-muted-foreground">{role.position_name} &bull; {role.role}</p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => handleRemoveRole(role.id)}
+                            disabled={updateMembership.isPending || isDisableRemove}
+                            title={isDisableRemove ? "Head Administrators cannot remove their own primary role." : "Remove role"}
+                          >
+                            <UserMinus className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                );
+              })()}
             </div>
-            <div className="space-y-2">
-              <Label>Position</Label>
-              <Select
-                value={formData.position_id?.toString() || ""}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, position_id: value ? parseInt(value) : undefined }))}
+
+            {/* Add New Role Section */}
+            <div className="space-y-4 pt-6 border-t">
+              <Label className="text-base">Grant New Role</Label>
+              <div className="grid gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Organization Unit</Label>
+                  <Select
+                    value={formData.unit_id?.toString() || ""}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, unit_id: value ? parseInt(value) : undefined }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select unit..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {units?.map((unit: any) => (
+                        <SelectItem key={unit.id} value={unit.id.toString()}>
+                          {unit.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Position</Label>
+                  <Select
+                    value={formData.position_id?.toString() || ""}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, position_id: value ? parseInt(value) : undefined }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select position..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {positions?.map((pos: any) => (
+                        <SelectItem key={pos.id} value={pos.id.toString()}>
+                          {pos.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <Button
+                onClick={handleAddRole}
+                disabled={createMembership.isPending || !formData.unit_id || !formData.position_id}
+                className="w-full mt-2"
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select position..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {positions?.map((pos) => (
-                    <SelectItem key={pos.id} value={pos.id.toString()}>
-                      {pos.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <UserPlus className="w-4 h-4 mr-2" />
+                Add Role Assignment
+              </Button>
             </div>
-          </div>
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button variant="outline" onClick={() => setIsManageMembershipOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleUpdateMembership} disabled={updateMembership.isPending}>
-              Save Changes
-            </Button>
           </div>
         </DialogContent>
       </Dialog>
