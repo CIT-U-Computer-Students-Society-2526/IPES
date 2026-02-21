@@ -29,6 +29,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -82,6 +92,7 @@ const AdminUsers = () => {
 
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isManageMembershipOpen, setIsManageMembershipOpen] = useState(false);
+  const [userToRemove, setUserToRemove] = useState<User | null>(null);
   const [formData, setFormData] = useState({
     unit_id: undefined as number | undefined,
     position_id: undefined as number | undefined,
@@ -216,28 +227,32 @@ const AdminUsers = () => {
     }
   };
 
-  // Handle removal from org
-  const handleRemoveFromOrganization = async (user: User) => {
-    const membership = user.memberships?.find(m => m.organization_id === activeOrganizationId);
-    if (!membership) return;
+  // Handle removal from org — opens confirmation dialog
+  const handleRemoveFromOrganization = (user: User) => {
+    setUserToRemove(user);
+  };
 
-    if (confirm(`Are you sure you want to remove ${user.first_name} ${user.last_name} from the organization?`)) {
-      try {
-        await updateMembership.mutateAsync({
-          id: membership.id,
-          data: { is_active: false }
-        });
-        toast({
-          title: "Success",
-          description: "User removed from organization",
-        });
-      } catch (error) {
-        toast({
-          title: "Error",
-          description: "Failed to remove user",
-          variant: "destructive",
-        });
-      }
+  const confirmRemoveFromOrganization = async () => {
+    if (!userToRemove) return;
+    const membership = userToRemove.memberships?.find(m => m.organization_id === activeOrganizationId);
+    if (!membership) { setUserToRemove(null); return; }
+    try {
+      await updateMembership.mutateAsync({
+        id: membership.id,
+        data: { is_active: false }
+      });
+      toast({
+        title: "Success",
+        description: "User removed from organization",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to remove user",
+        variant: "destructive",
+      });
+    } finally {
+      setUserToRemove(null);
     }
   };
   const StatsSkeleton = () => (
@@ -636,6 +651,28 @@ const AdminUsers = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Remove from Organization Confirmation Dialog */}
+      <AlertDialog open={userToRemove !== null} onOpenChange={(open) => !open && setUserToRemove(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove from Organization?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove <strong>{userToRemove?.first_name} {userToRemove?.last_name}</strong> from the organization? All their active memberships will be deactivated. This action can only be undone by re-approving a new join request.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={updateMembership.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => { e.preventDefault(); confirmRemoveFromOrganization(); }}
+              disabled={updateMembership.isPending}
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
