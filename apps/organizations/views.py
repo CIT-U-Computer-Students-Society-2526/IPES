@@ -351,6 +351,11 @@ class UnitTypeViewSet(viewsets.ModelViewSet):
         return queryset
 
     def perform_destroy(self, instance):
+        # Prevent deletion if there are active units using this type
+        from rest_framework.exceptions import ValidationError
+        if OrganizationUnit.objects.filter(type_id=instance, is_active=True).exists():
+            raise ValidationError({'error': 'Cannot delete unit type if active units are still assigned to it.'})
+            
         instance.is_active = False
         instance.save()
 
@@ -400,10 +405,14 @@ class PositionTypeViewSet(viewsets.ModelViewSet):
         return queryset
 
     def perform_destroy(self, instance):
+        # Prevent deletion if there are active memberships using this position
+        from rest_framework.exceptions import ValidationError
+        from .models import Membership
+        if Membership.objects.filter(position_id=instance, is_active=True).exists():
+            raise ValidationError({'error': 'Cannot delete position type if active members are still holding it.'})
+            
         instance.is_active = False
         instance.save()
-        # Also soft delete memberships holding this position
-        Membership.objects.filter(position_id=instance, is_active=True).update(is_active=False)
 
 
 class MembershipViewSet(viewsets.ModelViewSet):

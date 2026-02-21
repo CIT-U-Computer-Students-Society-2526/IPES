@@ -265,7 +265,10 @@ const AdminOrganization = () => {
         setDeleteUnitId(null);
         toast({ title: "Unit Deleted", description: "The unit has been removed." });
       },
-      onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
+      onError: (err: any) => {
+        const errorMessage = err.data?.error || err.message || "Failed to delete unit.";
+        toast({ title: "Error", description: errorMessage, variant: "destructive" });
+      }
     });
   };
 
@@ -276,7 +279,10 @@ const AdminOrganization = () => {
         setDeleteUnitTypeIdState(null);
         toast({ title: "Type Deleted", description: "The unit type has been removed." });
       },
-      onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
+      onError: (err: any) => {
+        const errorMessage = err.data?.error || err.message || "Failed to delete unit type.";
+        toast({ title: "Error", description: errorMessage, variant: "destructive" });
+      }
     });
   };
 
@@ -287,7 +293,10 @@ const AdminOrganization = () => {
         setDeletePositionId(null);
         toast({ title: "Position Deleted", description: "The position type has been removed." });
       },
-      onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
+      onError: (err: any) => {
+        const errorMessage = err.data?.error || err.message || "Failed to delete position type.";
+        toast({ title: "Error", description: errorMessage, variant: "destructive" });
+      }
     });
   };
 
