@@ -247,7 +247,7 @@ class AssignmentRuleViewSet(viewsets.ModelViewSet):
 
         log_action(
             request.user,
-            AuditActions.FORM_PUBLISHED,  # closest existing action; replace with a dedicated one later
+            AuditActions.ASSIGNMENTS_GENERATED,
             request,
             form_id=str(form.id),
             assignments_created=str(total_created)
