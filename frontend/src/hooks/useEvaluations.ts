@@ -72,6 +72,30 @@ export interface EvaluationSubmitData {
   }[];
 }
 
+// Assignment Rule types
+export interface AssignmentRule {
+  id: number;
+  form_id: number;
+  evaluator_unit: number | null;
+  evaluator_unit_name: string | null;
+  evaluator_position: number | null;
+  evaluator_position_name: string | null;
+  evaluatee_unit: number | null;
+  evaluatee_unit_name: string | null;
+  evaluatee_position: number | null;
+  evaluatee_position_name: string | null;
+  exclude_self: boolean;
+}
+
+export interface AssignmentRuleCreateData {
+  form_id: number;
+  evaluator_unit?: number | null;
+  evaluator_position?: number | null;
+  evaluatee_unit?: number | null;
+  evaluatee_position?: number | null;
+  exclude_self?: boolean;
+}
+
 // ===== Form Hooks =====
 
 // Fetch all forms
@@ -194,6 +218,66 @@ export const useDeleteForm = () => {
     },
   });
 };
+
+// ===== Assignment Rule Hooks =====
+
+// Fetch rules for a form
+export const useFormRules = (formId: number) => {
+  return useQuery({
+    queryKey: ['assignment-rules', formId],
+    queryFn: async () => {
+      const response = await api.get(`/assignment-rules/?form_id=${formId}`);
+      const data = await response.json() as { results: AssignmentRule[] } | AssignmentRule[];
+      return Array.isArray(data) ? data : data.results || [];
+    },
+    enabled: !!formId,
+  });
+};
+
+// Create a rule
+export const useCreateRule = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<AssignmentRule, Error, AssignmentRuleCreateData>({
+    mutationFn: async (data) => {
+      const response = await api.post('/assignment-rules/', data);
+      return response.json() as Promise<AssignmentRule>;
+    },
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['assignment-rules', vars.form_id] });
+    },
+  });
+};
+
+// Delete a rule
+export const useDeleteRule = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, { id: number; form_id: number }>({
+    mutationFn: async ({ id }) => {
+      await api.delete(`/assignment-rules/${id}/`);
+    },
+    onSuccess: (_, { form_id }) => {
+      queryClient.invalidateQueries({ queryKey: ['assignment-rules', form_id] });
+    },
+  });
+};
+
+// Generate assignments from all rules on a form
+export const useGenerateAssignments = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ message: string; created: number }, Error, number>({
+    mutationFn: async (form_id: number) => {
+      const response = await api.post('/assignment-rules/generate/', { form_id });
+      return response.json() as Promise<{ message: string; created: number }>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['assignments'] });
+    },
+  });
+};
+
 
 // Auto Assign form
 export const useAutoAssignForm = () => {
