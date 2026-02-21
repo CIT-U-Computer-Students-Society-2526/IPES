@@ -25,7 +25,6 @@ jobs:
           pip install -r requirements.txt
 
       - name: Lint with flake8
-        continue-on-error: true
         run: flake8 .
 
   validate-node:
@@ -48,7 +47,6 @@ jobs:
         run: npm install
 
       - name: Lint frontend
-        continue-on-error: true
         run: npm run lint
 
       - name: Build frontend
