@@ -74,7 +74,7 @@ const AdminLayout = () => {
             <Link to="/admin/dashboard" className="flex items-center gap-2.5">
               <img src="/ipes-logo-colored.svg" alt="IPES Logo" className="w-7 h-7 object-contain" />
               <div className="flex items-center gap-2">
-                <span className="text-[#293F55] font-bold text-2xl tracking-tight">IPES</span>
+                <span className="text-[#293F55] dark:text-white font-bold text-2xl tracking-tight">IPES</span>
                 <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium">Admin</span>
               </div>
             </Link>
