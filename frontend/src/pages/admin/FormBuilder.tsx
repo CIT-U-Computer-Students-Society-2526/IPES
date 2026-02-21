@@ -78,7 +78,7 @@ const AdminFormBuilder = () => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newFormTitle, setNewFormTitle] = useState("");
   const [newFormDesc, setNewFormDesc] = useState("");
-  const [newFormType, setNewFormType] = useState<"self" | "peer" | "supervisor" | "360">("peer");
+  const [newFormType, setNewFormType] = useState<"self" | "peer" | "supervisor" | "360" | "executive">("peer");
 
   // Selected Form State
   const [selectedForm, setSelectedForm] = useState<EvaluationForm | null>(null);
