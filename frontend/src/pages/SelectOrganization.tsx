@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useCurrentUser, Membership } from '@/hooks/useUsers';
 import { useOrganizationState } from '@/contexts/OrganizationContext';
 import { useCreateOrganization, useJoinOrganization } from '@/hooks/useOrganizations';
@@ -11,7 +11,7 @@ import {
     CardTitle
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { BuildingIcon, ArrowRight, ShieldIcon, UserIcon, PlusIcon } from 'lucide-react';
+import { BuildingIcon, ArrowRight, ShieldIcon, UserIcon, PlusIcon, LogOut } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -297,6 +297,16 @@ const SelectOrganization = () => {
                         ))}
                     </div>
                 )}
+
+                <div className="flex flex-col items-center gap-2 pt-4 border-t border-border">
+                    <p className="text-sm text-muted-foreground">Not the right account?</p>
+                    <Link to="/login">
+                        <Button variant="ghost" className="gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10">
+                            <LogOut className="w-4 h-4" />
+                            Sign out
+                        </Button>
+                    </Link>
+                </div>
 
             </div>
         </div>
