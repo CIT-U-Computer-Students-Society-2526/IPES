@@ -89,6 +89,14 @@ const AdminFormBuilder = () => {
   // Publish confirmation dialog
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
 
+  // Delete confirmation dialog
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [formToDelete, setFormToDelete] = useState<EvaluationForm | null>(null);
+
+  // Duplicate confirmation dialog
+  const [isDuplicateDialogOpen, setIsDuplicateDialogOpen] = useState(false);
+  const [formToDuplicate, setFormToDuplicate] = useState<EvaluationForm | null>(null);
+
   // Edit Details State
   const [isEditingDetails, setIsEditingDetails] = useState(false);
   const [editFormData, setEditFormData] = useState<{
@@ -211,25 +219,33 @@ const AdminFormBuilder = () => {
     }
   };
 
-  const handleDeleteForm = async (id: number) => {
-    if (confirm("Are you sure you want to delete this form?")) {
-      try {
-        await deleteFormMutation.mutateAsync(id);
-        toast({ title: "Form Deleted" });
-        if (selectedForm?.id === id) {
-          setSelectedForm(null);
-          setActiveTab("forms");
-        }
-      } catch (e: unknown) {
-        toast({ title: "Error Deleting Form", description: formatApiError(e), variant: "destructive" });
+  const handleDeleteForm = async () => {
+    if (!formToDelete) return;
+    setIsDeleteDialogOpen(false);
+    try {
+      await deleteFormMutation.mutateAsync(formToDelete.id);
+      toast({ title: "Form Deleted", description: `"${formToDelete.title}" has been permanently deleted.` });
+      if (selectedForm?.id === formToDelete.id) {
+        setSelectedForm(null);
+        setActiveTab("forms");
       }
+      setFormToDelete(null);
+    } catch (e: unknown) {
+      toast({ title: "Error Deleting Form", description: formatApiError(e), variant: "destructive" });
     }
   };
 
-  const handleDuplicateForm = async (id: number) => {
+  const handleDuplicateForm = async (goToNew: boolean) => {
+    if (!formToDuplicate) return;
+    setIsDuplicateDialogOpen(false);
     try {
-      await duplicateFormMutation.mutateAsync(id);
-      toast({ title: "Form Duplicated" });
+      const newForm = await duplicateFormMutation.mutateAsync(formToDuplicate.id);
+      toast({ title: "Form Duplicated", description: `"${formToDuplicate.title} (Copy)" created.` });
+      if (goToNew && newForm) {
+        setSelectedForm(newForm as EvaluationForm);
+        setActiveTab("builder");
+      }
+      setFormToDuplicate(null);
     } catch (e: unknown) {
       toast({ title: "Error Duplicating Form", description: formatApiError(e), variant: "destructive" });
     }
@@ -513,11 +529,14 @@ const AdminFormBuilder = () => {
                           <Edit className="w-4 h-4 mr-2" />
                           Edit Form
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDuplicateForm(form.id)}>
+                        <DropdownMenuItem onClick={() => { setFormToDuplicate(form); setIsDuplicateDialogOpen(true); }}>
                           <Copy className="w-4 h-4 mr-2" />
                           Duplicate
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteForm(form.id)}>
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() => { setFormToDelete(form); setIsDeleteDialogOpen(true); }}
+                        >
                           <Trash2 className="w-4 h-4 mr-2" />
                           Delete
                         </DropdownMenuItem>
@@ -545,6 +564,53 @@ const AdminFormBuilder = () => {
               </div>
             )}
           </div>
+
+          {/* ── Delete Confirmation Dialog ── */}
+          <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Delete "{formToDelete?.title}"?</DialogTitle>
+                <DialogDescription>
+                  This action is <strong>permanent and cannot be undone</strong>. The form, all its questions,
+                  and any generated assignments will be deleted.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="gap-2">
+                <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>Cancel</Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteForm}
+                  disabled={deleteFormMutation.isPending}
+                >
+                  {deleteFormMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}
+                  Yes, Delete
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* ── Duplicate Confirmation Dialog ── */}
+          <Dialog open={isDuplicateDialogOpen} onOpenChange={setIsDuplicateDialogOpen}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Duplicate "{formToDuplicate?.title}"?</DialogTitle>
+                <DialogDescription>
+                  A copy will be created as a draft with all questions included. Assignments and rules will not be copied.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="gap-2">
+                <Button variant="outline" onClick={() => setIsDuplicateDialogOpen(false)}>Cancel</Button>
+                <Button
+                  onClick={() => handleDuplicateForm(false)}
+                  disabled={duplicateFormMutation.isPending}
+                >
+                  {duplicateFormMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
+                  Duplicate
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
         </TabsContent>
 
         <TabsContent value="builder" className="space-y-4 pt-4">
