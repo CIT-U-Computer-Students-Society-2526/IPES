@@ -80,6 +80,9 @@ const AdminOrganization = () => {
   const { data: realPositions } = usePositionTypes(activeOrganizationId);
   const { data: realUnitTypes } = useUnitTypes(activeOrganizationId);
 
+  // Dynamic Total Members Calculation
+  const totalMembers = realUnits?.reduce((sum: number, unit: any) => sum + (unit.members_count || 0), 0) || 0;
+
   // --- Mutations ---
   const createPositionMutation = useCreatePositionType();
   const updatePositionMutation = useUpdatePositionType();
@@ -500,7 +503,7 @@ const AdminOrganization = () => {
             </div>
             <div className="flex gap-6">
               <div className="text-center">
-                <p className="text-2xl font-bold text-foreground">-</p>
+                <p className="text-2xl font-bold text-foreground">{totalMembers}</p>
                 <p className="text-sm text-muted-foreground">Total Members</p>
               </div>
               <div className="text-center">
