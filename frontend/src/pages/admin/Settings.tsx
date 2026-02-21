@@ -80,7 +80,7 @@ const AdminSettings = () => {
                   <Input 
                     type="date" 
                     value={settings.evaluationPeriodStart}
-                    onChange={(e) => setSettings({...settings, evaluationPeriodStart: e.target.value})}
+                    onChange={(e) => setSettings({ ...settings, evaluationPeriodStart: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
@@ -88,7 +88,7 @@ const AdminSettings = () => {
                   <Input 
                     type="date" 
                     value={settings.evaluationPeriodEnd}
-                    onChange={(e) => setSettings({...settings, evaluationPeriodEnd: e.target.value})}
+                    onChange={(e) => setSettings({ ...settings, evaluationPeriodEnd: e.target.value })}
                   />
                 </div>
               </div>
@@ -153,7 +153,7 @@ const AdminSettings = () => {
                 </div>
                 <Switch 
                   checked={settings.allowSelfEvaluation}
-                  onCheckedChange={(checked) => setSettings({...settings, allowSelfEvaluation: checked})}
+                  onCheckedChange={(checked) => setSettings({ ...settings, allowSelfEvaluation: checked })}
                 />
               </div>
               <Separator />
@@ -166,7 +166,7 @@ const AdminSettings = () => {
                 </div>
                 <Switch 
                   checked={settings.anonymousFeedback}
-                  onCheckedChange={(checked) => setSettings({...settings, anonymousFeedback: checked})}
+                  onCheckedChange={(checked) => setSettings({ ...settings, anonymousFeedback: checked })}
                 />
               </div>
               <Separator />
@@ -179,7 +179,7 @@ const AdminSettings = () => {
                 </div>
                 <Switch 
                   checked={settings.requireProofForAccomplishments}
-                  onCheckedChange={(checked) => setSettings({...settings, requireProofForAccomplishments: checked})}
+                  onCheckedChange={(checked) => setSettings({ ...settings, requireProofForAccomplishments: checked })}
                 />
               </div>
             </CardContent>
@@ -208,7 +208,7 @@ const AdminSettings = () => {
                 </div>
                 <Switch 
                   checked={settings.showRankings}
-                  onCheckedChange={(checked) => setSettings({...settings, showRankings: checked})}
+                  onCheckedChange={(checked) => setSettings({ ...settings, showRankings: checked })}
                 />
               </div>
               <Separator />
@@ -221,7 +221,7 @@ const AdminSettings = () => {
                 </div>
                 <Switch 
                   checked={settings.allowResultsViewing}
-                  onCheckedChange={(checked) => setSettings({...settings, allowResultsViewing: checked})}
+                  onCheckedChange={(checked) => setSettings({ ...settings, allowResultsViewing: checked })}
                 />
               </div>
               <Separator />
@@ -234,7 +234,7 @@ const AdminSettings = () => {
                 </div>
                 <Switch 
                   checked={settings.resultsVisibleAfterClose}
-                  onCheckedChange={(checked) => setSettings({...settings, resultsVisibleAfterClose: checked})}
+                  onCheckedChange={(checked) => setSettings({ ...settings, resultsVisibleAfterClose: checked })}
                 />
               </div>
             </CardContent>
@@ -263,7 +263,7 @@ const AdminSettings = () => {
                 </div>
                 <Switch 
                   checked={settings.autoReminders}
-                  onCheckedChange={(checked) => setSettings({...settings, autoReminders: checked})}
+                  onCheckedChange={(checked) => setSettings({ ...settings, autoReminders: checked })}
                 />
               </div>
               <Separator />
@@ -271,7 +271,7 @@ const AdminSettings = () => {
                 <Label>Reminder Days Before Deadline</Label>
                 <Select 
                   value={settings.reminderDaysBefore}
-                  onValueChange={(value) => setSettings({...settings, reminderDaysBefore: value})}
+                  onValueChange={(value) => setSettings({ ...settings, reminderDaysBefore: value })}
                 >
                   <SelectTrigger className="w-40">
                     <SelectValue />
