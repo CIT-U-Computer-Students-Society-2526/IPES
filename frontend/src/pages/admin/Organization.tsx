@@ -150,7 +150,10 @@ const AdminOrganization = () => {
         setNewPositionWeight("5");
         toast({ title: "Success", description: "Position Type created successfully." });
       },
-      onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
+      onError: (err: any) => {
+        const errorMessage = err.data?.rank?.[0] || err.data?.error || err.message || "Failed to create position type.";
+        toast({ title: "Error", description: errorMessage, variant: "destructive" });
+      }
     });
   };
 
@@ -247,7 +250,10 @@ const AdminOrganization = () => {
         setEditPositionId(null);
         toast({ title: "Success", description: "Position updated successfully." });
       },
-      onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
+      onError: (err: any) => {
+        const errorMessage = err.data?.rank?.[0] || err.data?.error || err.message || "Failed to update position type.";
+        toast({ title: "Error", description: errorMessage, variant: "destructive" });
+      }
     });
   };
 
