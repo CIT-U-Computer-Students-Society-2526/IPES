@@ -334,10 +334,13 @@ const AdminFormBuilder = () => {
 
   const handleGenerateAssignments = async () => {
     if (!selectedForm) return;
-    if (!confirm(`Generate assignments for "${selectedForm.title}" based on ${formRules.length} rule(s)? Existing assignments will not be duplicated.`)) return;
     try {
       const res = await generateMutation.mutateAsync(selectedForm.id);
-      toast({ title: "Assignments Generated", description: res.message });
+      if (res.created === 0) {
+        toast({ title: "Already Up to Date", description: "All assignments for this form already exist. No new assignments were created." });
+      } else {
+        toast({ title: "Assignments Generated", description: `${res.created} new assignment(s) created.` });
+      }
     } catch (e: unknown) {
       toast({ title: "Error Generating Assignments", description: formatApiError(e), variant: "destructive" });
     }
