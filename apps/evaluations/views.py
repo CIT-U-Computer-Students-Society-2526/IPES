@@ -174,9 +174,11 @@ def _apply_rule(rule, form):
     Returns the count of newly created assignments."""
     from apps.organizations.models import Membership
 
+    org = form.organization_id  # Organization instance
+
     def memberships_for(unit, position):
         qs = Membership.objects.filter(
-            unit_id__organization_id=form.organization_id,
+            unit_id__organization_id=org,
             is_active=True,
         ).select_related('user_id')
         if unit:

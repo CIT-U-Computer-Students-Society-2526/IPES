@@ -51,7 +51,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-import { useForms, useAssignments, useAutoAssignForm, type EvaluationForm } from "@/hooks/useEvaluations";
+import { useForms, useAssignments, useGenerateAssignments, type EvaluationForm } from "@/hooks/useEvaluations";
 
 const AdminAssignments = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -64,7 +64,7 @@ const AdminAssignments = () => {
   // Fetch all assignments across the org to aggregate stats
   const { data: allAssignments = [], isLoading: assignmentsLoading } = useAssignments();
 
-  const autoAssignMutation = useAutoAssignForm();
+  const generateMutation = useGenerateAssignments();
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -112,15 +112,17 @@ const AdminAssignments = () => {
 
   const handleAutoAssign = async (formId: number) => {
     try {
-      const res = await autoAssignMutation.mutateAsync(formId);
+      const res = await generateMutation.mutateAsync(formId);
       toast({
-        title: "Auto-Assigned Successfully",
-        description: res.message
+        title: res.created === 0 ? "Already Up to Date" : "Assignments Generated",
+        description: res.created === 0
+          ? "All assignments already exist for this form."
+          : `${res.created} new assignment(s) created.`,
       });
-    } catch (e: any) {
+    } catch (e: unknown) {
       toast({
-        title: "Failed to Auto-Assign",
-        description: e.message || "An error occurred during mapping.",
+        title: "Failed to Generate Assignments",
+        description: e instanceof Error ? e.message : "An error occurred.",
         variant: "destructive"
       });
     }
@@ -326,7 +328,7 @@ const AdminAssignments = () => {
                         <AlertCircle className="w-4 h-4 mr-2 text-yellow-500" />
                         No evaluators assigned yet.
                       </span>
-                      <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); handleAutoAssign(form.id); }} disabled={autoAssignMutation.isPending}>
+                      <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); handleAutoAssign(form.id); }} disabled={generateMutation.isPending}>
                         <Zap className="w-4 h-4 mr-2 text-primary" />
                         Auto-Assign Now
                       </Button>
