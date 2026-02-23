@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Settings,
   Save,
@@ -8,7 +8,7 @@ import {
   Bell,
   Shield,
   Database,
-  Mail
+  Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,10 +37,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Alert } from "@/components/ui/alert";
 import { useDeleteOrganization } from "@/hooks/useOrganizations";
-import { useCurrentMembership } from "@/hooks/useUsers";
+import { useCurrentMembership, useCurrentUser, useUpdateCurrentUser } from "@/hooks/useUsers";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
-import {useOrganizationState} from "@/contexts/OrganizationContext.tsx";
+import { useOrganizationState } from "@/contexts/OrganizationContext";
 
 const AdminSettings = () => {
   const [settings, setSettings] = useState({
@@ -101,7 +101,7 @@ const AdminSettings = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">System Settings</h1>
-          <p className="text-muted-foreground">Configure evaluation system behavior</p>
+          <p className="text-muted-foreground">Configure evaluation system behavior and your profile</p>
         </div>
         <Button className="gradient-hero text-primary-foreground">
           <Save className="w-4 h-4 mr-2" />
@@ -116,6 +116,7 @@ const AdminSettings = () => {
           <TabsTrigger value="visibility">Visibility</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
         </TabsList>
+
 
         <TabsContent value="general" className="space-y-6">
           {/* Evaluation Period */}

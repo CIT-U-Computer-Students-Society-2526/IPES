@@ -18,12 +18,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+import { ProfileEditorDialog } from "@/components/ProfileEditorDialog";
+
 const navigation = [
   { name: "Dashboard", href: "/member/dashboard", icon: LayoutDashboard },
   { name: "My Evaluations", href: "/member/evaluations", icon: ClipboardList },
   { name: "My Results", href: "/member/results", icon: BarChart3 },
   { name: "Accomplishments", href: "/member/accomplishments", icon: Trophy },
-  { name: "Profile", href: "/member/profile", icon: User },
 ];
 
 const OfficerLayout = () => {
@@ -121,17 +122,19 @@ const OfficerLayout = () => {
 
           {/* User section */}
           <div className="p-4 border-t border-border">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
-                <span className="text-sm font-medium text-primary">{initials}</span>
+            <ProfileEditorDialog>
+              <div className="flex items-center gap-3 mb-3 cursor-pointer hover:bg-muted/50 p-2 rounded-lg transition-colors">
+                <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <span className="text-sm font-medium text-primary">{initials}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{fullName}</p>
+                  <p className="text-xs text-muted-foreground truncate">{activeMembership.unit_name} • {activeMembership.position_name}</p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">{fullName}</p>
-                <p className="text-xs text-muted-foreground truncate">{activeMembership.unit_name} • {activeMembership.position_name}</p>
-              </div>
-            </div>
+            </ProfileEditorDialog>
             <Link to="/login">
-              <Button variant="ghost" size="sm" className="w-full justify-start text-muted-foreground">
+              <Button variant="ghost" size="sm" className="w-full justify-start text-muted-foreground mt-2">
                 <LogOut className="w-4 h-4 mr-2" />
                 Sign out
               </Button>

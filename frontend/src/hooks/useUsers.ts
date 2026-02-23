@@ -133,6 +133,21 @@ export const useCurrentUser = () => {
   });
 };
 
+// Update current user profile
+export const useUpdateCurrentUser = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<User, Error, UserUpdate>({
+    mutationFn: async (data: UserUpdate) => {
+      const response = await api.patch('/auth/me/', data);
+      return response.json() as Promise<User>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users', 'current'] });
+    },
+  });
+};
+
 // Get current user's membership for active organization
 export const useCurrentMembership = () => {
   const { data: currentUser } = useCurrentUser();
