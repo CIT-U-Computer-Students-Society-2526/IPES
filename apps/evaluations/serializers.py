@@ -37,7 +37,7 @@ class EvaluationFormSerializer(serializers.ModelSerializer):
     class Meta:
         model = EvaluationForm
         fields = [
-            'id', 'organization_id', 'title', 'description', 'type',
+            'id', 'organization_id', 'title', 'description', 
             'start_date', 'end_date', 'created_by', 'created_by_name',
             'is_active', 'results_released', 'created_at', 'updated_at', 'questions'
         ]
@@ -51,7 +51,7 @@ class EvaluationFormCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = EvaluationForm
         fields = [
-            'id', 'organization_id', 'title', 'description', 'type',
+            'id', 'organization_id', 'title', 'description', 
             'start_date', 'end_date', 'is_active', 'results_released', 'questions'
         ]
         read_only_fields = ['id']

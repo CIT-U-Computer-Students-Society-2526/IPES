@@ -79,7 +79,6 @@ const AdminFormBuilder = () => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newFormTitle, setNewFormTitle] = useState("");
   const [newFormDesc, setNewFormDesc] = useState("");
-  const [newFormType, setNewFormType] = useState<"self" | "peer" | "supervisor" | "360" | "executive">("peer");
 
   // Selected Form State
   const [selectedForm, setSelectedForm] = useState<EvaluationForm | null>(null);
@@ -110,10 +109,9 @@ const AdminFormBuilder = () => {
   const [editFormData, setEditFormData] = useState<{
     title: string;
     description: string;
-    type: string;
     start_date: string;
     end_date: string;
-  }>({ title: '', description: '', type: 'peer', start_date: '', end_date: '' });
+  }>({ title: '', description: '', start_date: '', end_date: '' });
 
   // Questions State
   const [localQuestions, setLocalQuestions] = useState<Partial<Question>[]>([]);
@@ -213,7 +211,6 @@ const AdminFormBuilder = () => {
       const res = await createFormMutation.mutateAsync({
         title: newFormTitle,
         description: newFormDesc,
-        type: newFormType,
         organization_id: activeOrganizationId,
         start_date: new Date().toISOString().split('T')[0],
         end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -309,7 +306,6 @@ const AdminFormBuilder = () => {
     setEditFormData({
       title: selectedForm.title,
       description: selectedForm.description ?? '',
-      type: selectedForm.type,
       start_date: selectedForm.start_date,
       end_date: selectedForm.end_date,
     });
@@ -515,20 +511,7 @@ const AdminFormBuilder = () => {
                   onChange={(e) => setNewFormDesc(e.target.value)}
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Evaluation Type</Label>
-                <Select value={newFormType} onValueChange={(val: "self" | "peer" | "supervisor" | "360") => setNewFormType(val)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="peer">Peer Evaluation</SelectItem>
-                    <SelectItem value="executive">Executive Evaluation</SelectItem>
-                    <SelectItem value="self">Self-Assessment</SelectItem>
-                    <SelectItem value="360">360-Degree Evaluation</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+
               <Button className="w-full" onClick={handleCreateForm} disabled={createFormMutation.isPending}>
                 {createFormMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                 Create Form
@@ -572,7 +555,6 @@ const AdminFormBuilder = () => {
                       </div>
                       <div>
                         <CardTitle className="text-base truncate max-w-[180px]" title={form.title}>{form.title}</CardTitle>
-                        <Badge variant="outline" className="mt-1 capitalize">{form.type}</Badge>
                       </div>
                     </div>
                     <DropdownMenu>
@@ -834,21 +816,6 @@ const AdminFormBuilder = () => {
                             placeholder="Brief description (optional)"
                             rows={2}
                           />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">Evaluation Type</Label>
-                          <Select value={editFormData.type} onValueChange={(v) => setEditFormData(d => ({ ...d, type: v }))}>
-                            <SelectTrigger><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="peer">Peer Evaluation</SelectItem>
-                              <SelectItem value="executive">Executive Evaluation</SelectItem>
-                              <SelectItem value="self">Self-Assessment</SelectItem>
-                              <SelectItem value="360">360-Degree Evaluation</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-1">
-                          {/* spacer */}
                         </div>
                         <div className="space-y-1">
                           <Label className="text-xs">Start Date</Label>
@@ -1127,7 +1094,7 @@ const AdminFormBuilder = () => {
         </TabsContent>
 
       </Tabs>
-    </div>
+    </div >
   );
 };
 

@@ -27,7 +27,6 @@ export interface EvaluationForm {
   organization_id: number;
   title: string;
   description: string;
-  type: 'self' | 'peer' | 'supervisor' | '360' | 'executive' | string;
   start_date: string;
   end_date: string;
   created_by: number;

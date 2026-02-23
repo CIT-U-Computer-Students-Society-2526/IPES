@@ -7,7 +7,6 @@ class EvaluationForm(models.Model):
     organization_id = models.ForeignKey(Organization, on_delete=models.CASCADE)
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True, default='')
-    type = models.CharField(max_length=100, default='', blank=True)
     start_date = models.DateField()
     end_date = models.DateField()
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
