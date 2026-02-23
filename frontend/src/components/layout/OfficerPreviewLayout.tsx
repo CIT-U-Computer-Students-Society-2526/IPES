@@ -57,8 +57,16 @@ const OfficerPreviewLayout = () => {
                     {/* Logo */}
                     <div className="h-16 flex items-center justify-between px-4 border-b border-border">
                         <Link to="/preview/officer/dashboard" className="flex items-center gap-2.5">
-                            <img src="/ipes-logo-colored.svg" alt="IPES Logo" className="w-7 h-7 object-contain" />
-                            <span className="text-[#293F55] dark:text-white font-sans font-bold text-2xl tracking-tight">IPES</span>
+                            <img src="/ipes-logo-colored.svg" alt="IPES Logo" className="w-7 h-7 object-contain shrink-0" />
+                            <div className="flex flex-col justify-center">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[#293F55] dark:text-white font-sans font-bold text-xl tracking-tight">IPES</span>
+                                    <span className="text-[10px] bg-blue-500/10 text-blue-500 px-1.5 py-0.5 rounded font-sans shrink-0">Member</span>
+                                </div>
+                                <span className="text-xs text-muted-foreground truncate max-w-[140px]" title="Demo Organization">
+                                    Demo Organization
+                                </span>
+                            </div>
                         </Link>
                         <button
                             onClick={() => setSidebarOpen(false)}

@@ -85,10 +85,15 @@ const AdminLayout = () => {
           {/* Logo */}
           <div className="h-16 flex items-center justify-between px-4 border-b border-border">
             <Link to="/admin/dashboard" className="flex items-center gap-2.5">
-              <img src="/ipes-logo-colored.svg" alt="IPES Logo" className="w-7 h-7 object-contain" />
-              <div className="flex items-center gap-2">
-                <span className="text-[#293F55] dark:text-white font-bold text-2xl tracking-tight">IPES</span>
-                <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium">Admin</span>
+              <img src="/ipes-logo-colored.svg" alt="IPES Logo" className="w-7 h-7 object-contain shrink-0" />
+              <div className="flex flex-col justify-center">
+                <div className="flex items-center gap-2">
+                  <span className="text-[#293F55] dark:text-white font-bold text-xl tracking-tight">IPES</span>
+                  <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium shrink-0">Admin</span>
+                </div>
+                <span className="text-xs text-muted-foreground truncate max-w-[140px]" title={activeMembership?.organization_name}>
+                  {activeMembership?.organization_name}
+                </span>
               </div>
             </Link>
             <button
