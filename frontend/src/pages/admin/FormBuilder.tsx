@@ -462,6 +462,11 @@ const AdminFormBuilder = () => {
       }
 
       toast({ title: "Draft Saved", description: "All questions have been saved successfully." });
+
+      // Force the useEffect to overwrite localQuestions with the fresh DB data
+      // This retrieves the newly generated IDs, clearing the 'Unsaved' tags
+      // and preventing subsequent duplicate creations.
+      seededFormIdRef.current = null;
       refetchQuestions();
     } catch (e: unknown) {
       toast({ title: "Error Saving", description: formatApiError(e), variant: "destructive" });
