@@ -262,6 +262,7 @@ const AdminSettings = () => {
               <div className="flex items-center gap-2">
                 <Bell className="w-5 h-5 text-primary" />
                 <CardTitle>Notification Settings</CardTitle>
+                <span className="text-xs text-primary bg-primary/10 px-2 py-0.5 rounded ml-2 font-medium">Upcoming Feature</span>
               </div>
               <CardDescription>
                 Configure system notifications
