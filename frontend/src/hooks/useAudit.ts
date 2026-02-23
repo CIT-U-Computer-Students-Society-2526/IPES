@@ -22,17 +22,18 @@ export interface AuditLog {
 // ===== Fetch Hooks =====
 
 // Fetch all audit logs
-export const useAuditLogs = (params?: { 
-  user_id?: number; 
-  action?: string; 
-  start_date?: string; 
+export const useAuditLogs = (params?: {
+  user_id?: number;
+  action?: string;
+  start_date?: string;
   end_date?: string;
   limit?: number;
+  organization_id?: number;
 }) => {
   const queryString = params
     ? '?' + new URLSearchParams(
-        Object.entries(params).filter(([, v]) => v !== undefined).reduce((acc, [k, v]) => ({ ...acc, [k]: String(v) }), {})
-      ).toString()
+      Object.entries(params).filter(([, v]) => v !== undefined).reduce((acc, [k, v]) => ({ ...acc, [k]: String(v) }), {})
+    ).toString()
     : '';
 
   return useQuery({
