@@ -271,12 +271,13 @@ const AdminSettings = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>From Email Address</Label>
-                <Input defaultValue="noreply@ipes.university.edu" />
-              </div>
-              <div className="space-y-2">
-                <Label>Reply-To Email</Label>
-                <Input defaultValue="support@ipes.university.edu" />
+                <Label>Organization Email Address</Label>
+                <p className="text-sm text-muted-foreground mb-2">This email will be used as the sender when sending out automated emails and notifications.</p>
+                <Input
+                  value={orgData.email}
+                  onChange={(e) => setOrgData({ ...orgData, email: e.target.value })}
+                  placeholder="noreply@ipes.university.edu"
+                />
               </div>
             </CardContent>
           </Card>

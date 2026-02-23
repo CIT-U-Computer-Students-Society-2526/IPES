@@ -13,6 +13,7 @@ export interface Membership {
   id: number;
   organization_id: number;
   organization_name: string;
+  organization_email?: string;
   unit_id: number;
   unit_name: string;
   position_id: number;
