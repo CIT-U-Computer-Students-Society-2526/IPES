@@ -142,7 +142,8 @@ export const useUpdateCurrentUser = () => {
       const response = await api.patch('/auth/me/', data);
       return response.json() as Promise<User>;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      queryClient.setQueryData(['users', 'current'], data);
       queryClient.invalidateQueries({ queryKey: ['users', 'current'] });
     },
   });
