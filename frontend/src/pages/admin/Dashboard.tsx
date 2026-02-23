@@ -183,17 +183,6 @@ const AdminDashboard = () => {
           <h1 className="text-2xl font-semibold text-foreground">Admin Dashboard</h1>
           <p className="text-muted-foreground mt-1">Overview of evaluation activities</p>
         </div>
-        <div className="flex gap-2">
-          <Link to="/admin/forms">
-            <Button variant="outline">Create Form</Button>
-          </Link>
-          <Link to="/admin/assignments">
-            <Button>
-              New Assignment
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
-          </Link>
-        </div>
       </div>
 
       {/* Stats */}
