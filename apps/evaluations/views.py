@@ -40,6 +40,10 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
         is_active = self.request.query_params.get('is_active')
         results_released = self.request.query_params.get('results_released')
         
+        
+        # Exclude softly deleted forms
+        queryset = queryset.filter(is_deleted=False)
+
         if org_id:
             queryset = queryset.filter(organization_id=org_id)
         if is_active is not None:
@@ -144,6 +148,24 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
             'message': 'Results released successfully',
             'results_released': form.results_released
         })
+
+    def destroy(self, request, *args, **kwargs):
+        """Soft delete a form"""
+        form = self.get_object()
+        form.is_deleted = True
+        form.is_active = False # Deactivate as well just in case
+        form.save()
+        
+        # Log soft delete
+        log_action(
+            request.user,
+            AuditActions.FORM_DELETED,
+            request,
+            form_title=form.title,
+            form_id=str(form.id)
+        )
+        
+        return DRFResponse({'message': 'Form deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
     
     @action(detail=True, methods=['get'])
     def questions(self, request, pk=None):
