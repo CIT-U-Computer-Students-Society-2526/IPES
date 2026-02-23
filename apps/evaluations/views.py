@@ -426,13 +426,28 @@ class EvaluationAssignmentViewSet(viewsets.ModelViewSet):
         queryset = EvaluationAssignment.objects.all()
         user = self.request.user
         
-        # Regular officers can only see their own assignments
-        if user.role in ['officer', 'member']:
-            queryset = queryset.filter(evaluatee_id=user)
-        
+        org_id = self.request.query_params.get('organization_id')
         form_id = self.request.query_params.get('form_id')
         evaluator_id = self.request.query_params.get('evaluator_id')
         status_param = self.request.query_params.get('status')
+        
+        is_admin = user.is_superuser
+        if not is_admin and org_id:
+            from apps.organizations.models import Membership
+            is_admin = Membership.objects.filter(
+                user_id=user,
+                unit_id__organization_id=org_id,
+                role='Admin',
+                is_active=True
+            ).exists()
+            
+        if org_id:
+            queryset = queryset.filter(form_id__organization_id=org_id)
+            
+        # Regular members can only see their own assignments
+        if not is_admin:
+            from django.db.models import Q
+            queryset = queryset.filter(Q(evaluatee_id=user) | Q(evaluator_id=user))
         
         if form_id:
             queryset = queryset.filter(form_id=form_id)
