@@ -34,6 +34,42 @@ export class ApiError extends Error {
 }
 
 /**
+ * Convert an ApiError (or any Error) into a human-readable string.
+ * Handles DRF's various error response shapes:
+ *   { field: ["msg"] }              → field: msg
+ *   { non_field_errors: ["msg"] }   → msg
+ *   { detail: "msg" }               → msg
+ *   plain string                    → as-is
+ */
+export function formatApiError(e: unknown): string {
+  if (e instanceof ApiError && e.data && typeof e.data === 'object') {
+    const data = e.data as Record<string, unknown>;
+
+    // { detail: "..." }
+    if (typeof data.detail === 'string') return data.detail;
+
+    // { non_field_errors: ["..."] }
+    if (Array.isArray(data.non_field_errors)) {
+      return (data.non_field_errors as string[]).join(' ');
+    }
+
+    // { field: ["msg", ...], field2: ["msg"] }
+    const fieldErrors = Object.entries(data)
+      .filter(([, v]) => Array.isArray(v) || typeof v === 'string')
+      .map(([field, msgs]) => {
+        const messages = Array.isArray(msgs) ? (msgs as string[]).join(', ') : String(msgs);
+        const label = field === 'non_field_errors' ? '' : `${field}: `;
+        return `${label}${messages}`;
+      });
+
+    if (fieldErrors.length > 0) return fieldErrors.join('\n');
+  }
+
+  if (e instanceof Error) return e.message;
+  return 'An unexpected error occurred.';
+}
+
+/**
  * Make an authenticated API request
  */
 export const apiRequest = async (

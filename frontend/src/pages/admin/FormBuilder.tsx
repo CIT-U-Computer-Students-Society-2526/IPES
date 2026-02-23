@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   FileEdit,
   Plus,
@@ -16,7 +16,8 @@ import {
   Star,
   Save,
   Send,
-  Loader2
+  Loader2,
+  Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,9 +33,11 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -46,12 +49,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
+import { formatApiError } from "@/lib/api";
 
 import {
-  useForms, useCreateForm, useDeleteForm, useDuplicateForm, usePublishForm,
+  useForms, useCreateForm, useUpdateForm, useDeleteForm, useDuplicateForm, useActivateForm, useDeactivateForm, useReleaseResults,
   useFormQuestions, useCreateQuestions, useUpdateQuestion, useDeleteQuestion,
-  type EvaluationForm, type Question
+  useFormRules, useCreateRule, useDeleteRule, useGenerateAssignments,
+  type EvaluationForm, type Question, type AssignmentRule
 } from "@/hooks/useEvaluations";
+import {
+  useOrganizationUnits, usePositionTypes,
+  type OrganizationUnit, type PositionType
+} from "@/hooks/useOrganizations";
+import { useOrganizationState } from "@/contexts/OrganizationContext";
 
 const questionTypes = [
   { id: "rating", name: "Rating Scale", icon: Star, description: "Numeric rating boundaries" },
@@ -69,45 +79,121 @@ const AdminFormBuilder = () => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newFormTitle, setNewFormTitle] = useState("");
   const [newFormDesc, setNewFormDesc] = useState("");
-  const [newFormType, setNewFormType] = useState<"self" | "peer" | "supervisor" | "360">("peer");
 
   // Selected Form State
   const [selectedForm, setSelectedForm] = useState<EvaluationForm | null>(null);
 
+  // Active organization
+  const { activeOrganizationId } = useOrganizationState();
+
+  // Publish confirmation dialog
+  const [isActivateDialogOpen, setIsActivateDialogOpen] = useState(false);
+
+  // Release results confirmation dialog
+  const [isReleaseDialogOpen, setIsReleaseDialogOpen] = useState(false);
+  const [formToRelease, setFormToRelease] = useState<EvaluationForm | null>(null);
+
+  // Deactivate confirmation dialog
+  const [isDeactivateDialogOpen, setIsDeactivateDialogOpen] = useState(false);
+
+  // Delete confirmation dialog
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [formToDelete, setFormToDelete] = useState<EvaluationForm | null>(null);
+
+  // Duplicate confirmation dialog
+  const [isDuplicateDialogOpen, setIsDuplicateDialogOpen] = useState(false);
+  const [formToDuplicate, setFormToDuplicate] = useState<EvaluationForm | null>(null);
+
+  // Edit Details State
+  const [isEditingDetails, setIsEditingDetails] = useState(false);
+  const [editFormData, setEditFormData] = useState<{
+    title: string;
+    description: string;
+    start_date: string;
+    end_date: string;
+  }>({ title: '', description: '', start_date: '', end_date: '' });
+
   // Questions State
   const [localQuestions, setLocalQuestions] = useState<Partial<Question>[]>([]);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
 
   // API Hooks
   const { data: forms = [], isLoading: formsLoading } = useForms();
   const createFormMutation = useCreateForm();
+  const updateFormMutation = useUpdateForm();
   const deleteFormMutation = useDeleteForm();
   const duplicateFormMutation = useDuplicateForm();
-  const publishFormMutation = usePublishForm();
+  const activateFormMutation = useActivateForm();
+  const deactivateFormMutation = useDeactivateForm();
+  const releaseResultsMutation = useReleaseResults();
 
   const { data: formQuestions = [], isLoading: questionsLoading, refetch: refetchQuestions } = useFormQuestions(selectedForm?.id || 0);
   const createQuestionsMutation = useCreateQuestions();
   const updateQuestionMutation = useUpdateQuestion();
   const deleteQuestionMutation = useDeleteQuestion();
 
-  // Load questions when form selected
+  // Assignment Rules hooks
+  const { data: formRules = [], isLoading: rulesLoading } = useFormRules(selectedForm?.id || 0);
+  const createRuleMutation = useCreateRule();
+  const deleteRuleMutation = useDeleteRule();
+  const generateMutation = useGenerateAssignments();
+
+  // Organization structure (for rule builder dropdowns)
+  const { data: units = [] } = useOrganizationUnits();
+  const { data: positions = [] } = usePositionTypes();
+
+  // Track which rule ID is currently being deleted (for per-row loading state)
+  const [deletingRuleId, setDeletingRuleId] = useState<number | null>(null);
+
+  // Rule builder state
+  const [newRule, setNewRule] = useState<{
+    evaluator_unit: number | null;
+    evaluator_position: number | null;
+    evaluatee_unit: number | null;
+    evaluatee_position: number | null;
+    exclude_self: boolean;
+  }>({
+    evaluator_unit: null,
+    evaluator_position: null,
+    evaluatee_unit: null,
+    evaluatee_position: null,
+    exclude_self: true,
+  });
+
+  // Use a ref to track which form ID was last seeded into localQuestions.
+  // This prevents two failure modes:
+  //   a) Infinite loop: formQuestions reference changes every render even when data is the same
+  //   b) Race condition: effect fires before fetch completes (questionsLoading=true), seeds [] into
+  //      localQuestions, then when fetch resolves there's no dep change to re-trigger seeding.
+  const seededFormIdRef = useRef<number | null>(null);
   useEffect(() => {
-    if (selectedForm && activeTab === 'builder' && formQuestions) {
+    if (!selectedForm) {
+      seededFormIdRef.current = null;
+      return;
+    }
+    if (activeTab === 'builder' && !questionsLoading && seededFormIdRef.current !== selectedForm.id) {
+      seededFormIdRef.current = selectedForm.id;
       setLocalQuestions(formQuestions);
     }
-  }, [selectedForm, formQuestions, activeTab]);
+    // formQuestions deliberately NOT in deps — its reference changes every render.
+    // We capture the current value when the stable deps (id, tab, loading) change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedForm?.id, activeTab, questionsLoading]);
+
+
 
   const filteredForms = forms.filter(f =>
     f.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const getStatusColor = (is_published: boolean, is_active: boolean) => {
-    if (is_published) return "bg-green-100 text-green-700";
-    if (is_active) return "bg-blue-100 text-blue-700";
+  const getStatusColor = (is_active: boolean, results_released: boolean) => {
+    if (results_released) return "bg-purple-100 text-purple-700";
+    if (is_active) return "bg-green-100 text-green-700";
     return "bg-yellow-100 text-yellow-700";
   };
 
   const getStatusText = (form: EvaluationForm) => {
-    if (form.is_published) return "Published";
+    if (form.results_released) return "Results Released";
     if (form.is_active) return "Active";
     return "Draft";
   };
@@ -118,17 +204,19 @@ const AdminFormBuilder = () => {
       toast({ title: "Validation Error", description: "Title is required", variant: "destructive" });
       return;
     }
+    if (!activeOrganizationId) {
+      toast({ title: "No Organization Selected", description: "Please select an organization first.", variant: "destructive" });
+      return;
+    }
     try {
-      // Assuming organization_id = 1 for now, a proper implementation would fetch user's org
       const res = await createFormMutation.mutateAsync({
         title: newFormTitle,
         description: newFormDesc,
-        type: newFormType,
-        organization_id: 1,
+        organization_id: activeOrganizationId,
         start_date: new Date().toISOString().split('T')[0],
         end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        is_active: true,
-        is_published: false
+        is_active: false,
+        results_released: false
       });
       setIsCreateOpen(false);
       setNewFormTitle("");
@@ -138,43 +226,163 @@ const AdminFormBuilder = () => {
       setSelectedForm(res);
       setActiveTab("builder");
     } catch (e: unknown) {
-      toast({ title: "Error Creating Form", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+      toast({ title: "Error Creating Form", description: formatApiError(e), variant: "destructive" });
     }
   };
 
-  const handleDeleteForm = async (id: number) => {
-    if (confirm("Are you sure you want to delete this form?")) {
-      try {
-        await deleteFormMutation.mutateAsync(id);
-        toast({ title: "Form Deleted" });
-        if (selectedForm?.id === id) {
-          setSelectedForm(null);
-          setActiveTab("forms");
-        }
-      } catch (e: unknown) {
-        toast({ title: "Error Deleting Form", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
-      }
-    }
-  };
-
-  const handleDuplicateForm = async (id: number) => {
+  const handleDeleteForm = async () => {
+    if (!formToDelete) return;
+    setIsDeleteDialogOpen(false);
     try {
-      await duplicateFormMutation.mutateAsync(id);
-      toast({ title: "Form Duplicated" });
+      await deleteFormMutation.mutateAsync(formToDelete.id);
+      toast({ title: "Form Deleted", description: `"${formToDelete.title}" has been permanently deleted.` });
+      if (selectedForm?.id === formToDelete.id) {
+        setSelectedForm(null);
+        setActiveTab("forms");
+      }
+      setFormToDelete(null);
     } catch (e: unknown) {
-      toast({ title: "Error Duplicating Form", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+      toast({ title: "Error Deleting Form", description: formatApiError(e), variant: "destructive" });
     }
   };
 
-  const handlePublishForm = async () => {
+  const handleDuplicateForm = async (goToNew: boolean) => {
+    if (!formToDuplicate) return;
+    setIsDuplicateDialogOpen(false);
+    try {
+      const newForm = await duplicateFormMutation.mutateAsync(formToDuplicate.id);
+      toast({ title: "Form Duplicated", description: `"${formToDuplicate.title} (Copy)" created.` });
+      if (goToNew && newForm) {
+        setSelectedForm(newForm as EvaluationForm);
+        setActiveTab("builder");
+      }
+      setFormToDuplicate(null);
+    } catch (e: unknown) {
+      toast({ title: "Error Duplicating Form", description: formatApiError(e), variant: "destructive" });
+    }
+  };
+
+  const handleActivateForm = async () => {
+    if (!selectedForm) return;
+    setIsActivateDialogOpen(false);
+    try {
+      await activateFormMutation.mutateAsync(selectedForm.id);
+      toast({ title: "Form Activated", description: "This form can now be assigned." });
+      setSelectedForm({ ...selectedForm, is_active: true });
+    } catch (e: unknown) {
+      toast({ title: "Error Activating Form", description: formatApiError(e), variant: "destructive" });
+    }
+  };
+
+  const handleDeactivateForm = async () => {
+    if (!selectedForm) return;
+    setIsDeactivateDialogOpen(false);
+    try {
+      await deactivateFormMutation.mutateAsync(selectedForm.id);
+      toast({ title: "Form Deactivated", description: "This form is closed for new assignments." });
+      setSelectedForm({ ...selectedForm, is_active: false });
+    } catch (e: unknown) {
+      toast({ title: "Error Deactivating Form", description: formatApiError(e), variant: "destructive" });
+    }
+  };
+
+  const handleReleaseResults = async () => {
+    if (!formToRelease) return;
+    setIsReleaseDialogOpen(false);
+    try {
+      await releaseResultsMutation.mutateAsync(formToRelease.id);
+      toast({ title: "Results Released", description: "Evaluations are now visible to evaluatees." });
+      if (selectedForm?.id === formToRelease.id) {
+        setSelectedForm({ ...selectedForm, results_released: true, is_active: false });
+      }
+      setFormToRelease(null);
+    } catch (e: unknown) {
+      toast({ title: "Error Releasing Results", description: formatApiError(e), variant: "destructive" });
+    }
+  };
+
+  // Open the details panel, pre-populating with current form data
+  const handleOpenEditDetails = () => {
+    if (!selectedForm) return;
+    setEditFormData({
+      title: selectedForm.title,
+      description: selectedForm.description ?? '',
+      start_date: selectedForm.start_date,
+      end_date: selectedForm.end_date,
+    });
+    setIsEditingDetails(true);
+  };
+
+  const handleSaveDetails = async () => {
+    if (!selectedForm) return;
+    if (!editFormData.title.trim()) {
+      toast({ title: "Validation Error", description: "Title cannot be empty.", variant: "destructive" });
+      return;
+    }
+    try {
+      const updated = await updateFormMutation.mutateAsync({ id: selectedForm.id, data: editFormData });
+      setSelectedForm(updated);
+      setIsEditingDetails(false);
+      toast({ title: "Details Saved", description: "Form details updated successfully." });
+    } catch (e: unknown) {
+      toast({ title: "Error Saving Details", description: formatApiError(e), variant: "destructive" });
+    }
+  };
+
+  // Assignment Rule Actions
+  const handleAddRule = async () => {
+    if (!selectedForm) return;
+    // #4: client-side duplicate rule guard
+    const isDuplicate = formRules.some(r =>
+      r.evaluator_unit === newRule.evaluator_unit &&
+      r.evaluator_position === newRule.evaluator_position &&
+      r.evaluatee_unit === newRule.evaluatee_unit &&
+      r.evaluatee_position === newRule.evaluatee_position
+    );
+    if (isDuplicate) {
+      toast({ title: "Duplicate Rule", description: "An identical rule already exists for this form.", variant: "destructive" });
+      return;
+    }
+    try {
+      await createRuleMutation.mutateAsync({ form_id: selectedForm.id, ...newRule });
+      setNewRule({ evaluator_unit: null, evaluator_position: null, evaluatee_unit: null, evaluatee_position: null, exclude_self: true });
+      toast({ title: "Rule Added" });
+    } catch (e: unknown) {
+      toast({ title: "Error Adding Rule", description: formatApiError(e), variant: "destructive" });
+    }
+  };
+
+  const handleDeleteRule = async (rule: AssignmentRule) => {
+    if (!selectedForm) return;
+    setDeletingRuleId(rule.id);
+    try {
+      await deleteRuleMutation.mutateAsync({ id: rule.id, form_id: selectedForm.id });
+      toast({ title: "Rule Removed" });
+    } catch (e: unknown) {
+      toast({ title: "Error Removing Rule", description: formatApiError(e), variant: "destructive" });
+    } finally {
+      setDeletingRuleId(null);
+    }
+  };
+
+  const handleGenerateAssignments = async () => {
     if (!selectedForm) return;
     try {
-      await publishFormMutation.mutateAsync(selectedForm.id);
-      toast({ title: "Form Published", description: "This form can now be assigned." });
-      setSelectedForm({ ...selectedForm, is_published: true });
+      const res = await generateMutation.mutateAsync(selectedForm.id);
+      if (res.created === 0) {
+        toast({ title: "Already Up to Date", description: "All assignments for this form already exist. No new assignments were created." });
+      } else {
+        toast({ title: "Assignments Generated", description: `${res.created} new assignment(s) created.` });
+      }
     } catch (e: unknown) {
-      toast({ title: "Error Publishing Form", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+      toast({ title: "Error Generating Assignments", description: formatApiError(e), variant: "destructive" });
     }
+  };
+
+  const ruleLabel = (rule: AssignmentRule) => {
+    const ev = `${rule.evaluator_unit_name ?? 'Any Unit'} / ${rule.evaluator_position_name ?? 'Any Position'}`;
+    const ee = `${rule.evaluatee_unit_name ?? 'Any Unit'} / ${rule.evaluatee_position_name ?? 'Any Position'}`;
+    return `[${ev}] → [${ee}]`;
   };
 
   // Question Actions
@@ -197,7 +405,7 @@ const AdminFormBuilder = () => {
       try {
         await deleteQuestionMutation.mutateAsync({ id: qToRemove.id, form_id: selectedForm!.id });
       } catch (e: unknown) {
-        toast({ title: "Error Deleting Question", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+        toast({ title: "Error Deleting Question", description: formatApiError(e), variant: "destructive" });
         return;
       }
     }
@@ -225,6 +433,7 @@ const AdminFormBuilder = () => {
       return;
     }
 
+    setIsSavingDraft(true);
     try {
       const newQuestions = localQuestions.filter(q => !q.id);
       const existingQuestions = localQuestions.filter(q => q.id);
@@ -255,9 +464,18 @@ const AdminFormBuilder = () => {
       }
 
       toast({ title: "Draft Saved", description: "All questions have been saved successfully." });
-      refetchQuestions();
+
+      // Explicitly await the refetch and directly set localQuestions
+      // This bypasses the useEffect which ignores background refetches due to unchanged 'loading' state
+      const { data: freshQuestions } = await refetchQuestions();
+      if (freshQuestions) {
+        setLocalQuestions(freshQuestions);
+        seededFormIdRef.current = selectedForm.id; // Keep our ref synced so useEffect won't randomly fire later
+      }
     } catch (e: unknown) {
-      toast({ title: "Error Saving", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+      toast({ title: "Error Saving", description: formatApiError(e), variant: "destructive" });
+    } finally {
+      setIsSavingDraft(false);
     }
   };
 
@@ -283,6 +501,9 @@ const AdminFormBuilder = () => {
           <DialogContent className="max-w-lg">
             <DialogHeader>
               <DialogTitle>Create New Form</DialogTitle>
+              <DialogDescription className="sr-only">
+                Fill in the details below to create a new evaluation form.
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
@@ -291,6 +512,7 @@ const AdminFormBuilder = () => {
                   placeholder="e.g., Mid-Year Peer Evaluation"
                   value={newFormTitle}
                   onChange={(e) => setNewFormTitle(e.target.value)}
+                  maxLength={255}
                 />
               </div>
               <div className="space-y-2">
@@ -301,20 +523,7 @@ const AdminFormBuilder = () => {
                   onChange={(e) => setNewFormDesc(e.target.value)}
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Evaluation Type</Label>
-                <Select value={newFormType} onValueChange={(val: "self" | "peer" | "supervisor" | "360") => setNewFormType(val)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="peer">Peer Evaluation</SelectItem>
-                    <SelectItem value="executive">Executive Evaluation</SelectItem>
-                    <SelectItem value="self">Self-Assessment</SelectItem>
-                    <SelectItem value="360">360-Degree Evaluation</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+
               <Button className="w-full" onClick={handleCreateForm} disabled={createFormMutation.isPending}>
                 {createFormMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                 Create Form
@@ -327,7 +536,10 @@ const AdminFormBuilder = () => {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="forms">All Forms</TabsTrigger>
-          <TabsTrigger value="builder" disabled={!selectedForm}>Form Editor {selectedForm && `(${selectedForm.title})`}</TabsTrigger>
+          <TabsTrigger value="builder" disabled={!selectedForm} className="max-w-[250px] sm:max-w-[350px]">
+            Form Editor {selectedForm && <span className="truncate ml-1 align-bottom inline-block max-w-[120px] sm:max-w-[200px]">({selectedForm.title})</span>}
+          </TabsTrigger>
+          <TabsTrigger value="assignments" disabled={!selectedForm}>Assignments {selectedForm && formRules.length > 0 && `(${formRules.length} rule${formRules.length !== 1 ? 's' : ''})`}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="forms" className="space-y-4 pt-4">
@@ -343,7 +555,12 @@ const AdminFormBuilder = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredForms.map((form) => (
-              <Card key={form.id} className="hover:shadow-md transition-shadow">
+              <Card
+                key={form.id}
+                className="hover:shadow-md transition-shadow cursor-pointer select-none"
+                onDoubleClick={() => { setSelectedForm(form); setActiveTab("builder"); }}
+                title="Double-click to open in Form Editor"
+              >
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
@@ -352,7 +569,6 @@ const AdminFormBuilder = () => {
                       </div>
                       <div>
                         <CardTitle className="text-base truncate max-w-[180px]" title={form.title}>{form.title}</CardTitle>
-                        <Badge variant="outline" className="mt-1 capitalize">{form.type}</Badge>
                       </div>
                     </div>
                     <DropdownMenu>
@@ -366,11 +582,25 @@ const AdminFormBuilder = () => {
                           <Edit className="w-4 h-4 mr-2" />
                           Edit Form
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDuplicateForm(form.id)}>
+                        <DropdownMenuItem onClick={() => { setFormToDuplicate(form); setIsDuplicateDialogOpen(true); }}>
                           <Copy className="w-4 h-4 mr-2" />
                           Duplicate
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteForm(form.id)}>
+                        {!form.results_released && (
+                          <DropdownMenuItem
+                            onClick={() => { setFormToRelease(form); setIsReleaseDialogOpen(true); }}
+                            className="text-purple-600 focus:bg-purple-50 focus:text-purple-700"
+                            disabled={!form.questions || form.questions.length === 0}
+                            title={(!form.questions || form.questions.length === 0) ? "Cannot release results for an empty form" : ""}
+                          >
+                            <Send className="w-4 h-4 mr-2" />
+                            Release Results
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() => { setFormToDelete(form); setIsDeleteDialogOpen(true); }}
+                        >
                           <Trash2 className="w-4 h-4 mr-2" />
                           Delete
                         </DropdownMenuItem>
@@ -380,7 +610,7 @@ const AdminFormBuilder = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center justify-between text-sm">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(form.is_published, form.is_active)}`}>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(form.is_active, form.results_released)}`}>
                       {getStatusText(form)}
                     </span>
                     {/* Questions count would ideally come from a sub-query or an aggregation field from the backend */}
@@ -398,6 +628,77 @@ const AdminFormBuilder = () => {
               </div>
             )}
           </div>
+
+          {/* ── Delete Confirmation Dialog ── */}
+          <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle className="break-all whitespace-normal overflow-hidden line-clamp-3 leading-tight">Delete "{formToDelete?.title}"?</DialogTitle>
+                <DialogDescription>
+                  This action is <strong>permanent and cannot be undone</strong>. The form, all its questions,
+                  and any generated assignments will be deleted.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="gap-2">
+                <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>Cancel</Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteForm}
+                  disabled={deleteFormMutation.isPending}
+                >
+                  {deleteFormMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}
+                  Yes, Delete
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* ── Duplicate Confirmation Dialog ── */}
+          <Dialog open={isDuplicateDialogOpen} onOpenChange={setIsDuplicateDialogOpen}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle className="break-all whitespace-normal overflow-hidden line-clamp-3 leading-tight">Duplicate "{formToDuplicate?.title}"?</DialogTitle>
+                <DialogDescription>
+                  A copy will be created as a draft with all questions included. Assignments and rules will not be copied.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="gap-2">
+                <Button variant="outline" onClick={() => setIsDuplicateDialogOpen(false)}>Cancel</Button>
+                <Button
+                  onClick={() => handleDuplicateForm(false)}
+                  disabled={duplicateFormMutation.isPending}
+                >
+                  {duplicateFormMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
+                  Duplicate
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* ── Release Results Confirmation Dialog ── */}
+          <Dialog open={isReleaseDialogOpen} onOpenChange={setIsReleaseDialogOpen}>
+            <DialogContent className="max-w-md min-w-0">
+              <DialogHeader>
+                <DialogTitle className="break-all whitespace-normal overflow-hidden line-clamp-3 leading-tight">Release Results for "{formToRelease?.title}"?</DialogTitle>
+                <DialogDescription>
+                  This will make the evaluation scores visible to all evaluatees.
+                  The form will be deactivated for further responses.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="gap-2">
+                <Button variant="outline" onClick={() => setIsReleaseDialogOpen(false)}>Cancel</Button>
+                <Button
+                  className="bg-purple-600 hover:bg-purple-700 text-white"
+                  onClick={handleReleaseResults}
+                  disabled={releaseResultsMutation.isPending}
+                >
+                  {releaseResultsMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
+                  Yes, Release Results
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
         </TabsContent>
 
         <TabsContent value="builder" className="space-y-4 pt-4">
@@ -428,27 +729,144 @@ const AdminFormBuilder = () => {
             <div className="lg:col-span-3 space-y-4">
               <Card>
                 <CardHeader>
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        {selectedForm?.title}
-                        {selectedForm?.is_published && <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Published</Badge>}
-                      </CardTitle>
-                      <p className="text-sm text-muted-foreground mt-1">{selectedForm?.description}</p>
+                  <div className="flex flex-col xl:flex-row xl:items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0 w-full pr-4">
+                      <div className="flex items-center flex-wrap gap-2 mb-2">
+                        <CardTitle className="leading-tight break-words whitespace-normal line-clamp-5 text-balance max-w-full">
+                          {selectedForm?.title}
+                        </CardTitle>
+                        {selectedForm?.is_active && <Badge className="bg-green-100 text-green-700 hover:bg-green-100 whitespace-nowrap">Published</Badge>}
+                      </div>
+                      {selectedForm?.description && (
+                        <p className="text-sm text-muted-foreground mt-1 truncate">{selectedForm.description}</p>
+                      )}
                     </div>
-                    <div className="flex gap-2">
-                      <Button variant="outline" onClick={handleSaveDraft} disabled={selectedForm?.is_published}>
-                        <Save className="w-4 h-4 mr-2" />
-                        Save Draft
-                      </Button>
-                      {!selectedForm?.is_published && (
-                        <Button className="gradient-hero text-primary-foreground" onClick={handlePublishForm}>
-                          <Send className="w-4 h-4 mr-2" />
-                          Publish
+                    <div className="flex gap-2 shrink-0">
+                      {!selectedForm?.is_active && (
+                        <Button variant="outline" size="sm" onClick={handleOpenEditDetails}>
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit Details
                         </Button>
+                      )}
+                      <Button variant="outline" onClick={handleSaveDraft} disabled={selectedForm?.is_active || isSavingDraft}>
+                        {isSavingDraft ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                        {isSavingDraft ? "Saving..." : "Save Draft"}
+                      </Button>
+                      {!selectedForm?.is_active && !selectedForm?.results_released && (
+                        <>
+                          <Button
+                            className="gradient-hero text-primary-foreground focus:ring-2 focus:ring-primary focus:outline-none"
+                            onClick={() => setIsActivateDialogOpen(true)}
+                            disabled={localQuestions.length === 0}
+                            title={localQuestions.length === 0 ? "Add at least one question before activating this form" : ""}
+                          >
+                            <Send className="w-4 h-4 mr-2" />
+                            Activate Form
+                          </Button>
+                          <Dialog open={isActivateDialogOpen} onOpenChange={setIsActivateDialogOpen}>
+                            <DialogContent className="max-w-md">
+                              <DialogHeader>
+                                <DialogTitle className="break-all whitespace-normal overflow-hidden line-clamp-3 leading-tight">Activate "{selectedForm?.title}"?</DialogTitle>
+                                <DialogDescription>
+                                  Activating changes the form state to 'Active' to allow responses.
+                                </DialogDescription>
+                              </DialogHeader>
+                              <DialogFooter className="gap-2">
+                                <Button variant="outline" onClick={() => setIsActivateDialogOpen(false)}>Cancel</Button>
+                                <Button
+                                  className="gradient-hero text-primary-foreground"
+                                  onClick={handleActivateForm}
+                                  disabled={activateFormMutation.isPending}
+                                >
+                                  {activateFormMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
+                                  Yes, Activate
+                                </Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+                        </>
+                      )}
+                      {selectedForm?.is_active && !selectedForm?.results_released && (
+                        <>
+                          <Button variant="outline" className="text-orange-600 border-orange-200 hover:bg-orange-50" onClick={() => setIsDeactivateDialogOpen(true)}>
+                            <ToggleLeft className="w-4 h-4 mr-2" />
+                            Deactivate Form
+                          </Button>
+                          <Dialog open={isDeactivateDialogOpen} onOpenChange={setIsDeactivateDialogOpen}>
+                            <DialogContent className="max-w-md">
+                              <DialogHeader>
+                                <DialogTitle className="break-all whitespace-normal overflow-hidden line-clamp-3 leading-tight">Deactivate "{selectedForm?.title}"?</DialogTitle>
+                                <DialogDescription>
+                                  This will close the form to new evaluations, preventing any assignments from being completed.
+                                </DialogDescription>
+                              </DialogHeader>
+                              <DialogFooter className="gap-2">
+                                <Button variant="outline" onClick={() => setIsDeactivateDialogOpen(false)}>Cancel</Button>
+                                <Button
+                                  variant="destructive"
+                                  onClick={handleDeactivateForm}
+                                  disabled={deactivateFormMutation.isPending}
+                                >
+                                  {deactivateFormMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <ToggleLeft className="w-4 h-4 mr-2" />}
+                                  Yes, Deactivate
+                                </Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+                        </>
                       )}
                     </div>
                   </div>
+
+                  {/* Inline Edit Details Panel */}
+                  {isEditingDetails && (
+                    <div className="mt-4 p-4 rounded-lg border border-border bg-muted/30 space-y-4">
+                      <p className="text-sm font-semibold">Edit Form Details</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="sm:col-span-2 space-y-1">
+                          <Label className="text-xs">Title</Label>
+                          <Input
+                            value={editFormData.title}
+                            onChange={(e) => setEditFormData(d => ({ ...d, title: e.target.value }))}
+                            placeholder="Form title"
+                            maxLength={255}
+                          />
+                        </div>
+                        <div className="sm:col-span-2 space-y-1">
+                          <Label className="text-xs">Description</Label>
+                          <Textarea
+                            value={editFormData.description}
+                            onChange={(e) => setEditFormData(d => ({ ...d, description: e.target.value }))}
+                            placeholder="Brief description (optional)"
+                            rows={2}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Start Date</Label>
+                          <Input
+                            type="date"
+                            value={editFormData.start_date}
+                            onChange={(e) => setEditFormData(d => ({ ...d, start_date: e.target.value }))}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">End Date</Label>
+                          <Input
+                            type="date"
+                            value={editFormData.end_date}
+                            onChange={(e) => setEditFormData(d => ({ ...d, end_date: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex gap-2 justify-end">
+                        <Button variant="outline" size="sm" onClick={() => setIsEditingDetails(false)}>Cancel</Button>
+                        <Button size="sm" onClick={handleSaveDetails} disabled={updateFormMutation.isPending}>
+                          {updateFormMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                          Save Changes
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {questionsLoading ? (
@@ -476,7 +894,8 @@ const AdminFormBuilder = () => {
                             value={question.text}
                             onChange={(e) => handleQuestionChange(idx, 'text', e.target.value)}
                             placeholder="Type your question here..."
-                            disabled={selectedForm?.is_published}
+                            disabled={selectedForm?.is_active}
+                            maxLength={500}
                           />
                         </div>
 
@@ -487,7 +906,7 @@ const AdminFormBuilder = () => {
                               type="number" step="0.5"
                               value={question.weight}
                               onChange={(e) => handleQuestionChange(idx, 'weight', parseFloat(e.target.value))}
-                              disabled={selectedForm?.is_published}
+                              disabled={selectedForm?.is_active}
                             />
                           </div>
                           {(question.input_type === 'rating' || question.input_type === 'number') && (
@@ -498,7 +917,7 @@ const AdminFormBuilder = () => {
                                   type="number"
                                   value={question.min_value}
                                   onChange={(e) => handleQuestionChange(idx, 'min_value', parseInt(e.target.value))}
-                                  disabled={selectedForm?.is_published}
+                                  disabled={selectedForm?.is_active}
                                 />
                               </div>
                               <div>
@@ -507,7 +926,7 @@ const AdminFormBuilder = () => {
                                   type="number"
                                   value={question.max_value}
                                   onChange={(e) => handleQuestionChange(idx, 'max_value', parseInt(e.target.value))}
-                                  disabled={selectedForm?.is_published}
+                                  disabled={selectedForm?.is_active}
                                 />
                               </div>
                             </>
@@ -518,7 +937,7 @@ const AdminFormBuilder = () => {
                                 type="checkbox"
                                 checked={question.is_required}
                                 onChange={(e) => handleQuestionChange(idx, 'is_required', e.target.checked)}
-                                disabled={selectedForm?.is_published}
+                                disabled={selectedForm?.is_active}
                                 className="rounded border-gray-300 text-primary shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50"
                               />
                               Required Field
@@ -527,7 +946,7 @@ const AdminFormBuilder = () => {
                         </div>
                       </div>
                       <div className="absolute right-4 top-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button variant="ghost" size="icon" className="text-destructive h-8 w-8" onClick={() => handleRemoveQuestion(idx)} disabled={selectedForm?.is_published}>
+                        <Button variant="ghost" size="icon" className="text-destructive h-8 w-8" onClick={() => handleRemoveQuestion(idx)} disabled={selectedForm?.is_active}>
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
@@ -540,9 +959,9 @@ const AdminFormBuilder = () => {
                     </div>
                   )}
 
-                  {!selectedForm?.is_published && (
+                  {!selectedForm?.is_active && (
                     <div className="bg-blue-50/50 text-blue-800 text-sm p-3 rounded border border-blue-100 flex items-start gap-2">
-                      <Loader2 className="w-4 h-4 mt-0.5 text-blue-500" />
+                      <Info className="w-4 h-4 mt-0.5 text-blue-500 shrink-0" />
                       <p>Remember to click <strong>Save Draft</strong> after making changes to questions.</p>
                     </div>
                   )}
@@ -551,8 +970,157 @@ const AdminFormBuilder = () => {
             </div>
           </div>
         </TabsContent>
+
+        {/* ── Assignments Tab ── */}
+        <TabsContent value="assignments" className="space-y-6 pt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Assignment Rules for: {selectedForm?.title}</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Define who evaluates whom. Each rule cross-matches all matching evaluators with all matching evaluatees.
+                Leave a field blank to match <em>any</em> unit or position.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-6">
+
+              {/* Rule Builder */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-muted/30 rounded-lg border border-border">
+                {/* Evaluator Side */}
+                <div className="space-y-3">
+                  <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Evaluator (Who evaluates)</p>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Organization Unit</Label>
+                    <Select
+                      value={newRule.evaluator_unit?.toString() ?? "__any_unit__"}
+                      onValueChange={(v) => setNewRule(r => ({ ...r, evaluator_unit: v === '__any_unit__' ? null : parseInt(v) }))}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Any unit" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__any_unit__">Any unit</SelectItem>
+                        {(units as OrganizationUnit[]).map(u => <SelectItem key={u.id} value={u.id.toString()}>{u.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Position</Label>
+                    <Select
+                      value={newRule.evaluator_position?.toString() ?? "__any_pos__"}
+                      onValueChange={(v) => setNewRule(r => ({ ...r, evaluator_position: v === '__any_pos__' ? null : parseInt(v) }))}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Any position" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__any_pos__">Any position</SelectItem>
+                        {(positions as PositionType[]).map(p => <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Evaluatee Side */}
+                <div className="space-y-3">
+                  <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Evaluatee (Who gets evaluated)</p>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Organization Unit</Label>
+                    <Select
+                      value={newRule.evaluatee_unit?.toString() ?? "__any_unit__"}
+                      onValueChange={(v) => setNewRule(r => ({ ...r, evaluatee_unit: v === '__any_unit__' ? null : parseInt(v) }))}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Any unit" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__any_unit__">Any unit</SelectItem>
+                        {(units as OrganizationUnit[]).map(u => <SelectItem key={u.id} value={u.id.toString()}>{u.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Position</Label>
+                    <Select
+                      value={newRule.evaluatee_position?.toString() ?? "__any_pos__"}
+                      onValueChange={(v) => setNewRule(r => ({ ...r, evaluatee_position: v === '__any_pos__' ? null : parseInt(v) }))}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Any position" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__any_pos__">Any position</SelectItem>
+                        {(positions as PositionType[]).map(p => <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Exclude Self + Add Button */}
+                <div className="md:col-span-2 flex items-center justify-between pt-2">
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={newRule.exclude_self}
+                      onChange={(e) => setNewRule(r => ({ ...r, exclude_self: e.target.checked }))}
+                      className="rounded border-gray-300 text-primary"
+                    />
+                    Exclude self-evaluation (evaluator ≠ evaluatee)
+                  </label>
+                  <Button onClick={handleAddRule} disabled={createRuleMutation.isPending}>
+                    {createRuleMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+                    Add Rule
+                  </Button>
+                </div>
+              </div>
+
+              {/* Saved Rules List */}
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Saved Rules {formRules.length > 0 && <span className="text-muted-foreground">({formRules.length})</span>}</p>
+                {rulesLoading && <div className="text-muted-foreground text-sm animate-pulse">Loading rules...</div>}
+                {!rulesLoading && formRules.length === 0 && (
+                  <div className="py-6 text-center border-2 border-dashed border-border rounded-lg text-muted-foreground text-sm">
+                    No rules yet. Add one above to define who evaluates whom.
+                  </div>
+                )}
+                {formRules.map((rule) => (
+                  <div key={rule.id} className="flex items-center justify-between p-3 rounded-lg border border-border bg-card">
+                    <div className="flex items-center gap-3">
+                      <div className="w-2 h-2 rounded-full bg-primary" />
+                      <p className="text-sm font-mono">{ruleLabel(rule)}</p>
+                      {rule.exclude_self && <Badge variant="outline" className="text-xs">No self-eval</Badge>}
+                    </div>
+                    <Button
+                      variant="ghost" size="icon"
+                      className="text-destructive h-8 w-8"
+                      onClick={() => handleDeleteRule(rule)}
+                      disabled={deletingRuleId === rule.id}
+                    >
+                      {deletingRuleId === rule.id
+                        ? <Loader2 className="w-4 h-4 animate-spin" />
+                        : <Trash2 className="w-4 h-4" />}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Generate Button — shown when rules exist OR while loading so it doesn't pop in late */}
+              {(formRules.length > 0 || rulesLoading) && (
+                <div className="pt-2 border-t border-border flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    {rulesLoading
+                      ? "Loading rules…"
+                      : `Applies ${formRules.length} rule(s) to generate concrete person-to-person assignments. Existing assignments are never duplicated.`}
+                  </p>
+                  <Button
+                    className="gradient-hero text-primary-foreground"
+                    onClick={handleGenerateAssignments}
+                    disabled={generateMutation.isPending || rulesLoading || localQuestions.length === 0}
+                    title={localQuestions.length === 0 ? "Form must have questions before assignments can be generated" : ""}
+                  >
+                    {generateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
+                    Generate Assignments
+                  </Button>
+                </div>
+              )}
+
+            </CardContent>
+          </Card>
+        </TabsContent>
+
       </Tabs>
-    </div>
+    </div >
   );
 };
 

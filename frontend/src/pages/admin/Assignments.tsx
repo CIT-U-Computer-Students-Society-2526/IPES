@@ -4,16 +4,12 @@ import {
   Plus,
   Search,
   Filter,
-  MoreHorizontal,
-  Edit,
-  Trash2,
-  Send,
   Users,
   Calendar,
   CheckCircle2,
   Clock,
   AlertCircle,
-  Zap
+  Send
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,19 +18,12 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/components/ui/use-toast";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -51,7 +40,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-import { useForms, useAssignments, useAutoAssignForm, type EvaluationForm } from "@/hooks/useEvaluations";
+import { useForms, useAssignments, type EvaluationForm } from "@/hooks/useEvaluations";
 
 const AdminAssignments = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -64,10 +53,11 @@ const AdminAssignments = () => {
   // Fetch all assignments across the org to aggregate stats
   const { data: allAssignments = [], isLoading: assignmentsLoading } = useAssignments();
 
-  const autoAssignMutation = useAutoAssignForm();
+
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case "Results Released": return "bg-purple-100 text-purple-700";
       case "Active": return "bg-green-100 text-green-700";
       case "Completed": return "bg-blue-100 text-blue-700";
       case "Scheduled": return "bg-yellow-100 text-yellow-700";
@@ -92,7 +82,7 @@ const AdminAssignments = () => {
 
       let status = "Draft";
       if (form.is_active) status = "Active";
-      if (form.is_published) status = "Completed";
+      if (form.results_released) status = "Results Released";
 
       return {
         ...form,
@@ -107,24 +97,10 @@ const AdminAssignments = () => {
     f.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const activeCount = enrichedForms.filter(f => f.is_active && !f.is_published).length;
+  const activeCount = enrichedForms.filter(f => f.is_active && !f.results_released).length;
   const totalEvaluatorsCount = allAssignments.length;
 
-  const handleAutoAssign = async (formId: number) => {
-    try {
-      const res = await autoAssignMutation.mutateAsync(formId);
-      toast({
-        title: "Auto-Assigned Successfully",
-        description: res.message
-      });
-    } catch (e: any) {
-      toast({
-        title: "Failed to Auto-Assign",
-        description: e.message || "An error occurred during mapping.",
-        variant: "destructive"
-      });
-    }
-  };
+
 
   const selectedFormAssignments = allAssignments.filter(a => a.form_id === selectedForm?.id);
 
@@ -140,53 +116,7 @@ const AdminAssignments = () => {
           <h1 className="text-2xl font-bold text-foreground">Evaluation Assignments</h1>
           <p className="text-muted-foreground">Manage who evaluates whom</p>
         </div>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button className="gradient-hero text-primary-foreground">
-              <Plus className="w-4 h-4 mr-2" />
-              Create Assignment Matrix
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Create Evaluation Assignment</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Evaluation Form Template</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select form" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {forms.map(f => (
-                      <SelectItem key={f.id} value={String(f.id)}>{f.title}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Assignment Rule</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="peer">Peer (same unit)</SelectItem>
-                    <SelectItem value="cross">Cross-Unit</SelectItem>
-                    <SelectItem value="exec">Executive Review</SelectItem>
-                    <SelectItem value="self">Self-Assessment</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Due Date Override (Optional)</Label>
-                <Input type="date" />
-              </div>
-              <Button className="w-full">Create Matrix Manually</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+
       </div>
 
       {/* Stats */}
@@ -272,33 +202,11 @@ const AdminAssignments = () => {
               >
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <h3 className="font-medium text-foreground">{form.title}</h3>
-                      <p className="text-sm text-muted-foreground">{form.type.toUpperCase()} EVALUATION</p>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-medium text-foreground cursor-pointer hover:underline line-clamp-5 break-words">{form.title}</h3>
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge className={getStatusColor(form.displayStatus)}>{form.displayStatus}</Badge>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAutoAssign(form.id); }}>
-                            <Zap className="w-4 h-4 mr-2" />
-                            Auto-Assign Matrix
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Edit className="w-4 h-4 mr-2" />
-                            Edit Settings
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive">
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
                     </div>
                   </div>
                   <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
@@ -318,20 +226,6 @@ const AdminAssignments = () => {
                     </div>
                     <Progress value={form.evaluatorsCount ? (form.completedCount / form.evaluatorsCount) * 100 : 0} className="h-2" />
                   </div>
-
-                  {/* Inline Auto Assign Hint */}
-                  {form.evaluatorsCount === 0 && (
-                    <div className="mt-4 flex items-center justify-between border-t border-border/50 pt-3">
-                      <span className="text-sm text-muted-foreground flex items-center">
-                        <AlertCircle className="w-4 h-4 mr-2 text-yellow-500" />
-                        No evaluators assigned yet.
-                      </span>
-                      <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); handleAutoAssign(form.id); }} disabled={autoAssignMutation.isPending}>
-                        <Zap className="w-4 h-4 mr-2 text-primary" />
-                        Auto-Assign Now
-                      </Button>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             ))}
@@ -350,9 +244,29 @@ const AdminAssignments = () => {
             <Card className="sticky top-6 lg:max-h-[calc(100vh-120px)] flex flex-col overflow-hidden">
               <CardHeader className="flex-shrink-0 border-b pb-4">
                 <CardTitle className="text-lg">Evaluator Matrix</CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Viewing pairings for <strong>{selectedForm.title}</strong>
-                </p>
+                <div className="space-y-3 mt-1">
+                  <p className="text-sm text-muted-foreground break-words line-clamp-3">
+                    Viewing pairings for <strong>{selectedForm.title}</strong>
+                  </p>
+
+                  <div className="flex items-center gap-4 text-sm pt-2 border-t">
+                    <div className="flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-green-600" />
+                      <span className="font-medium">{selectedFormAssignments.filter(a => a.status === 'Completed').length}</span>
+                      <span className="text-muted-foreground">Completed</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Clock className="w-4 h-4 text-yellow-600" />
+                      <span className="font-medium">{selectedFormAssignments.filter(a => a.status === 'In Progress').length}</span>
+                      <span className="text-muted-foreground">In Progress</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <AlertCircle className="w-4 h-4 text-muted-foreground" />
+                      <span className="font-medium">{selectedFormAssignments.filter(a => a.status === 'Pending').length}</span>
+                      <span className="text-muted-foreground">Pending</span>
+                    </div>
+                  </div>
+                </div>
               </CardHeader>
               <div className="flex-1 overflow-auto">
                 <Table>
@@ -395,10 +309,30 @@ const AdminAssignments = () => {
               </div>
               {selectedFormAssignments.length > 0 && (
                 <div className="p-4 border-t bg-muted/20 flex-shrink-0">
-                  <Button variant="outline" className="w-full">
-                    <Send className="w-4 h-4 mr-2" />
-                    Send Reminder to Pending
-                  </Button>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" className="w-full">
+                        <Send className="w-4 h-4 mr-2" />
+                        Send Reminder to Pending
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-sm text-center p-6">
+                      <DialogHeader>
+                        <DialogTitle className="text-center">Coming Soon</DialogTitle>
+                      </DialogHeader>
+                      <div className="py-4 space-y-3">
+                        <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto text-primary">
+                          <Send className="w-6 h-6" />
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          The ability to send automated email reminders to evaluators with pending tasks will be available in a future update.
+                        </p>
+                      </div>
+                      <Button onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))} className="w-full mt-2">
+                        Got it
+                      </Button>
+                    </DialogContent>
+                  </Dialog>
                 </div>
               )}
             </Card>

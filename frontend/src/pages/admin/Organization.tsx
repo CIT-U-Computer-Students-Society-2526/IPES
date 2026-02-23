@@ -518,12 +518,12 @@ const AdminOrganization = () => {
             </div>
             <div className="flex gap-6">
               <div className="text-center">
-                <p className="text-2xl font-bold text-foreground">{totalMembers}</p>
-                <p className="text-sm text-muted-foreground">Total Members</p>
+                <p className="text-2xl font-bold text-foreground">{pendingRequests?.length || 0}</p>
+                <p className="text-sm text-muted-foreground">Pending Requests</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold text-foreground">{realUnits?.length || 0}</p>
-                <p className="text-sm text-muted-foreground">Active Units</p>
+                <p className="text-2xl font-bold text-foreground">{realPositions?.length || 0}</p>
+                <p className="text-sm text-muted-foreground">Defined Positions</p>
               </div>
             </div>
           </div>

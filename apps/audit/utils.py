@@ -80,6 +80,7 @@ class AuditActions:
     # Assignment actions
     ASSIGNMENT_CREATED = 'assignment.created'
     ASSIGNMENT_UPDATED = 'assignment.updated'
+    ASSIGNMENTS_GENERATED = 'assignment.generated'
     
     # Accomplishment actions
     ACCOMPLISHMENT_CREATED = 'accomplishment.created'

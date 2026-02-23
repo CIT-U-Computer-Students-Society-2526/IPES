@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import EvaluationForm, Question, EvaluationAssignment, Response
+from .models import EvaluationForm, Question, EvaluationAssignment, AssignmentRule, Response
 
 
 class QuestionSerializer(serializers.ModelSerializer):
@@ -37,11 +37,11 @@ class EvaluationFormSerializer(serializers.ModelSerializer):
     class Meta:
         model = EvaluationForm
         fields = [
-            'id', 'organization_id', 'title', 'description', 'type',
+            'id', 'organization_id', 'title', 'description', 
             'start_date', 'end_date', 'created_by', 'created_by_name',
-            'is_active', 'is_published', 'questions'
+            'is_active', 'results_released', 'created_at', 'updated_at', 'questions'
         ]
-        read_only_fields = ['id', 'created_by']
+        read_only_fields = ['id', 'created_by', 'created_at', 'updated_at']
 
 
 class EvaluationFormCreateSerializer(serializers.ModelSerializer):
@@ -51,8 +51,8 @@ class EvaluationFormCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = EvaluationForm
         fields = [
-            'id', 'organization_id', 'title', 'description', 'type',
-            'start_date', 'end_date', 'is_active', 'is_published', 'questions'
+            'id', 'organization_id', 'title', 'description', 
+            'start_date', 'end_date', 'is_active', 'results_released', 'questions'
         ]
         read_only_fields = ['id']
     
@@ -77,6 +77,26 @@ class EvaluationFormCreateSerializer(serializers.ModelSerializer):
             Question.objects.create(form_id=form, **question_data)
         
         return form
+
+
+class AssignmentRuleSerializer(serializers.ModelSerializer):
+    """Serializer for AssignmentRule model"""
+    evaluator_unit_name     = serializers.CharField(source='evaluator_unit.name', read_only=True, default=None)
+    evaluator_position_name = serializers.CharField(source='evaluator_position.name', read_only=True, default=None)
+    evaluatee_unit_name     = serializers.CharField(source='evaluatee_unit.name', read_only=True, default=None)
+    evaluatee_position_name = serializers.CharField(source='evaluatee_position.name', read_only=True, default=None)
+
+    class Meta:
+        model = AssignmentRule
+        fields = [
+            'id', 'form_id',
+            'evaluator_unit', 'evaluator_unit_name',
+            'evaluator_position', 'evaluator_position_name',
+            'evaluatee_unit', 'evaluatee_unit_name',
+            'evaluatee_position', 'evaluatee_position_name',
+            'exclude_self',
+        ]
+        read_only_fields = ['id']
 
 
 class EvaluationAssignmentSerializer(serializers.ModelSerializer):

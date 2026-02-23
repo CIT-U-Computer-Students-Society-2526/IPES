@@ -281,7 +281,7 @@ const AdminUsers = () => {
           <TableHead>User</TableHead>
           <TableHead>Role</TableHead>
           <TableHead>Status</TableHead>
-          <TableHead>Last Login</TableHead>
+          <TableHead>Org Unit / Position</TableHead>
           <TableHead className="text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
@@ -429,7 +429,7 @@ const AdminUsers = () => {
                   <TableHead>User</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Last Login</TableHead>
+                  <TableHead>Org Unit / Position</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>

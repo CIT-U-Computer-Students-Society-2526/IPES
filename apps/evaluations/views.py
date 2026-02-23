@@ -10,12 +10,13 @@ from apps.audit.utils import log_action, AuditActions
 
 User = get_user_model()
 
-from .models import EvaluationForm, Question, EvaluationAssignment, Response
+from .models import EvaluationForm, Question, EvaluationAssignment, AssignmentRule, Response
 from .serializers import (
     EvaluationFormSerializer,
     EvaluationFormCreateSerializer,
     QuestionSerializer,
     QuestionCreateSerializer,
+    AssignmentRuleSerializer,
     EvaluationAssignmentSerializer,
     ResponseSerializer,
     EvaluationSubmitSerializer
@@ -37,14 +38,18 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
         queryset = EvaluationForm.objects.all()
         org_id = self.request.query_params.get('organization_id')
         is_active = self.request.query_params.get('is_active')
-        is_published = self.request.query_params.get('is_published')
+        results_released = self.request.query_params.get('results_released')
         
+        
+        # Exclude softly deleted forms
+        queryset = queryset.filter(is_deleted=False)
+
         if org_id:
             queryset = queryset.filter(organization_id=org_id)
         if is_active is not None:
             queryset = queryset.filter(is_active=is_active.lower() == 'true')
-        if is_published is not None:
-            queryset = queryset.filter(is_published=is_published.lower() == 'true')
+        if results_released is not None:
+            queryset = queryset.filter(results_released=results_released.lower() == 'true')
         
         return queryset.order_by('-id')
     
@@ -60,20 +65,26 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
         )
     
     @action(detail=True, methods=['post'])
-    def publish(self, request, pk=None):
-        """Publish a form"""
+    def activate(self, request, pk=None):
+        """Activate a form"""
         form = self.get_object()
         
-        if form.is_published:
+        if form.is_active:
             return DRFResponse(
-                {'error': 'Form is already published'},
+                {'error': 'Form is already active'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        if not form.questions.exists():
+            return DRFResponse(
+                {'error': 'Form must have at least one question before it can be activated.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        form.is_published = True
+        form.is_active = True
         form.save()
         
-        # Log form publishing
+        # Log form activation
         log_action(
             request.user,
             AuditActions.FORM_PUBLISHED,
@@ -83,25 +94,25 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
         )
         
         return DRFResponse({
-            'message': 'Form published successfully',
-            'is_published': form.is_published
+            'message': 'Form activated successfully',
+            'is_active': form.is_active
         })
     
     @action(detail=True, methods=['post'])
-    def unpublish(self, request, pk=None):
-        """Unpublish a form"""
+    def deactivate(self, request, pk=None):
+        """Deactivate a form"""
         form = self.get_object()
         
-        if not form.is_published:
+        if not form.is_active:
             return DRFResponse(
-                {'error': 'Form is not published'},
+                {'error': 'Form is already inactive'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        form.is_published = False
+        form.is_active = False
         form.save()
         
-        # Log form unpublishing
+        # Log form deactivation
         log_action(
             request.user,
             AuditActions.FORM_UNPUBLISHED,
@@ -111,9 +122,62 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
         )
         
         return DRFResponse({
-            'message': 'Form unpublished successfully',
-            'is_published': form.is_published
+            'message': 'Form deactivated successfully',
+            'is_active': form.is_active
         })
+    
+    @action(detail=True, methods=['post'])
+    def release_results(self, request, pk=None):
+        """Release results for a form"""
+        form = self.get_object()
+        
+        if form.results_released:
+            return DRFResponse(
+                {'error': 'Results are already released'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        if not form.questions.exists():
+            return DRFResponse(
+                {'error': 'Form must have at least one question before results can be released.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        form.results_released = True
+        form.is_active = False
+        form.save()
+        
+        # Log results release
+        log_action(
+            request.user,
+            AuditActions.FORM_PUBLISHED,
+            request,
+            form_title=form.title,
+            form_id=str(form.id)
+        )
+        
+        return DRFResponse({
+            'message': 'Results released successfully',
+            'results_released': form.results_released
+        })
+
+    def destroy(self, request, *args, **kwargs):
+        """Soft delete a form"""
+        form = self.get_object()
+        form.is_deleted = True
+        form.is_active = False # Deactivate as well just in case
+        form.save()
+        
+        # Log soft delete
+        log_action(
+            request.user,
+            AuditActions.FORM_DELETED,
+            request,
+            form_title=form.title,
+            form_id=str(form.id)
+        )
+        
+        return DRFResponse({'message': 'Form deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
     
     @action(detail=True, methods=['get'])
     def questions(self, request, pk=None):
@@ -137,8 +201,8 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
             start_date=form.start_date,
             end_date=form.end_date,
             created_by=request.user,
-            is_active=True,
-            is_published=False
+            is_active=False,
+            results_released=False
         )
         
         # Duplicate questions
@@ -148,7 +212,10 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
                 text=question.text,
                 input_type=question.input_type,
                 order=question.order,
-                weight=question.weight
+                weight=question.weight,
+                is_required=question.is_required,
+                min_value=question.min_value,
+                max_value=question.max_value,
             )
         
         serializer = EvaluationFormSerializer(new_form)
@@ -164,40 +231,122 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
         
         return DRFResponse(serializer.data, status=status.HTTP_201_CREATED)
 
-    @action(detail=True, methods=['post'])
-    def auto_assign(self, request, pk=None):
-        """Automatically assign evaluation forms to all applicable users in the org."""
-        form = self.get_object()
 
-        # Generate a matrix assigning everyone in the organization to evaluate everyone else
-        org = form.organization_id
-        if not org:
+def _apply_rule(rule, form):
+    """Apply a single AssignmentRule, creating missing EvaluationAssignments.
+    Returns the count of newly created assignments."""
+    from apps.organizations.models import Membership
+
+    org = form.organization_id  # Organization instance
+
+    def memberships_for(unit, position):
+        qs = Membership.objects.filter(
+            unit_id__organization_id=org,
+            is_active=True,
+        ).select_related('user_id')
+        if unit:
+            qs = qs.filter(unit_id=unit)
+        if position:
+            qs = qs.filter(position_id=position)
+        return qs
+
+    evaluators = memberships_for(rule.evaluator_unit, rule.evaluator_position)
+    evaluatees = memberships_for(rule.evaluatee_unit, rule.evaluatee_position)
+
+    created_count = 0
+    for ev_membership in evaluators:
+        for ee_membership in evaluatees:
+            ev_user = ev_membership.user_id
+            ee_user = ee_membership.user_id
+            if rule.exclude_self and ev_user == ee_user:
+                continue
+            _, created = EvaluationAssignment.objects.get_or_create(
+                evaluator_id=ev_user,
+                evaluatee_id=ee_user,
+                form_id=form,
+                defaults={'status': 'Pending'}
+            )
+            if created:
+                created_count += 1
+    return created_count
+
+
+class AssignmentRuleViewSet(viewsets.ModelViewSet):
+    """ViewSet for AssignmentRule CRUD and assignment generation."""
+    queryset = AssignmentRule.objects.all()
+    serializer_class = AssignmentRuleSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    http_method_names = ['get', 'post', 'delete', 'head', 'options']  # no PUT/PATCH
+
+    def get_queryset(self):
+        user = self.request.user
+        qs = AssignmentRule.objects.all().select_related(
+            'evaluator_unit', 'evaluator_position',
+            'evaluatee_unit', 'evaluatee_position',
+            'form_id',
+        )
+        form_id = self.request.query_params.get('form_id')
+        if form_id:
+            qs = qs.filter(form_id=form_id)
+
+        # Scope to forms the user's org owns
+        from apps.organizations.models import Membership
+        user_org_ids = Membership.objects.filter(
+            user_id=user, is_active=True
+        ).values_list('unit_id__organization_id', flat=True).distinct()
+        qs = qs.filter(form_id__organization_id__in=user_org_ids)
+
+        return qs
+
+    @action(detail=False, methods=['post'])
+    def generate(self, request):
+        """Apply all rules for a form and generate EvaluationAssignment rows."""
+        form_id = request.data.get('form_id')
+        if not form_id:
             return DRFResponse(
-                {'error': 'Form must belong to an Organization.'},
+                {'error': 'form_id is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        try:
+            form = EvaluationForm.objects.get(id=form_id)
+        except EvaluationForm.DoesNotExist:
+            return DRFResponse({'error': 'Form not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        if not form.is_active:
+            return DRFResponse(
+                {'error': 'Assignments can only be generated for active forms.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        if not form.questions.exists():
+            return DRFResponse(
+                {'error': 'Form must have at least one question before assignments can be generated.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Retrieve all active users in that organization
-        users = User.objects.filter(organization=org, is_active=True)
-        assignments_created = 0
+        rules = form.assignment_rules.all()
+        if not rules.exists():
+            return DRFResponse(
+                {'error': 'No assignment rules defined for this form.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        for evaluator in users:
-            for evaluatee in users:
-                if evaluator != evaluatee:
-                    # Prevent duplicates if they already exist
-                    assignment, created = EvaluationAssignment.objects.get_or_create(
-                        evaluator_id=evaluator,
-                        evaluatee_id=evaluatee,
-                        form_id=form,
-                        defaults={'status': 'Pending'}
-                    )
-                    if created:
-                        assignments_created += 1
+        total_created = 0
+        for rule in rules:
+            total_created += _apply_rule(rule, form)
 
-        return DRFResponse({
-            'message': f'Auto-assigned {assignments_created} evaluations.',
-            'created': assignments_created
-        }, status=status.HTTP_201_CREATED)
+        log_action(
+            request.user,
+            AuditActions.ASSIGNMENTS_GENERATED,
+            request,
+            form_id=str(form.id),
+            assignments_created=str(total_created)
+        )
+
+        return DRFResponse(
+            {'message': f'{total_created} assignment(s) created.', 'created': total_created},
+            status=status.HTTP_201_CREATED
+        )
 
 
 class QuestionViewSet(viewsets.ModelViewSet):
@@ -295,13 +444,28 @@ class EvaluationAssignmentViewSet(viewsets.ModelViewSet):
         queryset = EvaluationAssignment.objects.all()
         user = self.request.user
         
-        # Regular officers can only see their own assignments
-        if user.role in ['officer', 'member']:
-            queryset = queryset.filter(evaluatee_id=user)
-        
+        org_id = self.request.query_params.get('organization_id')
         form_id = self.request.query_params.get('form_id')
         evaluator_id = self.request.query_params.get('evaluator_id')
         status_param = self.request.query_params.get('status')
+        
+        is_admin = user.is_superuser
+        if not is_admin and org_id:
+            from apps.organizations.models import Membership
+            is_admin = Membership.objects.filter(
+                user_id=user,
+                unit_id__organization_id=org_id,
+                role='Admin',
+                is_active=True
+            ).exists()
+            
+        if org_id:
+            queryset = queryset.filter(form_id__organization_id=org_id)
+            
+        # Regular members can only see their own assignments
+        if not is_admin:
+            from django.db.models import Q
+            queryset = queryset.filter(Q(evaluatee_id=user) | Q(evaluator_id=user))
         
         if form_id:
             queryset = queryset.filter(form_id=form_id)
