@@ -6,13 +6,32 @@ from .models import User
 class UserSerializer(serializers.ModelSerializer):
     """Serializer for User model - handles reading user data"""
     
+    memberships = serializers.SerializerMethodField()
+    
     class Meta:
         model = User
         fields = [
             'id', 'username', 'email', 'first_name', 'last_name',
-            'display_picture', 'role', 'is_active', 'date_joined'
+            'display_picture', 'is_active', 'date_joined', 'memberships'
         ]
         read_only_fields = ['id', 'date_joined']
+        
+    def get_memberships(self, obj):
+        return [
+            {
+                'id': m.id,
+                'organization_id': m.unit_id.organization_id.id,
+                'organization_name': m.unit_id.organization_id.name,
+                'unit_id': m.unit_id.id,
+                'unit_name': m.unit_id.name,
+                'position_id': m.position_id.id,
+                'position_name': m.position_id.name,
+                'position_rank': m.position_id.rank,
+                'role': m.role,
+                'is_active': m.is_active
+            }
+            for m in obj.memberships.filter(is_active=True, unit_id__organization_id__is_active=True)
+        ]
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
@@ -23,8 +42,9 @@ class UserCreateSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'username', 'email', 'first_name', 'last_name',
-            'password', 'role'
+            'password'
         ]
+        read_only_fields = ['username']
         
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():

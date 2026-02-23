@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation, Outlet, Navigate } from "react-router-dom";
 import { useCurrentUser } from "@/hooks/useUsers";
+import { useOrganizationState } from "@/contexts/OrganizationContext";
 import {
   LayoutDashboard,
   Users,
@@ -25,11 +26,11 @@ import { cn } from "@/lib/utils";
 const navigation = [
   { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
   { name: "Organization", href: "/admin/organization", icon: Building2 },
+  { name: "Users", href: "/admin/users", icon: Users },
+  { name: "Accomplishments", href: "/admin/accomplishments", icon: Trophy },
   { name: "Form Builder", href: "/admin/forms", icon: FileEdit },
   { name: "Assignments", href: "/admin/assignments", icon: ClipboardList },
   { name: "Analytics", href: "/admin/analytics", icon: BarChart3 },
-  { name: "Accomplishments", href: "/admin/accomplishments", icon: Trophy },
-  { name: "Users", href: "/admin/users", icon: Users },
   { name: "Audit Log", href: "/admin/audit-log", icon: Shield },
   { name: "Settings", href: "/admin/settings", icon: Settings },
 ];
@@ -38,6 +39,7 @@ const AdminLayout = () => {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { data: user, isLoading, isError } = useCurrentUser();
+  const { activeOrganizationId } = useOrganizationState();
 
   if (isLoading) {
     return (
@@ -47,8 +49,19 @@ const AdminLayout = () => {
     );
   }
 
-  if (isError || !user || user.role !== 'Admin') {
+  // Validate User Context
+  if (isError || !user || !activeOrganizationId) {
     return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  // Find their membership in the currently active organization
+  const activeMembership = user.memberships?.find(
+    (m) => m.organization_id === activeOrganizationId
+  );
+
+  // Deny access if they don't have Admin permissions within THIS specific org
+  if (!activeMembership || activeMembership.role !== 'Admin') {
+    return <Navigate to="/select-organization" replace />;
   }
 
   const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email;

@@ -1,8 +1,8 @@
 import { Link } from "react-router-dom";
-import { 
-  Users, 
-  ClipboardList, 
-  CheckCircle2, 
+import {
+  Users,
+  ClipboardList,
+  CheckCircle2,
   AlertTriangle,
   TrendingUp,
   ArrowRight,
@@ -25,14 +25,14 @@ import { type AuditLog } from "@/hooks/useAudit";
 import { type UnitCompletionStats } from "@/hooks/useOrganizations";
 
 // Stats card component
-const StatCard = ({ 
-  label, 
-  value, 
-  change, 
-  icon: Icon, 
+const StatCard = ({
+  label,
+  value,
+  change,
+  icon: Icon,
   color,
-  isLoading 
-}: { 
+  isLoading
+}: {
   label: string;
   value: string | number;
   change: string;
@@ -101,8 +101,8 @@ const ActivityItem = ({ activity }: { activity: AuditLog }) => {
 };
 
 // Unit progress component
-const UnitProgress = ({ name, completed, isLoading }: { 
-  name: string; 
+const UnitProgress = ({ name, completed, isLoading }: {
+  name: string;
   completed: number;
   isLoading?: boolean;
 }) => {
@@ -124,8 +124,8 @@ const UnitProgress = ({ name, completed, isLoading }: {
         <span className="text-foreground font-medium">{name}</span>
         <span className="text-muted-foreground">{completed}%</span>
       </div>
-      <Progress 
-        value={completed} 
+      <Progress
+        value={completed}
         className={`h-2 ${completed < 50 ? '[&>div]:bg-warning' : completed >= 80 ? '[&>div]:bg-success' : ''}`}
       />
     </div>
@@ -144,16 +144,12 @@ const AdminDashboard = () => {
   const totalOfficers = users?.length || 0;
   const activeEvaluations = assignments?.filter(a => a.status === "Pending" || a.status === "In Progress").length || 0;
   const completedEvaluations = assignments?.filter(a => a.status === "Submitted").length || 0;
-  const completionRate = assignments?.length 
-    ? Math.round((completedEvaluations / assignments.length) * 100) 
+  const completionRate = assignments?.length
+    ? Math.round((completedEvaluations / assignments.length) * 100)
     : 0;
   const pendingReview = pendingAccomplishments?.length || 0;
 
-  // Group users by role for role distribution
-  const roleDistribution = users?.reduce((acc, user) => {
-    acc[user.role] = (acc[user.role] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>) || {};
+
 
   // Use real unit progress data from API
   const unitProgress = unitStats?.map((stat: UnitCompletionStats) => ({
@@ -163,17 +159,17 @@ const AdminDashboard = () => {
 
   // Generate alerts based on data
   const alerts = [
-    ...(pendingReview > 0 ? [{ 
-      id: 1, 
-      type: "warning" as const, 
-      message: `${pendingReview} accomplishments pending review`, 
-      action: "Review now" 
+    ...(pendingReview > 0 ? [{
+      id: 1,
+      type: "warning" as const,
+      message: `${pendingReview} accomplishments pending review`,
+      action: "Review now"
     }] : []),
-    ...(activeEvaluations > 20 ? [{ 
-      id: 2, 
-      type: "info" as const, 
-      message: `${activeEvaluations} active evaluations ongoing`, 
-      action: "View details" 
+    ...(activeEvaluations > 20 ? [{
+      id: 2,
+      type: "info" as const,
+      message: `${activeEvaluations} active evaluations ongoing`,
+      action: "View details"
     }] : []),
   ];
 
@@ -202,33 +198,33 @@ const AdminDashboard = () => {
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard 
-          label="Total Officers" 
-          value={totalOfficers} 
+        <StatCard
+          label="Total Officers"
+          value={totalOfficers}
           change="Active users"
           icon={Users}
           color="primary"
           isLoading={usersLoading}
         />
-        <StatCard 
-          label="Active Evaluations" 
-          value={activeEvaluations} 
+        <StatCard
+          label="Active Evaluations"
+          value={activeEvaluations}
           change="In progress"
           icon={ClipboardList}
           color="warning"
           isLoading={assignmentsLoading}
         />
-        <StatCard 
-          label="Completion Rate" 
-          value={`${completionRate}%`} 
+        <StatCard
+          label="Completion Rate"
+          value={`${completionRate}%`}
           change={`${completedEvaluations} completed`}
           icon={CheckCircle2}
           color="success"
           isLoading={assignmentsLoading}
         />
-        <StatCard 
-          label="Pending Review" 
-          value={pendingReview} 
+        <StatCard
+          label="Pending Review"
+          value={pendingReview}
           change="Accomplishments"
           icon={AlertTriangle}
           color="accent"
@@ -240,18 +236,16 @@ const AdminDashboard = () => {
       {alerts.length > 0 && (
         <div className="space-y-2">
           {alerts.map((alert) => (
-            <div 
+            <div
               key={alert.id}
-              className={`flex items-center justify-between p-4 rounded-lg border ${
-                alert.type === 'warning' 
-                  ? 'bg-warning/5 border-warning/20' 
+              className={`flex items-center justify-between p-4 rounded-lg border ${alert.type === 'warning'
+                  ? 'bg-warning/5 border-warning/20'
                   : 'bg-primary/5 border-primary/20'
-              }`}
+                }`}
             >
               <div className="flex items-center gap-3">
-                <AlertTriangle className={`w-5 h-5 ${
-                  alert.type === 'warning' ? 'text-warning' : 'text-primary'
-                }`} />
+                <AlertTriangle className={`w-5 h-5 ${alert.type === 'warning' ? 'text-warning' : 'text-primary'
+                  }`} />
                 <span className="text-sm text-foreground">{alert.message}</span>
               </div>
               <Button variant="ghost" size="sm">
@@ -274,13 +268,13 @@ const AdminDashboard = () => {
               View analytics
             </Link>
           </div>
-          
+
           <div className="space-y-5">
             {unitProgress.map((unit) => (
-              <UnitProgress 
-                key={unit.name} 
-                name={unit.name} 
-                completed={unit.completed} 
+              <UnitProgress
+                key={unit.name}
+                name={unit.name}
+                completed={unit.completed}
                 isLoading={isLoading}
               />
             ))}
@@ -295,7 +289,7 @@ const AdminDashboard = () => {
               Recent Activity
             </h2>
           </div>
-          
+
           <div className="space-y-4">
             {activityLoading ? (
               <>

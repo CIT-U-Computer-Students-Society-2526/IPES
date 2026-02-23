@@ -6,15 +6,19 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { useOrganizationState } from '@/contexts/OrganizationContext';
 
 // Evaluation Form types
 export interface Question {
   id: number;
   form_id: number;
   text: string;
-  input_type: 'rating' | 'text' | 'dropdown' | 'checkbox';
+  input_type: 'rating' | 'text' | 'dropdown' | 'checkbox' | 'number' | 'textarea';
   order: number;
   weight: number;
+  is_required?: boolean;
+  min_value?: number;
+  max_value?: number;
   options?: string[]; // For dropdown/checkbox types
 }
 
@@ -23,14 +27,14 @@ export interface EvaluationForm {
   organization_id: number;
   title: string;
   description: string;
-  type: 'self' | 'peer' | 'supervisor' | '360';
   start_date: string;
   end_date: string;
   created_by: number;
   is_active: boolean;
-  is_published: boolean;
+  results_released: boolean;
   questions?: Question[];
   created_at: string;
+  updated_at: string;
 }
 
 // Evaluation Assignment types
@@ -45,12 +49,14 @@ export interface Response {
 export interface EvaluationAssignment {
   id: number;
   evaluator_id: number;
+  evaluator_email?: string;
   evaluator_name?: string;
   evaluatee_id: number;
+  evaluatee_email?: string;
   evaluatee_name?: string;
   form_id: number;
   form_title?: string;
-  status: 'Pending' | 'In Progress' | 'Submitted' | 'Reviewed';
+  status: 'Pending' | 'In Progress' | 'Submitted' | 'Reviewed' | 'Completed';
   submitted_at?: string;
   total_score?: number;
   responses?: Response[];
@@ -66,18 +72,45 @@ export interface EvaluationSubmitData {
   }[];
 }
 
+// Assignment Rule types
+export interface AssignmentRule {
+  id: number;
+  form_id: number;
+  evaluator_unit: number | null;
+  evaluator_unit_name: string | null;
+  evaluator_position: number | null;
+  evaluator_position_name: string | null;
+  evaluatee_unit: number | null;
+  evaluatee_unit_name: string | null;
+  evaluatee_position: number | null;
+  evaluatee_position_name: string | null;
+  exclude_self: boolean;
+}
+
+export interface AssignmentRuleCreateData {
+  form_id: number;
+  evaluator_unit?: number | null;
+  evaluator_position?: number | null;
+  evaluatee_unit?: number | null;
+  evaluatee_position?: number | null;
+  exclude_self?: boolean;
+}
+
 // ===== Form Hooks =====
 
 // Fetch all forms
 export const useForms = (params?: { is_active?: boolean; is_published?: boolean; organization_id?: number }) => {
-  const queryString = params
+  const { activeOrganizationId } = useOrganizationState();
+  const effectiveParams = { ...params, organization_id: params?.organization_id || activeOrganizationId || undefined };
+
+  const queryString = Object.keys(effectiveParams).length > 0
     ? '?' + new URLSearchParams(
-        Object.entries(params).filter(([, v]) => v !== undefined).reduce((acc, [k, v]) => ({ ...acc, [k]: String(v) }), {})
-      ).toString()
+      Object.entries(effectiveParams).filter(([, v]) => v !== undefined).reduce((acc, [k, v]) => ({ ...acc, [k]: String(v) }), {})
+    ).toString()
     : '';
 
   return useQuery({
-    queryKey: ['forms', params],
+    queryKey: ['forms', effectiveParams],
     queryFn: async () => {
       const response = await api.get(`/forms/${queryString}`);
       const data = await response.json() as { results: EvaluationForm[] } | EvaluationForm[];
@@ -110,13 +143,45 @@ export const useFormQuestions = (formId: number) => {
   });
 };
 
-// Publish form
-export const usePublishForm = () => {
+// Activate form
+export const useActivateForm = () => {
   const queryClient = useQueryClient();
 
   return useMutation<EvaluationForm, Error, number>({
     mutationFn: async (id: number) => {
-      const response = await api.post(`/forms/${id}/publish/`);
+      const response = await api.post(`/forms/${id}/activate/`);
+      return response.json() as Promise<EvaluationForm>;
+    },
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ['forms'] });
+      queryClient.invalidateQueries({ queryKey: ['forms', id] });
+    },
+  });
+};
+
+// Deactivate form
+export const useDeactivateForm = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<EvaluationForm, Error, number>({
+    mutationFn: async (id: number) => {
+      const response = await api.post(`/forms/${id}/deactivate/`);
+      return response.json() as Promise<EvaluationForm>;
+    },
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ['forms'] });
+      queryClient.invalidateQueries({ queryKey: ['forms', id] });
+    },
+  });
+};
+
+// Release results
+export const useReleaseResults = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<EvaluationForm, Error, number>({
+    mutationFn: async (id: number) => {
+      const response = await api.post(`/forms/${id}/release_results/`);
       return response.json() as Promise<EvaluationForm>;
     },
     onSuccess: (_, id) => {
@@ -141,18 +206,173 @@ export const useDuplicateForm = () => {
   });
 };
 
+// Create form
+export const useCreateForm = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<EvaluationForm, Error, Partial<EvaluationForm>>({
+    mutationFn: async (data: Partial<EvaluationForm>) => {
+      const response = await api.post('/forms/', data);
+      return response.json() as Promise<EvaluationForm>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['forms'] });
+    },
+  });
+};
+
+// Update form
+export const useUpdateForm = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<EvaluationForm, Error, { id: number; data: Partial<EvaluationForm> }>({
+    mutationFn: async ({ id, data }) => {
+      const response = await api.patch(`/forms/${id}/`, data);
+      return response.json() as Promise<EvaluationForm>;
+    },
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['forms'] });
+      queryClient.invalidateQueries({ queryKey: ['forms', id] });
+    },
+  });
+};
+
+// Delete form
+export const useDeleteForm = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, number>({
+    mutationFn: async (id: number) => {
+      await api.delete(`/forms/${id}/`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['forms'] });
+    },
+  });
+};
+
+// ===== Assignment Rule Hooks =====
+
+// Fetch rules for a form
+export const useFormRules = (formId: number) => {
+  return useQuery({
+    queryKey: ['assignment-rules', formId],
+    queryFn: async () => {
+      const response = await api.get(`/assignment-rules/?form_id=${formId}`);
+      const data = await response.json() as { results: AssignmentRule[] } | AssignmentRule[];
+      return Array.isArray(data) ? data : data.results || [];
+    },
+    enabled: !!formId,
+    staleTime: 30_000, // rules rarely change – avoid re-fetch on every tab switch
+  });
+};
+
+// Create a rule
+export const useCreateRule = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<AssignmentRule, Error, AssignmentRuleCreateData>({
+    mutationFn: async (data) => {
+      const response = await api.post('/assignment-rules/', data);
+      return response.json() as Promise<AssignmentRule>;
+    },
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['assignment-rules', vars.form_id] });
+    },
+  });
+};
+
+// Delete a rule
+export const useDeleteRule = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, { id: number; form_id: number }>({
+    mutationFn: async ({ id }) => {
+      await api.delete(`/assignment-rules/${id}/`);
+    },
+    onSuccess: (_, { form_id }) => {
+      queryClient.invalidateQueries({ queryKey: ['assignment-rules', form_id] });
+    },
+  });
+};
+
+// Generate assignments from all rules on a form
+export const useGenerateAssignments = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ message: string; created: number }, Error, number>({
+    mutationFn: async (form_id: number) => {
+      const response = await api.post('/assignment-rules/generate/', { form_id });
+      return response.json() as Promise<{ message: string; created: number }>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['assignments'] });
+    },
+  });
+};
+
+
+// ===== Question Hooks =====
+
+// Bulk create questions for a form
+export const useCreateQuestions = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<Question[], Error, { form_id: number; questions: Partial<Question>[] }>({
+    mutationFn: async (data: { form_id: number; questions: Partial<Question>[] }) => {
+      const response = await api.post('/questions/bulk_create/', data);
+      return response.json() as Promise<Question[]>;
+    },
+    onSuccess: (_, { form_id }) => {
+      queryClient.invalidateQueries({ queryKey: ['forms', form_id, 'questions'] });
+    },
+  });
+};
+
+// Update single question
+export const useUpdateQuestion = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<Question, Error, { id: number; form_id: number; data: Partial<Question> }>({
+    mutationFn: async ({ id, data }) => {
+      const response = await api.patch(`/questions/${id}/`, data);
+      return response.json() as Promise<Question>;
+    },
+    onSuccess: (_, { form_id }) => {
+      queryClient.invalidateQueries({ queryKey: ['forms', form_id, 'questions'] });
+    },
+  });
+};
+
+// Delete single question
+export const useDeleteQuestion = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, { id: number; form_id: number }>({
+    mutationFn: async ({ id }) => {
+      await api.delete(`/questions/${id}/`);
+    },
+    onSuccess: (_, { form_id }) => {
+      queryClient.invalidateQueries({ queryKey: ['forms', form_id, 'questions'] });
+    },
+  });
+};
+
 // ===== Assignment Hooks =====
 
 // Fetch all assignments
-export const useAssignments = (params?: { status?: string; form_id?: number }) => {
-  const queryString = params
+export const useAssignments = (params?: { status?: string; form_id?: number; organization_id?: number }) => {
+  const { activeOrganizationId } = useOrganizationState();
+  const effectiveParams = { ...params, organization_id: params?.organization_id || activeOrganizationId || undefined };
+
+  const queryString = Object.keys(effectiveParams).length > 0
     ? '?' + new URLSearchParams(
-        Object.entries(params).filter(([, v]) => v !== undefined).reduce((acc, [k, v]) => ({ ...acc, [k]: String(v) }), {})
-      ).toString()
+      Object.entries(effectiveParams).filter(([, v]) => v !== undefined).reduce((acc, [k, v]) => ({ ...acc, [k]: String(v) }), {})
+    ).toString()
     : '';
 
   return useQuery({
-    queryKey: ['assignments', params],
+    queryKey: ['assignments', effectiveParams],
     queryFn: async () => {
       const response = await api.get(`/assignments/${queryString}`);
       const data = await response.json() as { results: EvaluationAssignment[] } | EvaluationAssignment[];
@@ -225,5 +445,22 @@ export const useAssignmentResponses = (assignmentId: number) => {
       return Array.isArray(data) ? data : data.results || [];
     },
     enabled: !!assignmentId,
+  });
+};
+
+// Save draft responses without submitting
+export const useSaveDraftResponses = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<Response[], Error, { assignment_id: number; responses: { question_id: number; score_value?: number; text?: string; }[] }>({
+    mutationFn: async (data) => {
+      const response = await api.post(`/responses/bulk_create/`, data);
+      return response.json() as Promise<Response[]>;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['responses', 'by_assignment', variables.assignment_id] });
+      queryClient.invalidateQueries({ queryKey: ['assignments', variables.assignment_id] });
+      queryClient.invalidateQueries({ queryKey: ['assignments', 'my_pending'] });
+    },
   });
 };

@@ -6,35 +6,43 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { useOrganizationState } from '@/contexts/OrganizationContext';
 
 // User type definition
+export interface Membership {
+  id: number;
+  organization_id: number;
+  organization_name: string;
+  unit_id: number;
+  unit_name: string;
+  position_id: number;
+  position_name: string;
+  position_rank: number;
+  role: 'Admin' | 'Member';
+  is_active: boolean;
+}
+
 export interface User {
   id: number;
   email: string;
   first_name: string;
   last_name: string;
-  role: 'Admin' | 'Officer' | 'Evaluator';
-  organization_id?: number;
-  organization_name?: string;
   is_active: boolean;
   date_joined: string;
   last_login?: string;
+  memberships: Membership[];
 }
 
 export interface UserCreate {
   email: string;
   first_name: string;
   last_name: string;
-  role: 'Admin' | 'Officer' | 'Evaluator';
-  organization_id?: number;
   password: string;
 }
 
 export interface UserUpdate {
   first_name?: string;
   last_name?: string;
-  role?: 'Admin' | 'Officer' | 'Evaluator';
-  organization_id?: number;
   is_active?: boolean;
 }
 
@@ -42,8 +50,8 @@ export interface UserUpdate {
 export const useUsers = (params?: { is_active?: boolean; role?: string; organization_id?: number }) => {
   const queryString = params
     ? '?' + new URLSearchParams(
-        Object.entries(params).filter(([, v]) => v !== undefined).reduce((acc, [k, v]) => ({ ...acc, [k]: String(v) }), {})
-      ).toString()
+      Object.entries(params).filter(([, v]) => v !== undefined).reduce((acc, [k, v]) => ({ ...acc, [k]: String(v) }), {})
+    ).toString()
     : '';
 
   return useQuery({
@@ -125,6 +133,21 @@ export const useCurrentUser = () => {
   });
 };
 
+// Get current user's membership for active organization
+export const useCurrentMembership = () => {
+  const { data: currentUser } = useCurrentUser();
+  const { activeOrganizationId } = useOrganizationState();
+
+  return useQuery({
+    queryKey: ['users', 'current', 'membership', activeOrganizationId],
+    queryFn: () => {
+      if (!currentUser?.memberships || !activeOrganizationId) return null;
+      return currentUser.memberships.find(m => m.organization_id === activeOrganizationId) || null;
+    },
+    enabled: !!currentUser && !!activeOrganizationId,
+  });
+};
+
 // Get user statistics
 export const useUserStats = () => {
   return useQuery({
@@ -134,10 +157,9 @@ export const useUserStats = () => {
       const usersList = (await response.json()) as User[];
       const total = usersList.length;
       const active = usersList.filter(u => u.is_active).length;
-      const by_role = usersList.reduce((acc: Record<string, number>, u) => {
-        acc[u.role] = (acc[u.role] || 0) + 1;
-        return acc;
-      }, {});
+
+      // Since roles are now tenant-based, global role stats are no longer viable here
+      const by_role = { 'Admin': 0, 'Member': 0 };
 
       return { total, active, by_role };
     },
