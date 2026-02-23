@@ -6,6 +6,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { useOrganizationState } from '@/contexts/OrganizationContext';
 
 // Audit log types
 export interface AuditLog {
@@ -48,11 +49,15 @@ export const useAuditLogs = (params?: {
 };
 
 // Fetch recent audit logs (last 100)
-export const useRecentAuditLogs = () => {
+export const useRecentAuditLogs = (organizationId?: number) => {
+  const { activeOrganizationId } = useOrganizationState();
+  const effectiveOrgId = organizationId || activeOrganizationId;
+  const queryString = effectiveOrgId ? `?organization_id=${effectiveOrgId}` : '';
+
   return useQuery({
-    queryKey: ['audit', 'recent'],
+    queryKey: ['audit', 'recent', effectiveOrgId],
     queryFn: async () => {
-      const response = await api.get('/audit/recent/');
+      const response = await api.get(`/audit/recent/${queryString}`);
       const data = await response.json() as { results: AuditLog[] } | AuditLog[];
       return Array.isArray(data) ? data : data.results || [];
     },

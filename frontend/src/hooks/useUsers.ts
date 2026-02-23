@@ -49,14 +49,17 @@ export interface UserUpdate {
 
 // Fetch all users
 export const useUsers = (params?: { is_active?: boolean; role?: string; organization_id?: number }) => {
-  const queryString = params
+  const { activeOrganizationId } = useOrganizationState();
+  const effectiveParams = { ...params, organization_id: params?.organization_id || activeOrganizationId || undefined };
+
+  const queryString = Object.keys(effectiveParams).length > 0
     ? '?' + new URLSearchParams(
-      Object.entries(params).filter(([, v]) => v !== undefined).reduce((acc, [k, v]) => ({ ...acc, [k]: String(v) }), {})
+      Object.entries(effectiveParams).filter(([, v]) => v !== undefined).reduce((acc, [k, v]) => ({ ...acc, [k]: String(v) }), {})
     ).toString()
     : '';
 
   return useQuery({
-    queryKey: ['users', params],
+    queryKey: ['users', effectiveParams],
     queryFn: async () => {
       const response = await api.get(`/users/${queryString}`);
       const data = await response.json() as { results: User[]; count: number } | User[];
