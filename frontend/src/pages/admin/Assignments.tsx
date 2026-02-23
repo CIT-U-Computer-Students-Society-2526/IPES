@@ -4,16 +4,12 @@ import {
   Plus,
   Search,
   Filter,
-  MoreHorizontal,
-  Edit,
-  Trash2,
-  Send,
   Users,
   Calendar,
   CheckCircle2,
   Clock,
   AlertCircle,
-  Zap
+  Send
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,19 +18,12 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/components/ui/use-toast";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -51,7 +40,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-import { useForms, useAssignments, useGenerateAssignments, type EvaluationForm } from "@/hooks/useEvaluations";
+import { useForms, useAssignments, type EvaluationForm } from "@/hooks/useEvaluations";
 
 const AdminAssignments = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -64,7 +53,7 @@ const AdminAssignments = () => {
   // Fetch all assignments across the org to aggregate stats
   const { data: allAssignments = [], isLoading: assignmentsLoading } = useAssignments();
 
-  const generateMutation = useGenerateAssignments();
+
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -111,23 +100,7 @@ const AdminAssignments = () => {
   const activeCount = enrichedForms.filter(f => f.is_active && !f.results_released).length;
   const totalEvaluatorsCount = allAssignments.length;
 
-  const handleAutoAssign = async (formId: number) => {
-    try {
-      const res = await generateMutation.mutateAsync(formId);
-      toast({
-        title: res.created === 0 ? "Already Up to Date" : "Assignments Generated",
-        description: res.created === 0
-          ? "All assignments already exist for this form."
-          : `${res.created} new assignment(s) created.`,
-      });
-    } catch (e: unknown) {
-      toast({
-        title: "Failed to Generate Assignments",
-        description: e instanceof Error ? e.message : "An error occurred.",
-        variant: "destructive"
-      });
-    }
-  };
+
 
   const selectedFormAssignments = allAssignments.filter(a => a.form_id === selectedForm?.id);
 
@@ -143,53 +116,7 @@ const AdminAssignments = () => {
           <h1 className="text-2xl font-bold text-foreground">Evaluation Assignments</h1>
           <p className="text-muted-foreground">Manage who evaluates whom</p>
         </div>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button className="gradient-hero text-primary-foreground">
-              <Plus className="w-4 h-4 mr-2" />
-              Create Assignment Matrix
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Create Evaluation Assignment</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Evaluation Form Template</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select form" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {forms.map(f => (
-                      <SelectItem key={f.id} value={String(f.id)}>{f.title}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Assignment Rule</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="peer">Peer (same unit)</SelectItem>
-                    <SelectItem value="cross">Cross-Unit</SelectItem>
-                    <SelectItem value="exec">Executive Review</SelectItem>
-                    <SelectItem value="self">Self-Assessment</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Due Date Override (Optional)</Label>
-                <Input type="date" />
-              </div>
-              <Button className="w-full">Create Matrix Manually</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+
       </div>
 
       {/* Stats */}
@@ -281,27 +208,6 @@ const AdminAssignments = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge className={getStatusColor(form.displayStatus)}>{form.displayStatus}</Badge>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAutoAssign(form.id); }}>
-                            <Zap className="w-4 h-4 mr-2" />
-                            Auto-Assign Matrix
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Edit className="w-4 h-4 mr-2" />
-                            Edit Settings
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive">
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
                     </div>
                   </div>
                   <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
@@ -322,19 +228,7 @@ const AdminAssignments = () => {
                     <Progress value={form.evaluatorsCount ? (form.completedCount / form.evaluatorsCount) * 100 : 0} className="h-2" />
                   </div>
 
-                  {/* Inline Auto Assign Hint */}
-                  {form.evaluatorsCount === 0 && (
-                    <div className="mt-4 flex items-center justify-between border-t border-border/50 pt-3">
-                      <span className="text-sm text-muted-foreground flex items-center">
-                        <AlertCircle className="w-4 h-4 mr-2 text-yellow-500" />
-                        No evaluators assigned yet.
-                      </span>
-                      <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); handleAutoAssign(form.id); }} disabled={generateMutation.isPending}>
-                        <Zap className="w-4 h-4 mr-2 text-primary" />
-                        Auto-Assign Now
-                      </Button>
-                    </div>
-                  )}
+
                 </CardContent>
               </Card>
             ))}
@@ -400,10 +294,10 @@ const AdminAssignments = () => {
                 <div className="p-4 border-t bg-muted/20 flex-shrink-0">
                   <Dialog>
                     <DialogTrigger asChild>
-                  <Button variant="outline" className="w-full">
-                    <Send className="w-4 h-4 mr-2" />
-                    Send Reminder to Pending
-                  </Button>
+                      <Button variant="outline" className="w-full">
+                        <Send className="w-4 h-4 mr-2" />
+                        Send Reminder to Pending
+                      </Button>
                     </DialogTrigger>
                     <DialogContent className="max-w-sm text-center p-6">
                       <DialogHeader>
