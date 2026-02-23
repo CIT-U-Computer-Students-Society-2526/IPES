@@ -8,7 +8,6 @@ import {
   Trophy,
   BarChart3,
   User,
-  Bell,
   LogOut,
   Menu,
   X,
@@ -155,10 +154,6 @@ const OfficerLayout = () => {
           </button>
 
           <div className="flex items-center gap-3 ml-auto">
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-accent rounded-full" />
-            </Button>
           </div>
         </header>
 
