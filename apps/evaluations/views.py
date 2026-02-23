@@ -74,6 +74,12 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
                 {'error': 'Form is already active'},
                 status=status.HTTP_400_BAD_REQUEST
             )
+            
+        if not form.questions.exists():
+            return DRFResponse(
+                {'error': 'Form must have at least one question before it can be activated.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         
         form.is_active = True
         form.save()
@@ -128,6 +134,12 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
         if form.results_released:
             return DRFResponse(
                 {'error': 'Results are already released'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        if not form.questions.exists():
+            return DRFResponse(
+                {'error': 'Form must have at least one question before results can be released.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
@@ -303,6 +315,12 @@ class AssignmentRuleViewSet(viewsets.ModelViewSet):
         if not form.is_active:
             return DRFResponse(
                 {'error': 'Assignments can only be generated for active forms.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        if not form.questions.exists():
+            return DRFResponse(
+                {'error': 'Form must have at least one question before assignments can be generated.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 

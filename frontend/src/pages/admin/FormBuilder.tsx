@@ -575,7 +575,9 @@ const AdminFormBuilder = () => {
                         {!form.results_released && (
                           <DropdownMenuItem
                             onClick={() => { setFormToRelease(form); setIsReleaseDialogOpen(true); }}
-                            className="text-purple-600"
+                            className="text-purple-600 focus:bg-purple-50 focus:text-purple-700"
+                            disabled={!form.questions || form.questions.length === 0}
+                            title={(!form.questions || form.questions.length === 0) ? "Cannot release results for an empty form" : ""}
                           >
                             <Send className="w-4 h-4 mr-2" />
                             Release Results
@@ -736,7 +738,12 @@ const AdminFormBuilder = () => {
                       </Button>
                       {!selectedForm?.is_active && !selectedForm?.results_released && (
                         <>
-                          <Button className="gradient-hero text-primary-foreground" onClick={() => setIsActivateDialogOpen(true)}>
+                          <Button
+                            className="gradient-hero text-primary-foreground focus:ring-2 focus:ring-primary focus:outline-none"
+                            onClick={() => setIsActivateDialogOpen(true)}
+                            disabled={localQuestions.length === 0}
+                            title={localQuestions.length === 0 ? "Add at least one question before activating this form" : ""}
+                          >
                             <Send className="w-4 h-4 mr-2" />
                             Activate Form
                           </Button>
@@ -1081,7 +1088,8 @@ const AdminFormBuilder = () => {
                   <Button
                     className="gradient-hero text-primary-foreground"
                     onClick={handleGenerateAssignments}
-                    disabled={generateMutation.isPending || rulesLoading}
+                    disabled={generateMutation.isPending || rulesLoading || localQuestions.length === 0}
+                    title={localQuestions.length === 0 ? "Form must have questions before assignments can be generated" : ""}
                   >
                     {generateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
                     Generate Assignments
