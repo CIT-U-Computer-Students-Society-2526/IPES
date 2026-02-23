@@ -622,7 +622,7 @@ const AdminFormBuilder = () => {
           <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
             <DialogContent className="max-w-md">
               <DialogHeader>
-                <DialogTitle>Delete "{formToDelete?.title}"?</DialogTitle>
+                <DialogTitle className="break-all whitespace-normal overflow-hidden line-clamp-3 leading-tight">Delete "{formToDelete?.title}"?</DialogTitle>
                 <DialogDescription>
                   This action is <strong>permanent and cannot be undone</strong>. The form, all its questions,
                   and any generated assignments will be deleted.
@@ -646,7 +646,7 @@ const AdminFormBuilder = () => {
           <Dialog open={isDuplicateDialogOpen} onOpenChange={setIsDuplicateDialogOpen}>
             <DialogContent className="max-w-md">
               <DialogHeader>
-                <DialogTitle>Duplicate "{formToDuplicate?.title}"?</DialogTitle>
+                <DialogTitle className="break-all whitespace-normal overflow-hidden line-clamp-3 leading-tight">Duplicate "{formToDuplicate?.title}"?</DialogTitle>
                 <DialogDescription>
                   A copy will be created as a draft with all questions included. Assignments and rules will not be copied.
                 </DialogDescription>
@@ -666,9 +666,9 @@ const AdminFormBuilder = () => {
 
           {/* ── Release Results Confirmation Dialog ── */}
           <Dialog open={isReleaseDialogOpen} onOpenChange={setIsReleaseDialogOpen}>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-md min-w-0">
               <DialogHeader>
-                <DialogTitle>Release Results for "{formToRelease?.title}"?</DialogTitle>
+                <DialogTitle className="break-all whitespace-normal overflow-hidden line-clamp-3 leading-tight">Release Results for "{formToRelease?.title}"?</DialogTitle>
                 <DialogDescription>
                   This will make the evaluation scores visible to all evaluatees.
                   The form will be deactivated for further responses.
@@ -755,7 +755,7 @@ const AdminFormBuilder = () => {
                           <Dialog open={isActivateDialogOpen} onOpenChange={setIsActivateDialogOpen}>
                             <DialogContent className="max-w-md">
                               <DialogHeader>
-                                <DialogTitle>Activate "{selectedForm?.title}"?</DialogTitle>
+                                <DialogTitle className="break-all whitespace-normal overflow-hidden line-clamp-3 leading-tight">Activate "{selectedForm?.title}"?</DialogTitle>
                                 <DialogDescription>
                                   Activating changes the form state to 'Active' to allow responses.
                                 </DialogDescription>
@@ -784,7 +784,7 @@ const AdminFormBuilder = () => {
                           <Dialog open={isDeactivateDialogOpen} onOpenChange={setIsDeactivateDialogOpen}>
                             <DialogContent className="max-w-md">
                               <DialogHeader>
-                                <DialogTitle>Deactivate "{selectedForm?.title}"?</DialogTitle>
+                                <DialogTitle className="break-all whitespace-normal overflow-hidden line-clamp-3 leading-tight">Deactivate "{selectedForm?.title}"?</DialogTitle>
                                 <DialogDescription>
                                   This will close the form to new evaluations, preventing any assignments from being completed.
                                 </DialogDescription>
