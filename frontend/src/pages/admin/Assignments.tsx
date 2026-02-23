@@ -246,8 +246,8 @@ const AdminAssignments = () => {
                 <CardTitle className="text-lg">Evaluator Matrix</CardTitle>
                 <div className="space-y-3 mt-1">
                   <p className="text-sm text-muted-foreground break-words line-clamp-3">
-                  Viewing pairings for <strong>{selectedForm.title}</strong>
-                </p>
+                    Viewing pairings for <strong>{selectedForm.title}</strong>
+                  </p>
 
                   <div className="flex items-center gap-4 text-sm pt-2 border-t">
                     <div className="flex items-center gap-1.5">
