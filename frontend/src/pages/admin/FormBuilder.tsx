@@ -52,7 +52,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { formatApiError } from "@/lib/api";
 
 import {
-  useForms, useCreateForm, useUpdateForm, useDeleteForm, useDuplicateForm, usePublishForm,
+  useForms, useCreateForm, useUpdateForm, useDeleteForm, useDuplicateForm, useActivateForm, useReleaseResults,
   useFormQuestions, useCreateQuestions, useUpdateQuestion, useDeleteQuestion,
   useFormRules, useCreateRule, useDeleteRule, useGenerateAssignments,
   type EvaluationForm, type Question, type AssignmentRule
@@ -88,7 +88,10 @@ const AdminFormBuilder = () => {
   const { activeOrganizationId } = useOrganizationState();
 
   // Publish confirmation dialog
-  const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
+  const [isActivateDialogOpen, setIsActivateDialogOpen] = useState(false);
+
+  // Release results confirmation dialog
+  const [isReleaseDialogOpen, setIsReleaseDialogOpen] = useState(false);
 
   // Delete confirmation dialog
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -117,7 +120,8 @@ const AdminFormBuilder = () => {
   const updateFormMutation = useUpdateForm();
   const deleteFormMutation = useDeleteForm();
   const duplicateFormMutation = useDuplicateForm();
-  const publishFormMutation = usePublishForm();
+  const activateFormMutation = useActivateForm();
+  const releaseResultsMutation = useReleaseResults();
 
   const { data: formQuestions = [], isLoading: questionsLoading, refetch: refetchQuestions } = useFormQuestions(selectedForm?.id || 0);
   const createQuestionsMutation = useCreateQuestions();
@@ -178,14 +182,14 @@ const AdminFormBuilder = () => {
     f.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const getStatusColor = (is_published: boolean, is_active: boolean) => {
-    if (is_published) return "bg-green-100 text-green-700";
-    if (is_active) return "bg-blue-100 text-blue-700";
+  const getStatusColor = (is_active: boolean, results_released: boolean) => {
+    if (results_released) return "bg-purple-100 text-purple-700";
+    if (is_active) return "bg-green-100 text-green-700";
     return "bg-yellow-100 text-yellow-700";
   };
 
   const getStatusText = (form: EvaluationForm) => {
-    if (form.is_published) return "Published";
+    if (form.results_released) return "Results Released";
     if (form.is_active) return "Active";
     return "Draft";
   };
@@ -208,8 +212,8 @@ const AdminFormBuilder = () => {
         organization_id: activeOrganizationId,
         start_date: new Date().toISOString().split('T')[0],
         end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        is_active: true,
-        is_published: false
+        is_active: false,
+        results_released: false
       });
       setIsCreateOpen(false);
       setNewFormTitle("");
@@ -255,15 +259,27 @@ const AdminFormBuilder = () => {
     }
   };
 
-  const handlePublishForm = async () => {
+  const handleActivateForm = async () => {
     if (!selectedForm) return;
-    setIsPublishDialogOpen(false);
+    setIsActivateDialogOpen(false);
     try {
-      await publishFormMutation.mutateAsync(selectedForm.id);
-      toast({ title: "Form Published", description: "This form can now be assigned." });
-      setSelectedForm({ ...selectedForm, is_published: true });
+      await activateFormMutation.mutateAsync(selectedForm.id);
+      toast({ title: "Form Activated", description: "This form can now be assigned." });
+      setSelectedForm({ ...selectedForm, is_active: true });
     } catch (e: unknown) {
-      toast({ title: "Error Publishing Form", description: formatApiError(e), variant: "destructive" });
+      toast({ title: "Error Activating Form", description: formatApiError(e), variant: "destructive" });
+    }
+  };
+
+  const handleReleaseResults = async () => {
+    if (!selectedForm) return;
+    setIsReleaseDialogOpen(false);
+    try {
+      await releaseResultsMutation.mutateAsync(selectedForm.id);
+      toast({ title: "Results Released", description: "Evaluations are now visible to evaluatees." });
+      setSelectedForm({ ...selectedForm, results_released: true });
+    } catch (e: unknown) {
+      toast({ title: "Error Releasing Results", description: formatApiError(e), variant: "destructive" });
     }
   };
 
@@ -567,7 +583,7 @@ const AdminFormBuilder = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center justify-between text-sm">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(form.is_published, form.is_active)}`}>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(form.is_active, form.results_released)}`}>
                       {getStatusText(form)}
                     </span>
                     {/* Questions count would ideally come from a sub-query or an aggregation field from the backend */}
@@ -666,47 +682,77 @@ const AdminFormBuilder = () => {
                     <div className="flex-1 min-w-0">
                       <CardTitle className="flex items-center gap-2">
                         {selectedForm?.title}
-                        {selectedForm?.is_published && <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Published</Badge>}
+                        {selectedForm?.is_active && <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Published</Badge>}
                       </CardTitle>
                       {selectedForm?.description && (
                         <p className="text-sm text-muted-foreground mt-1 truncate">{selectedForm.description}</p>
                       )}
                     </div>
                     <div className="flex gap-2 shrink-0">
-                      {!selectedForm?.is_published && (
+                      {!selectedForm?.is_active && (
                         <Button variant="outline" size="sm" onClick={handleOpenEditDetails}>
                           <Edit className="w-4 h-4 mr-2" />
                           Edit Details
                         </Button>
                       )}
-                      <Button variant="outline" onClick={handleSaveDraft} disabled={selectedForm?.is_published}>
+                      <Button variant="outline" onClick={handleSaveDraft} disabled={selectedForm?.is_active}>
                         <Save className="w-4 h-4 mr-2" />
                         Save Draft
                       </Button>
-                      {!selectedForm?.is_published && (
+                      {!selectedForm?.is_active && (
                         <>
-                          <Button className="gradient-hero text-primary-foreground" onClick={() => setIsPublishDialogOpen(true)}>
+                          <Button className="gradient-hero text-primary-foreground" onClick={() => setIsActivateDialogOpen(true)}>
                             <Send className="w-4 h-4 mr-2" />
-                            Publish
+                            Activate
                           </Button>
-                          <Dialog open={isPublishDialogOpen} onOpenChange={setIsPublishDialogOpen}>
+                          <Dialog open={isActivateDialogOpen} onOpenChange={setIsActivateDialogOpen}>
                             <DialogContent className="max-w-md">
                               <DialogHeader>
-                                <DialogTitle>Publish "{selectedForm?.title}"?</DialogTitle>
+                                <DialogTitle>Activate "{selectedForm?.title}"?</DialogTitle>
                                 <DialogDescription>
-                                  Publishing is <strong>permanent</strong> — questions and form details will be
+                                  Activating is <strong>permanent</strong> — questions and form details will be
                                   locked and can no longer be edited. Make sure everything looks correct before proceeding.
                                 </DialogDescription>
                               </DialogHeader>
                               <DialogFooter className="gap-2">
-                                <Button variant="outline" onClick={() => setIsPublishDialogOpen(false)}>Cancel</Button>
+                                <Button variant="outline" onClick={() => setIsActivateDialogOpen(false)}>Cancel</Button>
                                 <Button
                                   className="gradient-hero text-primary-foreground"
-                                  onClick={handlePublishForm}
-                                  disabled={publishFormMutation.isPending}
+                                  onClick={handleActivateForm}
+                                  disabled={activateFormMutation.isPending}
                                 >
-                                  {publishFormMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
-                                  Yes, Publish
+                                  {activateFormMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
+                                  Yes, Activate
+                                </Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+                        </>
+                      )}
+                      {selectedForm?.is_active && !selectedForm?.results_released && (
+                        <>
+                          <Button className="gradient-hero text-primary-foreground" onClick={() => setIsReleaseDialogOpen(true)}>
+                            <Send className="w-4 h-4 mr-2" />
+                            Release Results
+                          </Button>
+                          <Dialog open={isReleaseDialogOpen} onOpenChange={setIsReleaseDialogOpen}>
+                            <DialogContent className="max-w-md">
+                              <DialogHeader>
+                                <DialogTitle>Release Results for "{selectedForm?.title}"?</DialogTitle>
+                                <DialogDescription>
+                                  This will make the evaluation scores visible to all evaluatees.
+                                  You should only do this once all evaluations are completed.
+                                </DialogDescription>
+                              </DialogHeader>
+                              <DialogFooter className="gap-2">
+                                <Button variant="outline" onClick={() => setIsReleaseDialogOpen(false)}>Cancel</Button>
+                                <Button
+                                  className="bg-purple-600 hover:bg-purple-700 text-white"
+                                  onClick={handleReleaseResults}
+                                  disabled={releaseResultsMutation.isPending}
+                                >
+                                  {releaseResultsMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
+                                  Yes, Release Results
                                 </Button>
                               </DialogFooter>
                             </DialogContent>
@@ -806,7 +852,7 @@ const AdminFormBuilder = () => {
                             value={question.text}
                             onChange={(e) => handleQuestionChange(idx, 'text', e.target.value)}
                             placeholder="Type your question here..."
-                            disabled={selectedForm?.is_published}
+                            disabled={selectedForm?.is_active}
                           />
                         </div>
 
@@ -817,7 +863,7 @@ const AdminFormBuilder = () => {
                               type="number" step="0.5"
                               value={question.weight}
                               onChange={(e) => handleQuestionChange(idx, 'weight', parseFloat(e.target.value))}
-                              disabled={selectedForm?.is_published}
+                              disabled={selectedForm?.is_active}
                             />
                           </div>
                           {(question.input_type === 'rating' || question.input_type === 'number') && (
@@ -828,7 +874,7 @@ const AdminFormBuilder = () => {
                                   type="number"
                                   value={question.min_value}
                                   onChange={(e) => handleQuestionChange(idx, 'min_value', parseInt(e.target.value))}
-                                  disabled={selectedForm?.is_published}
+                                  disabled={selectedForm?.is_active}
                                 />
                               </div>
                               <div>
@@ -837,7 +883,7 @@ const AdminFormBuilder = () => {
                                   type="number"
                                   value={question.max_value}
                                   onChange={(e) => handleQuestionChange(idx, 'max_value', parseInt(e.target.value))}
-                                  disabled={selectedForm?.is_published}
+                                  disabled={selectedForm?.is_active}
                                 />
                               </div>
                             </>
@@ -848,7 +894,7 @@ const AdminFormBuilder = () => {
                                 type="checkbox"
                                 checked={question.is_required}
                                 onChange={(e) => handleQuestionChange(idx, 'is_required', e.target.checked)}
-                                disabled={selectedForm?.is_published}
+                                disabled={selectedForm?.is_active}
                                 className="rounded border-gray-300 text-primary shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50"
                               />
                               Required Field
@@ -857,7 +903,7 @@ const AdminFormBuilder = () => {
                         </div>
                       </div>
                       <div className="absolute right-4 top-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button variant="ghost" size="icon" className="text-destructive h-8 w-8" onClick={() => handleRemoveQuestion(idx)} disabled={selectedForm?.is_published}>
+                        <Button variant="ghost" size="icon" className="text-destructive h-8 w-8" onClick={() => handleRemoveQuestion(idx)} disabled={selectedForm?.is_active}>
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
@@ -870,7 +916,7 @@ const AdminFormBuilder = () => {
                     </div>
                   )}
 
-                  {!selectedForm?.is_published && (
+                  {!selectedForm?.is_active && (
                     <div className="bg-blue-50/50 text-blue-800 text-sm p-3 rounded border border-blue-100 flex items-start gap-2">
                       <Info className="w-4 h-4 mt-0.5 text-blue-500 shrink-0" />
                       <p>Remember to click <strong>Save Draft</strong> after making changes to questions.</p>

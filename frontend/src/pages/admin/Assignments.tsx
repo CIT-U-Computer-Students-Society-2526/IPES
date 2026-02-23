@@ -68,6 +68,7 @@ const AdminAssignments = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case "Results Released": return "bg-purple-100 text-purple-700";
       case "Active": return "bg-green-100 text-green-700";
       case "Completed": return "bg-blue-100 text-blue-700";
       case "Scheduled": return "bg-yellow-100 text-yellow-700";
@@ -92,7 +93,7 @@ const AdminAssignments = () => {
 
       let status = "Draft";
       if (form.is_active) status = "Active";
-      if (form.is_published) status = "Completed";
+      if (form.results_released) status = "Results Released";
 
       return {
         ...form,
@@ -107,7 +108,7 @@ const AdminAssignments = () => {
     f.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const activeCount = enrichedForms.filter(f => f.is_active && !f.is_published).length;
+  const activeCount = enrichedForms.filter(f => f.is_active && !f.results_released).length;
   const totalEvaluatorsCount = allAssignments.length;
 
   const handleAutoAssign = async (formId: number) => {
