@@ -160,6 +160,22 @@ export const useActivateForm = () => {
   });
 };
 
+// Deactivate form
+export const useDeactivateForm = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<EvaluationForm, Error, number>({
+    mutationFn: async (id: number) => {
+      const response = await api.post(`/forms/${id}/deactivate/`);
+      return response.json() as Promise<EvaluationForm>;
+    },
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ['forms'] });
+      queryClient.invalidateQueries({ queryKey: ['forms', id] });
+    },
+  });
+};
+
 // Release results
 export const useReleaseResults = () => {
   const queryClient = useQueryClient();
