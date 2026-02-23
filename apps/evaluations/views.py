@@ -38,14 +38,14 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
         queryset = EvaluationForm.objects.all()
         org_id = self.request.query_params.get('organization_id')
         is_active = self.request.query_params.get('is_active')
-        is_published = self.request.query_params.get('is_published')
+        results_released = self.request.query_params.get('results_released')
         
         if org_id:
             queryset = queryset.filter(organization_id=org_id)
         if is_active is not None:
             queryset = queryset.filter(is_active=is_active.lower() == 'true')
-        if is_published is not None:
-            queryset = queryset.filter(is_published=is_published.lower() == 'true')
+        if results_released is not None:
+            queryset = queryset.filter(results_released=results_released.lower() == 'true')
         
         return queryset.order_by('-id')
     
@@ -61,20 +61,20 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
         )
     
     @action(detail=True, methods=['post'])
-    def publish(self, request, pk=None):
-        """Publish a form"""
+    def activate(self, request, pk=None):
+        """Activate a form"""
         form = self.get_object()
         
-        if form.is_published:
+        if form.is_active:
             return DRFResponse(
-                {'error': 'Form is already published'},
+                {'error': 'Form is already active'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        form.is_published = True
+        form.is_active = True
         form.save()
         
-        # Log form publishing
+        # Log form activation
         log_action(
             request.user,
             AuditActions.FORM_PUBLISHED,
@@ -84,36 +84,36 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
         )
         
         return DRFResponse({
-            'message': 'Form published successfully',
-            'is_published': form.is_published
+            'message': 'Form activated successfully',
+            'is_active': form.is_active
         })
     
     @action(detail=True, methods=['post'])
-    def unpublish(self, request, pk=None):
-        """Unpublish a form"""
+    def release_results(self, request, pk=None):
+        """Release results for a form"""
         form = self.get_object()
         
-        if not form.is_published:
+        if form.results_released:
             return DRFResponse(
-                {'error': 'Form is not published'},
+                {'error': 'Results are already released'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        form.is_published = False
+        form.results_released = True
         form.save()
         
-        # Log form unpublishing
+        # Log results release
         log_action(
             request.user,
-            AuditActions.FORM_UNPUBLISHED,
+            AuditActions.FORM_PUBLISHED,
             request,
             form_title=form.title,
             form_id=str(form.id)
         )
         
         return DRFResponse({
-            'message': 'Form unpublished successfully',
-            'is_published': form.is_published
+            'message': 'Results released successfully',
+            'results_released': form.results_released
         })
     
     @action(detail=True, methods=['get'])
@@ -138,8 +138,8 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
             start_date=form.start_date,
             end_date=form.end_date,
             created_by=request.user,
-            is_active=True,
-            is_published=False
+            is_active=False,
+            results_released=False
         )
         
         # Duplicate questions
