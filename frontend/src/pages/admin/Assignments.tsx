@@ -204,7 +204,6 @@ const AdminAssignments = () => {
                   <div className="flex items-start justify-between mb-3">
                     <div>
                       <h3 className="font-medium text-foreground">{form.title}</h3>
-                      <p className="text-sm text-muted-foreground">{form.type.toUpperCase()} EVALUATION</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge className={getStatusColor(form.displayStatus)}>{form.displayStatus}</Badge>
@@ -227,8 +226,6 @@ const AdminAssignments = () => {
                     </div>
                     <Progress value={form.evaluatorsCount ? (form.completedCount / form.evaluatorsCount) * 100 : 0} className="h-2" />
                   </div>
-
-
                 </CardContent>
               </Card>
             ))}
