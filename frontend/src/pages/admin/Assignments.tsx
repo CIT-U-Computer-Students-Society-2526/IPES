@@ -398,10 +398,30 @@ const AdminAssignments = () => {
               </div>
               {selectedFormAssignments.length > 0 && (
                 <div className="p-4 border-t bg-muted/20 flex-shrink-0">
+                  <Dialog>
+                    <DialogTrigger asChild>
                   <Button variant="outline" className="w-full">
                     <Send className="w-4 h-4 mr-2" />
                     Send Reminder to Pending
                   </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-sm text-center p-6">
+                      <DialogHeader>
+                        <DialogTitle className="text-center">Coming Soon</DialogTitle>
+                      </DialogHeader>
+                      <div className="py-4 space-y-3">
+                        <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto text-primary">
+                          <Send className="w-6 h-6" />
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          The ability to send automated email reminders to evaluators with pending tasks will be available in a future update.
+                        </p>
+                      </div>
+                      <Button onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))} className="w-full mt-2">
+                        Got it
+                      </Button>
+                    </DialogContent>
+                  </Dialog>
                 </div>
               )}
             </Card>
