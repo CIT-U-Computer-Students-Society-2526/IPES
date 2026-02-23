@@ -501,6 +501,7 @@ const AdminFormBuilder = () => {
                   placeholder="e.g., Mid-Year Peer Evaluation"
                   value={newFormTitle}
                   onChange={(e) => setNewFormTitle(e.target.value)}
+                  maxLength={255}
                 />
               </div>
               <div className="space-y-2">
@@ -524,7 +525,9 @@ const AdminFormBuilder = () => {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="forms">All Forms</TabsTrigger>
-          <TabsTrigger value="builder" disabled={!selectedForm}>Form Editor {selectedForm && `(${selectedForm.title})`}</TabsTrigger>
+          <TabsTrigger value="builder" disabled={!selectedForm} className="max-w-[250px] sm:max-w-[350px]">
+            Form Editor {selectedForm && <span className="truncate ml-1 align-bottom inline-block max-w-[120px] sm:max-w-[200px]">({selectedForm.title})</span>}
+          </TabsTrigger>
           <TabsTrigger value="assignments" disabled={!selectedForm}>Assignments {selectedForm && formRules.length > 0 && `(${formRules.length} rule${formRules.length !== 1 ? 's' : ''})`}</TabsTrigger>
         </TabsList>
 
@@ -715,12 +718,14 @@ const AdminFormBuilder = () => {
             <div className="lg:col-span-3 space-y-4">
               <Card>
                 <CardHeader>
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <CardTitle className="flex items-center gap-2">
-                        {selectedForm?.title}
-                        {selectedForm?.is_active && <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Published</Badge>}
-                      </CardTitle>
+                  <div className="flex flex-col xl:flex-row xl:items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0 w-full pr-4">
+                      <div className="flex items-center flex-wrap gap-2 mb-2">
+                        <CardTitle className="leading-tight break-words whitespace-normal line-clamp-5 text-balance max-w-full">
+                          {selectedForm?.title}
+                        </CardTitle>
+                        {selectedForm?.is_active && <Badge className="bg-green-100 text-green-700 hover:bg-green-100 whitespace-nowrap">Published</Badge>}
+                      </div>
                       {selectedForm?.description && (
                         <p className="text-sm text-muted-foreground mt-1 truncate">{selectedForm.description}</p>
                       )}
@@ -813,6 +818,7 @@ const AdminFormBuilder = () => {
                             value={editFormData.title}
                             onChange={(e) => setEditFormData(d => ({ ...d, title: e.target.value }))}
                             placeholder="Form title"
+                            maxLength={255}
                           />
                         </div>
                         <div className="sm:col-span-2 space-y-1">
@@ -878,6 +884,7 @@ const AdminFormBuilder = () => {
                             onChange={(e) => handleQuestionChange(idx, 'text', e.target.value)}
                             placeholder="Type your question here..."
                             disabled={selectedForm?.is_active}
+                            maxLength={500}
                           />
                         </div>
 
