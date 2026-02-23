@@ -144,8 +144,24 @@ export const useFormQuestions = (formId: number) => {
   });
 };
 
-// Publish form
-export const usePublishForm = () => {
+// Activate form
+export const useActivateForm = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<EvaluationForm, Error, number>({
+    mutationFn: async (id: number) => {
+      const response = await api.post(`/forms/${id}/activate/`);
+      return response.json() as Promise<EvaluationForm>;
+    },
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ['forms'] });
+      queryClient.invalidateQueries({ queryKey: ['forms', id] });
+    },
+  });
+};
+
+// Release results
+export const useReleaseResults = () => {
   const queryClient = useQueryClient();
 
   return useMutation<EvaluationForm, Error, number>({
