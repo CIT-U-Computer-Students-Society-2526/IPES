@@ -202,8 +202,8 @@ const AdminAssignments = () => {
               >
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <h3 className="font-medium text-foreground">{form.title}</h3>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-medium text-foreground cursor-pointer hover:underline line-clamp-5 break-words">{form.title}</h3>
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge className={getStatusColor(form.displayStatus)}>{form.displayStatus}</Badge>
