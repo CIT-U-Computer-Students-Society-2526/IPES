@@ -52,7 +52,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { formatApiError } from "@/lib/api";
 
 import {
-  useForms, useCreateForm, useUpdateForm, useDeleteForm, useDuplicateForm, useActivateForm, useReleaseResults,
+  useForms, useCreateForm, useUpdateForm, useDeleteForm, useDuplicateForm, useActivateForm, useDeactivateForm, useReleaseResults,
   useFormQuestions, useCreateQuestions, useUpdateQuestion, useDeleteQuestion,
   useFormRules, useCreateRule, useDeleteRule, useGenerateAssignments,
   type EvaluationForm, type Question, type AssignmentRule
@@ -92,6 +92,10 @@ const AdminFormBuilder = () => {
 
   // Release results confirmation dialog
   const [isReleaseDialogOpen, setIsReleaseDialogOpen] = useState(false);
+  const [formToRelease, setFormToRelease] = useState<EvaluationForm | null>(null);
+
+  // Deactivate confirmation dialog
+  const [isDeactivateDialogOpen, setIsDeactivateDialogOpen] = useState(false);
 
   // Delete confirmation dialog
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -121,6 +125,7 @@ const AdminFormBuilder = () => {
   const deleteFormMutation = useDeleteForm();
   const duplicateFormMutation = useDuplicateForm();
   const activateFormMutation = useActivateForm();
+  const deactivateFormMutation = useDeactivateForm();
   const releaseResultsMutation = useReleaseResults();
 
   const { data: formQuestions = [], isLoading: questionsLoading, refetch: refetchQuestions } = useFormQuestions(selectedForm?.id || 0);
@@ -271,13 +276,28 @@ const AdminFormBuilder = () => {
     }
   };
 
-  const handleReleaseResults = async () => {
+  const handleDeactivateForm = async () => {
     if (!selectedForm) return;
+    setIsDeactivateDialogOpen(false);
+    try {
+      await deactivateFormMutation.mutateAsync(selectedForm.id);
+      toast({ title: "Form Deactivated", description: "This form is closed for new assignments." });
+      setSelectedForm({ ...selectedForm, is_active: false });
+    } catch (e: unknown) {
+      toast({ title: "Error Deactivating Form", description: formatApiError(e), variant: "destructive" });
+    }
+  };
+
+  const handleReleaseResults = async () => {
+    if (!formToRelease) return;
     setIsReleaseDialogOpen(false);
     try {
-      await releaseResultsMutation.mutateAsync(selectedForm.id);
+      await releaseResultsMutation.mutateAsync(formToRelease.id);
       toast({ title: "Results Released", description: "Evaluations are now visible to evaluatees." });
-      setSelectedForm({ ...selectedForm, results_released: true });
+      if (selectedForm?.id === formToRelease.id) {
+        setSelectedForm({ ...selectedForm, results_released: true, is_active: false });
+      }
+      setFormToRelease(null);
     } catch (e: unknown) {
       toast({ title: "Error Releasing Results", description: formatApiError(e), variant: "destructive" });
     }
@@ -570,6 +590,15 @@ const AdminFormBuilder = () => {
                           <Copy className="w-4 h-4 mr-2" />
                           Duplicate
                         </DropdownMenuItem>
+                        {!form.results_released && (
+                          <DropdownMenuItem
+                            onClick={() => { setFormToRelease(form); setIsReleaseDialogOpen(true); }}
+                            className="text-purple-600"
+                          >
+                            <Send className="w-4 h-4 mr-2" />
+                            Release Results
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem
                           className="text-destructive"
                           onClick={() => { setFormToDelete(form); setIsDeleteDialogOpen(true); }}
@@ -648,6 +677,30 @@ const AdminFormBuilder = () => {
             </DialogContent>
           </Dialog>
 
+          {/* ── Release Results Confirmation Dialog ── */}
+          <Dialog open={isReleaseDialogOpen} onOpenChange={setIsReleaseDialogOpen}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Release Results for "{formToRelease?.title}"?</DialogTitle>
+                <DialogDescription>
+                  This will make the evaluation scores visible to all evaluatees.
+                  The form will be deactivated for further responses.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="gap-2">
+                <Button variant="outline" onClick={() => setIsReleaseDialogOpen(false)}>Cancel</Button>
+                <Button
+                  className="bg-purple-600 hover:bg-purple-700 text-white"
+                  onClick={handleReleaseResults}
+                  disabled={releaseResultsMutation.isPending}
+                >
+                  {releaseResultsMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
+                  Yes, Release Results
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
         </TabsContent>
 
         <TabsContent value="builder" className="space-y-4 pt-4">
@@ -699,19 +752,18 @@ const AdminFormBuilder = () => {
                         <Save className="w-4 h-4 mr-2" />
                         Save Draft
                       </Button>
-                      {!selectedForm?.is_active && (
+                      {!selectedForm?.is_active && !selectedForm?.results_released && (
                         <>
                           <Button className="gradient-hero text-primary-foreground" onClick={() => setIsActivateDialogOpen(true)}>
                             <Send className="w-4 h-4 mr-2" />
-                            Activate
+                            Activate Form
                           </Button>
                           <Dialog open={isActivateDialogOpen} onOpenChange={setIsActivateDialogOpen}>
                             <DialogContent className="max-w-md">
                               <DialogHeader>
                                 <DialogTitle>Activate "{selectedForm?.title}"?</DialogTitle>
                                 <DialogDescription>
-                                  Activating is <strong>permanent</strong> — questions and form details will be
-                                  locked and can no longer be edited. Make sure everything looks correct before proceeding.
+                                  Activating changes the form state to 'Active' to allow responses.
                                 </DialogDescription>
                               </DialogHeader>
                               <DialogFooter className="gap-2">
@@ -731,28 +783,27 @@ const AdminFormBuilder = () => {
                       )}
                       {selectedForm?.is_active && !selectedForm?.results_released && (
                         <>
-                          <Button className="gradient-hero text-primary-foreground" onClick={() => setIsReleaseDialogOpen(true)}>
-                            <Send className="w-4 h-4 mr-2" />
-                            Release Results
+                          <Button variant="outline" className="text-orange-600 border-orange-200 hover:bg-orange-50" onClick={() => setIsDeactivateDialogOpen(true)}>
+                            <ToggleLeft className="w-4 h-4 mr-2" />
+                            Deactivate Form
                           </Button>
-                          <Dialog open={isReleaseDialogOpen} onOpenChange={setIsReleaseDialogOpen}>
+                          <Dialog open={isDeactivateDialogOpen} onOpenChange={setIsDeactivateDialogOpen}>
                             <DialogContent className="max-w-md">
                               <DialogHeader>
-                                <DialogTitle>Release Results for "{selectedForm?.title}"?</DialogTitle>
+                                <DialogTitle>Deactivate "{selectedForm?.title}"?</DialogTitle>
                                 <DialogDescription>
-                                  This will make the evaluation scores visible to all evaluatees.
-                                  You should only do this once all evaluations are completed.
+                                  This will close the form to new evaluations, preventing any assignments from being completed.
                                 </DialogDescription>
                               </DialogHeader>
                               <DialogFooter className="gap-2">
-                                <Button variant="outline" onClick={() => setIsReleaseDialogOpen(false)}>Cancel</Button>
+                                <Button variant="outline" onClick={() => setIsDeactivateDialogOpen(false)}>Cancel</Button>
                                 <Button
-                                  className="bg-purple-600 hover:bg-purple-700 text-white"
-                                  onClick={handleReleaseResults}
-                                  disabled={releaseResultsMutation.isPending}
+                                  variant="destructive"
+                                  onClick={handleDeactivateForm}
+                                  disabled={deactivateFormMutation.isPending}
                                 >
-                                  {releaseResultsMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
-                                  Yes, Release Results
+                                  {deactivateFormMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <ToggleLeft className="w-4 h-4 mr-2" />}
+                                  Yes, Deactivate
                                 </Button>
                               </DialogFooter>
                             </DialogContent>
