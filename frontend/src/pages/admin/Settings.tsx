@@ -38,9 +38,10 @@ import {
   useUpdateOrganization,
 } from "@/hooks/useOrganizations";
 import { useCurrentMembership } from "@/hooks/useUsers";
-import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useOrganizationState } from "@/contexts/OrganizationContext";
+import { formatApiError } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 
 const AdminSettings = () => {
   const [settings, setSettings] = useState({
@@ -52,6 +53,7 @@ const AdminSettings = () => {
   const { data: currentMembership } = useCurrentMembership();
   const { mutate: deleteOrganization, isPending: isDeleting } = useDeleteOrganization();
   const { mutate: updateOrganization, isPending: isUpdatingOrg } = useUpdateOrganization();
+  const { toast } = useToast();
 
   // Dialog states for deleting organization
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -84,11 +86,16 @@ const AdminSettings = () => {
       }
     }, {
       onSuccess: () => {
-        toast.success("Organization details updated successfully.");
+        toast({
+          title: "Success",
+          description: "Organization details updated successfully."
+        });
       },
       onError: (error) => {
-        toast.error("Failed to update organization.", {
-          description: error.message
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: formatApiError(error)
         });
       }
     });
@@ -106,8 +113,9 @@ const AdminSettings = () => {
       },
       {
         onSuccess: (response) => {
-          toast.success(response.message || "Organization successfully deleted.", {
-            description: "You have been redirected.",
+          toast({
+            title: "Success",
+            description: response.message || "Organization successfully deleted.",
           });
           setDeleteDialogOpen(false);
           setDeleteOrgCode("");
@@ -115,7 +123,9 @@ const AdminSettings = () => {
           navigate("/select-organization");
         },
         onError: (error) => {
-          toast.error("Failed to delete organization.", {
+          toast({
+            variant: "destructive",
+            title: "Error",
             description: error.message || "Please check your code and password and try again.",
           });
         }
