@@ -88,6 +88,12 @@ export const apiRequest = async (
     defaultHeaders['X-CSRFToken'] = csrfToken;
   }
 
+  // Include active Organization ID for tenant scoping & audit trails
+  const activeOrgId = localStorage.getItem('activeOrganizationId');
+  if (activeOrgId) {
+    defaultHeaders['X-Organization-Id'] = activeOrgId;
+  }
+
   const response = await fetch(url, {
     ...options,
     headers: {
