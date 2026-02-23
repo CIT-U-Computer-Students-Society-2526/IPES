@@ -16,11 +16,11 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
 const navigation = [
-    { name: "Dashboard", href: "/preview/officer/dashboard", icon: LayoutDashboard },
-    { name: "My Evaluations", href: "/preview/officer/evaluations", icon: ClipboardList },
-    { name: "My Results", href: "/preview/officer/results", icon: BarChart3 },
-    { name: "Accomplishments", href: "/preview/officer/accomplishments", icon: Trophy },
-    { name: "Profile", href: "/preview/officer/profile", icon: User },
+    { name: "Dashboard", href: "/preview/member/dashboard", icon: LayoutDashboard },
+    { name: "My Evaluations", href: "/preview/member/evaluations", icon: ClipboardList },
+    { name: "My Results", href: "/preview/member/results", icon: BarChart3 },
+    { name: "Accomplishments", href: "/preview/member/accomplishments", icon: Trophy },
+    { name: "Profile", href: "/preview/member/profile", icon: User },
 ];
 
 const OfficerPreviewLayout = () => {
