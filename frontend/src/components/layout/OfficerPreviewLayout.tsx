@@ -12,6 +12,7 @@ import {
     X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
 const navigation = [
@@ -57,7 +58,7 @@ const OfficerPreviewLayout = () => {
                     <div className="h-16 flex items-center justify-between px-4 border-b border-border">
                         <Link to="/preview/officer/dashboard" className="flex items-center gap-2.5">
                             <img src="/ipes-logo-colored.svg" alt="IPES Logo" className="w-7 h-7 object-contain" />
-                            <span className="text-[#293F55] font-bold text-2xl tracking-tight">IPES</span>
+                            <span className="text-[#293F55] dark:text-white font-sans font-bold text-2xl tracking-tight">IPES</span>
                         </Link>
                         <button
                             onClick={() => setSidebarOpen(false)}
@@ -77,7 +78,7 @@ const OfficerPreviewLayout = () => {
                                     to={item.href}
                                     onClick={() => setSidebarOpen(false)}
                                     className={cn(
-                                        "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                                        "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-sans font-medium transition-colors",
                                         isActive
                                             ? "bg-primary text-primary-foreground"
                                             : "text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -123,6 +124,7 @@ const OfficerPreviewLayout = () => {
                     </button>
 
                     <div className="flex items-center gap-3 ml-auto">
+                        <ThemeToggle />
                         <Button variant="ghost" size="icon" className="relative">
                             <Bell className="w-5 h-5" />
                             <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-accent rounded-full" />
