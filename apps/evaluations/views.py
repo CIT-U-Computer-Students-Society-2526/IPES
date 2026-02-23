@@ -128,6 +128,7 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
             )
         
         form.results_released = True
+        form.is_active = False
         form.save()
         
         # Log results release
@@ -276,6 +277,12 @@ class AssignmentRuleViewSet(viewsets.ModelViewSet):
             form = EvaluationForm.objects.get(id=form_id)
         except EvaluationForm.DoesNotExist:
             return DRFResponse({'error': 'Form not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        if not form.is_active:
+            return DRFResponse(
+                {'error': 'Assignments can only be generated for active forms.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         rules = form.assignment_rules.all()
         if not rules.exists():
