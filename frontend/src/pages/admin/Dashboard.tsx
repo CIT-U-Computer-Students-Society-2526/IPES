@@ -239,8 +239,8 @@ const AdminDashboard = () => {
             <div
               key={alert.id}
               className={`flex items-center justify-between p-4 rounded-lg border ${alert.type === 'warning'
-                  ? 'bg-warning/5 border-warning/20'
-                  : 'bg-primary/5 border-primary/20'
+                ? 'bg-warning/5 border-warning/20'
+                : 'bg-primary/5 border-primary/20'
                 }`}
             >
               <div className="flex items-center gap-3">
@@ -314,6 +314,12 @@ const AdminDashboard = () => {
       <div className="bg-card rounded-xl border border-border p-6">
         <h2 className="font-semibold text-foreground mb-4">Quick Actions</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Link to="/admin/accomplishments">
+            <Button variant="outline" className="w-full h-auto py-4 flex-col gap-2">
+              <CheckCircle2 className="w-5 h-5" />
+              <span className="text-xs">Review Accomplishments</span>
+            </Button>
+          </Link>
           <Link to="/admin/forms">
             <Button variant="outline" className="w-full h-auto py-4 flex-col gap-2">
               <ClipboardList className="w-5 h-5" />
@@ -323,13 +329,7 @@ const AdminDashboard = () => {
           <Link to="/admin/assignments">
             <Button variant="outline" className="w-full h-auto py-4 flex-col gap-2">
               <Users className="w-5 h-5" />
-              <span className="text-xs">Assign Evaluations</span>
-            </Button>
-          </Link>
-          <Link to="/admin/accomplishments">
-            <Button variant="outline" className="w-full h-auto py-4 flex-col gap-2">
-              <CheckCircle2 className="w-5 h-5" />
-              <span className="text-xs">Review Accomplishments</span>
+              <span className="text-xs">View Assignments</span>
             </Button>
           </Link>
           <Link to="/admin/analytics">
