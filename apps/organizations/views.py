@@ -232,9 +232,9 @@ class OrganizationViewSet(viewsets.ModelViewSet):
         # Get active organization
         org_id = request.query_params.get('organization_id')
         if org_id:
-            units = OrganizationUnit.objects.filter(organization_id=org_id)
+            units = OrganizationUnit.objects.filter(organization_id=org_id, is_active=True)
         else:
-            units = OrganizationUnit.objects.all()
+            units = OrganizationUnit.objects.filter(is_active=True)
         
         stats = []
         for unit in units:
@@ -300,7 +300,7 @@ class OrganizationViewSet(viewsets.ModelViewSet):
         
         # Base querysets
         if org_id:
-            units_qs = OrganizationUnit.objects.filter(organization_id=org_id)
+            units_qs = OrganizationUnit.objects.filter(organization_id=org_id, is_active=True)
             memberships_qs = Membership.objects.filter(
                 unit_id__in=units_qs,
                 is_active=True
@@ -308,7 +308,8 @@ class OrganizationViewSet(viewsets.ModelViewSet):
         else:
             memberships_qs = Membership.objects.filter(is_active=True)
             units_qs = OrganizationUnit.objects.filter(
-                id__in=memberships_qs.values('unit_id')
+                id__in=memberships_qs.values('unit_id'),
+                is_active=True
             )
         
         total_members = memberships_qs.values('user_id').distinct().count()
