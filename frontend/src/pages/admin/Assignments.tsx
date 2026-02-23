@@ -244,9 +244,29 @@ const AdminAssignments = () => {
             <Card className="sticky top-6 lg:max-h-[calc(100vh-120px)] flex flex-col overflow-hidden">
               <CardHeader className="flex-shrink-0 border-b pb-4">
                 <CardTitle className="text-lg">Evaluator Matrix</CardTitle>
-                <p className="text-sm text-muted-foreground">
+                <div className="space-y-3 mt-1">
+                  <p className="text-sm text-muted-foreground break-words line-clamp-3">
                   Viewing pairings for <strong>{selectedForm.title}</strong>
                 </p>
+
+                  <div className="flex items-center gap-4 text-sm pt-2 border-t">
+                    <div className="flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-green-600" />
+                      <span className="font-medium">{selectedFormAssignments.filter(a => a.status === 'Completed').length}</span>
+                      <span className="text-muted-foreground">Completed</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Clock className="w-4 h-4 text-yellow-600" />
+                      <span className="font-medium">{selectedFormAssignments.filter(a => a.status === 'In Progress').length}</span>
+                      <span className="text-muted-foreground">In Progress</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <AlertCircle className="w-4 h-4 text-muted-foreground" />
+                      <span className="font-medium">{selectedFormAssignments.filter(a => a.status === 'Pending').length}</span>
+                      <span className="text-muted-foreground">Pending</span>
+                    </div>
+                  </div>
+                </div>
               </CardHeader>
               <div className="flex-1 overflow-auto">
                 <Table>
