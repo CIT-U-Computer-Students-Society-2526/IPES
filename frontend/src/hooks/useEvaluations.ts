@@ -32,7 +32,7 @@ export interface EvaluationForm {
   end_date: string;
   created_by: number;
   is_active: boolean;
-  is_published: boolean;
+  results_released: boolean;
   questions?: Question[];
   created_at: string;
   updated_at: string;
@@ -166,7 +166,7 @@ export const useReleaseResults = () => {
 
   return useMutation<EvaluationForm, Error, number>({
     mutationFn: async (id: number) => {
-      const response = await api.post(`/forms/${id}/publish/`);
+      const response = await api.post(`/forms/${id}/release_results/`);
       return response.json() as Promise<EvaluationForm>;
     },
     onSuccess: (_, id) => {
