@@ -89,6 +89,34 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
         })
     
     @action(detail=True, methods=['post'])
+    def deactivate(self, request, pk=None):
+        """Deactivate a form"""
+        form = self.get_object()
+        
+        if not form.is_active:
+            return DRFResponse(
+                {'error': 'Form is already inactive'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        form.is_active = False
+        form.save()
+        
+        # Log form deactivation
+        log_action(
+            request.user,
+            AuditActions.FORM_UNPUBLISHED,
+            request,
+            form_title=form.title,
+            form_id=str(form.id)
+        )
+        
+        return DRFResponse({
+            'message': 'Form deactivated successfully',
+            'is_active': form.is_active
+        })
+    
+    @action(detail=True, methods=['post'])
     def release_results(self, request, pk=None):
         """Release results for a form"""
         form = self.get_object()
