@@ -33,8 +33,11 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Alert } from "@/components/ui/alert";
-import { useDeleteOrganization } from "@/hooks/useOrganizations";
-import { useCurrentMembership, useCurrentUser, useUpdateCurrentUser } from "@/hooks/useUsers";
+import {
+  useDeleteOrganization,
+  useUpdateOrganization,
+} from "@/hooks/useOrganizations";
+import { useCurrentMembership } from "@/hooks/useUsers";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useOrganizationState } from "@/contexts/OrganizationContext";
@@ -48,11 +51,48 @@ const AdminSettings = () => {
   const { activeOrganizationId } = useOrganizationState();
   const { data: currentMembership } = useCurrentMembership();
   const { mutate: deleteOrganization, isPending: isDeleting } = useDeleteOrganization();
+  const { mutate: updateOrganization, isPending: isUpdatingOrg } = useUpdateOrganization();
 
   // Dialog states for deleting organization
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteOrgCode, setDeleteOrgCode] = useState("");
   const [deleteAdminPassword, setDeleteAdminPassword] = useState("");
+
+  const [orgData, setOrgData] = useState({
+    name: "",
+    email: "",
+  });
+
+  useEffect(() => {
+    if (currentMembership) {
+      // @ts-ignore - Email property exist on the backend API now pending a type regeneration
+      setOrgData({
+        name: currentMembership.organization_name || "",
+        email: currentMembership.organization_email || "",
+      });
+    }
+  }, [currentMembership]);
+
+  const handleSaveOrganization = () => {
+    if (!activeOrganizationId) return;
+
+    updateOrganization({
+      id: activeOrganizationId,
+      data: {
+        name: orgData.name,
+        email: orgData.email,
+      }
+    }, {
+      onSuccess: () => {
+        toast.success("Organization details updated successfully.");
+      },
+      onError: (error) => {
+        toast.error("Failed to update organization.", {
+          description: error.message
+        });
+      }
+    });
+  };
 
   const isHeadAdmin = currentMembership?.position_rank === 1;
 
@@ -91,9 +131,13 @@ const AdminSettings = () => {
           <h1 className="text-2xl font-bold text-foreground">System Settings</h1>
           <p className="text-muted-foreground">Configure evaluation system behavior and your profile</p>
         </div>
-        <Button className="gradient-hero text-primary-foreground">
+        <Button
+          className="gradient-hero text-primary-foreground"
+          onClick={handleSaveOrganization}
+          disabled={isUpdatingOrg}
+        >
           <Save className="w-4 h-4 mr-2" />
-          Save Changes
+          {isUpdatingOrg ? "Saving..." : "Save Changes"}
         </Button>
       </div>
 
@@ -119,11 +163,11 @@ const AdminSettings = () => {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label>Organization Name</Label>
-                <Input defaultValue="University Student Council" />
-              </div>
-              <div className="space-y-2">
-                <Label>Short Name / Acronym</Label>
-                <Input defaultValue="USC" />
+                <Input
+                  value={orgData.name}
+                  onChange={(e) => setOrgData({ ...orgData, name: e.target.value })}
+                  placeholder="e.g. University Student Council"
+                />
               </div>
             </CardContent>
           </Card>

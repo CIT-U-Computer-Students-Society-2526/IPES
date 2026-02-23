@@ -85,6 +85,27 @@ export const useCreateOrganization = () => {
   });
 };
 
+// Update Organization
+export const useUpdateOrganization = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<any, Error, { id: number; data: Partial<{ name: string; code: string; description: string; email: string }> }>({
+    mutationFn: async ({ id, data }) => {
+      const response = await api.patch(`/organizations/${id}/`, data);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      // Update individual queries directly if they exist
+      queryClient.setQueryData(['organizations', data.id], data);
+
+      // Invalidate the list of organizations so it fetches the new names
+      queryClient.invalidateQueries({ queryKey: ['organizations'] });
+      // Invalidate current user to update the name displayed in memberships
+      queryClient.invalidateQueries({ queryKey: ['users', 'current'] });
+    },
+  });
+};
+
 // Delete Current Organization
 export const useDeleteOrganization = () => {
   const queryClient = useQueryClient();
