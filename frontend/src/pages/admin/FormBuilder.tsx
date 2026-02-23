@@ -115,6 +115,7 @@ const AdminFormBuilder = () => {
 
   // Questions State
   const [localQuestions, setLocalQuestions] = useState<Partial<Question>[]>([]);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
 
   // API Hooks
   const { data: forms = [], isLoading: formsLoading } = useForms();
@@ -432,6 +433,7 @@ const AdminFormBuilder = () => {
       return;
     }
 
+    setIsSavingDraft(true);
     try {
       const newQuestions = localQuestions.filter(q => !q.id);
       const existingQuestions = localQuestions.filter(q => q.id);
@@ -463,13 +465,17 @@ const AdminFormBuilder = () => {
 
       toast({ title: "Draft Saved", description: "All questions have been saved successfully." });
 
-      // Force the useEffect to overwrite localQuestions with the fresh DB data
-      // This retrieves the newly generated IDs, clearing the 'Unsaved' tags
-      // and preventing subsequent duplicate creations.
-      seededFormIdRef.current = null;
-      refetchQuestions();
+      // Explicitly await the refetch and directly set localQuestions
+      // This bypasses the useEffect which ignores background refetches due to unchanged 'loading' state
+      const { data: freshQuestions } = await refetchQuestions();
+      if (freshQuestions) {
+        setLocalQuestions(freshQuestions);
+        seededFormIdRef.current = selectedForm.id; // Keep our ref synced so useEffect won't randomly fire later
+      }
     } catch (e: unknown) {
       toast({ title: "Error Saving", description: formatApiError(e), variant: "destructive" });
+    } finally {
+      setIsSavingDraft(false);
     }
   };
 
@@ -742,9 +748,9 @@ const AdminFormBuilder = () => {
                           Edit Details
                         </Button>
                       )}
-                      <Button variant="outline" onClick={handleSaveDraft} disabled={selectedForm?.is_active}>
-                        <Save className="w-4 h-4 mr-2" />
-                        Save Draft
+                      <Button variant="outline" onClick={handleSaveDraft} disabled={selectedForm?.is_active || isSavingDraft}>
+                        {isSavingDraft ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                        {isSavingDraft ? "Saving..." : "Save Draft"}
                       </Button>
                       {!selectedForm?.is_active && !selectedForm?.results_released && (
                         <>
