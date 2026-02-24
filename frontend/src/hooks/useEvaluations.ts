@@ -449,14 +449,18 @@ export type MyPerformanceData = {
   categoryScores: { name: string; score: number; maxScore: number }[];
   feedbackComments: { id: number; text: string; type: string }[];
   evaluationHistory: { period: string; score: number; evaluators: number }[];
+  available_forms: { id: number; title: string }[];
+  evaluatorCount: number;
+  selectedFormId: number | null;
 };
 
 // Fetch aggregated performance data
-export const useMyPerformance = () => {
+export const useMyPerformance = (formId?: number) => {
   return useQuery({
-    queryKey: ['assignments', 'my_performance'],
+    queryKey: ['assignments', 'my_performance', formId],
     queryFn: async () => {
-      const response = await api.get('/assignments/my_performance/');
+      const url = formId ? `/assignments/my_performance/?form_id=${formId}` : '/assignments/my_performance/';
+      const response = await api.get(url);
       return response.json() as Promise<MyPerformanceData>;
     },
   });

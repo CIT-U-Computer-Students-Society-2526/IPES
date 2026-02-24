@@ -667,33 +667,67 @@ class EvaluationAssignmentViewSet(viewsets.ModelViewSet):
         
     @action(detail=False, methods=['get'])
     def my_performance(self, request):
-        """Get aggregate performance data from received evaluations"""
-        assignments = self.get_queryset().filter(
-            evaluatee_id=request.user,
+        """Get aggregate performance data from received evaluations for a specific form or latest released form"""
+        user = request.user
+        form_id = request.query_params.get('form_id')
+
+        # Get all completed assignments for the user as evaluatee
+        all_evaluatee_assignments = EvaluationAssignment.objects.filter(
+            evaluatee_id=user,
             status='Completed'
         ).select_related('form_id')
-        
-        if not assignments.exists():
+
+        # Find forms that have released results and the user has evaluations for
+        released_form_ids = EvaluationForm.objects.filter(
+            id__in=all_evaluatee_assignments.values_list('form_id', flat=True),
+            results_released=True
+        ).order_by('-end_date', '-id').values_list('id', flat=True)
+
+        if not released_form_ids:
             return DRFResponse({
                 'overallScore': 0,
                 'categoryScores': [],
                 'feedbackComments': [],
-                'evaluationHistory': []
+                'evaluationHistory': [],
+                'available_forms': [],
+                'evaluatorCount': 0,
+                'selectedFormId': None
             })
-            
+
+        # Available forms for the selector
+        available_forms = EvaluationForm.objects.filter(id__in=released_form_ids).values('id', 'title').order_by('-end_date', '-id')
+
+        # Determine selected form
+        selected_form_id = None
+        if form_id:
+            try:
+                selected_form_id = int(form_id)
+                if selected_form_id not in released_form_ids:
+                    selected_form_id = released_form_ids[0]
+            except (ValueError, TypeError):
+                selected_form_id = released_form_ids[0]
+        else:
+            selected_form_id = released_form_ids[0]
+
+        # Filter assignments for the selected form
+        assignments = all_evaluatee_assignments.filter(form_id_id=selected_form_id)
+        
         overall_score = assignments.aggregate(avg=models.Avg('total_score'))['avg'] or 0
         overall_score = round(overall_score, 1)
-        
-        # evaluationHistory: average scores per evaluation form
+        evaluator_count = assignments.count()
+
+        # evaluationHistory: still useful to show historical averages for comparison maybe?
+        # Let's keep it but calculate it from ALL released assignments
         history_map = {}
-        for assignment in assignments:
-            title = assignment.form_id.title
-            if title not in history_map:
-                history_map[title] = {'score_sum': 0, 'count': 0, 'evaluators': set()}
-            if assignment.total_score is not None:
-                history_map[title]['score_sum'] += assignment.total_score
-                history_map[title]['count'] += 1
-                history_map[title]['evaluators'].add(assignment.evaluator_id_id)
+        for assignment in all_evaluatee_assignments:
+            if assignment.form_id.results_released:
+                title = assignment.form_id.title
+                if title not in history_map:
+                    history_map[title] = {'score_sum': 0, 'count': 0, 'evaluators': set()}
+                if assignment.total_score is not None:
+                    history_map[title]['score_sum'] += assignment.total_score
+                    history_map[title]['count'] += 1
+                    history_map[title]['evaluators'].add(assignment.evaluator_id_id)
 
         evaluation_history = []
         for period, data in history_map.items():
@@ -704,7 +738,7 @@ class EvaluationAssignmentViewSet(viewsets.ModelViewSet):
                     'evaluators': len(data['evaluators'])
                 })
         
-        # Category Scores and Feedback Comments
+        # Category Scores and Feedback Comments for SELECTED FORM ONLY
         responses = Response.objects.filter(assignment_id__in=assignments).select_related('question_id')
         
         category_map = {}
@@ -713,7 +747,9 @@ class EvaluationAssignmentViewSet(viewsets.ModelViewSet):
         
         for response in responses:
             question = response.question_id
-            category = question.category
+            # Use question text as category since category field is missing in model
+            category = (question.text[:30] + '...') if len(question.text) > 30 else question.text
+            
             if category not in category_map:
                 category_map[category] = {'score_sum': 0, 'weight_sum': 0, 'max_score': 5}
             
@@ -746,7 +782,10 @@ class EvaluationAssignmentViewSet(viewsets.ModelViewSet):
             'overallScore': overall_score,
             'categoryScores': category_scores,
             'feedbackComments': feedback_comments[:10],
-            'evaluationHistory': evaluation_history
+            'evaluationHistory': evaluation_history,
+            'available_forms': list(available_forms),
+            'evaluatorCount': evaluator_count,
+            'selectedFormId': selected_form_id
         })
     
     @action(detail=True, methods=['get'])
