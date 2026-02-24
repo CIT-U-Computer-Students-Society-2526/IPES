@@ -267,23 +267,6 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
                 'score': round(qs['avg_score'], 1)
             })
             
-        # 3. Trend Data
-        from django.db.models.functions import TruncMonth
-        trends = completed.annotate(
-            month=TruncMonth('submitted_at')
-        ).values('month').annotate(
-            avg_score=Avg('total_score')
-        ).order_by('month')
-        
-        trend_data = []
-        for t in trends:
-            if t['month']:
-                month_name = t['month'].strftime('%b')
-                trend_data.append({
-                    'month': month_name,
-                    'score': round(t['avg_score'], 1)
-                })
-        
         # 4. Top Performers and Unit Breakdown
         from apps.organizations.models import Membership
         
@@ -374,8 +357,7 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
             'total_evaluations': total_evaluations,
             'participation_rate': participation_rate,
             'category_data': category_data,
-            'trend_data': trend_data,
-            'top_performers': top_performers,
+            'top_performers': top_performers[:5], # Keep only top 5
             'unit_breakdown': unit_breakdown,
             'unit_data': unit_data
         })
