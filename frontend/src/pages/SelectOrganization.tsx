@@ -48,6 +48,41 @@ const SelectOrganization = () => {
     const createOrgMutation = useCreateOrganization();
     const joinOrgMutation = useJoinOrganization();
 
+    // Moved BEFORE the early return - hooks must always be called in the same order
+    const memberships = user?.memberships || [];
+
+    // Group memberships by organization
+    const groupedOrgs = React.useMemo(() => {
+        const groups = new Map<number, {
+            orgId: number;
+            orgName: string;
+            isAdmin: boolean;
+            positions: number;
+            primaryMembership: Membership;
+        }>();
+
+        memberships.forEach(m => {
+            if (!groups.has(m.organization_id)) {
+                groups.set(m.organization_id, {
+                    orgId: m.organization_id,
+                    orgName: m.organization_name,
+                    isAdmin: m.role === 'Admin',
+                    positions: 1,
+                    primaryMembership: m
+                });
+            } else {
+                const group = groups.get(m.organization_id)!;
+                group.positions += 1;
+                if (m.role === 'Admin') {
+                    group.isAdmin = true;
+                    group.primaryMembership = m; // Prioritize admin routing
+                }
+            }
+        });
+
+        return Array.from(groups.values());
+    }, [memberships]);
+
     const handleSelectOrganization = (membership: Membership) => {
         setActiveOrganizationId(membership.organization_id);
 
@@ -122,40 +157,6 @@ const SelectOrganization = () => {
             </div>
         );
     }
-
-    const memberships = user?.memberships || [];
-
-    // Group memberships by organization
-    const groupedOrgs = React.useMemo(() => {
-        const groups = new Map<number, {
-            orgId: number;
-            orgName: string;
-            isAdmin: boolean;
-            positions: number;
-            primaryMembership: Membership;
-        }>();
-
-        memberships.forEach(m => {
-            if (!groups.has(m.organization_id)) {
-                groups.set(m.organization_id, {
-                    orgId: m.organization_id,
-                    orgName: m.organization_name,
-                    isAdmin: m.role === 'Admin',
-                    positions: 1,
-                    primaryMembership: m
-                });
-            } else {
-                const group = groups.get(m.organization_id)!;
-                group.positions += 1;
-                if (m.role === 'Admin') {
-                    group.isAdmin = true;
-                    group.primaryMembership = m; // Prioritize admin routing
-                }
-            }
-        });
-
-        return Array.from(groups.values());
-    }, [memberships]);
 
     return (
         <div className="min-h-screen bg-muted/30 flex flex-col items-center justify-center p-4">
