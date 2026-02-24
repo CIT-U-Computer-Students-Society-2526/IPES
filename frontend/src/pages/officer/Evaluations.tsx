@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useMyPendingEvaluations, useAssignments, type EvaluationAssignment } from "@/hooks/useEvaluations";
+import { useCurrentUser } from "@/hooks/useUsers";
 // Helper to format status
 const getStatusInfo = (status: string) => {
   switch (status.toLowerCase()) {
@@ -131,9 +132,12 @@ const OfficerEvaluations = () => {
   const basePath = location.pathname.startsWith('/admin') ? '/admin/my-' : '/member/';
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Fetch assignments from API
+  // Fetch data from API
+  const { data: currentUser } = useCurrentUser();
   const { data: pendingAssignments, isLoading: pendingLoading } = useMyPendingEvaluations();
-  const { data: allAssignments, isLoading: allLoading } = useAssignments();
+  const { data: allAssignments, isLoading: allLoading } = useAssignments({
+    evaluator_id: currentUser?.id
+  });
 
   // Combine and filter assignments
   const getFilteredEvaluations = (status: string) => {

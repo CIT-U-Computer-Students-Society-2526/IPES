@@ -400,7 +400,8 @@ export const useDeleteQuestion = () => {
 // ===== Assignment Hooks =====
 
 // Fetch all assignments
-export const useAssignments = (params?: { status?: string; form_id?: number; organization_id?: number }) => {
+export const useAssignments = (params?: { status?: string; form_id?: number; organization_id?: number; evaluator_id?: number }) => {
+
   const { activeOrganizationId } = useOrganizationState();
   const effectiveParams = { ...params, organization_id: params?.organization_id || activeOrganizationId || undefined };
 
