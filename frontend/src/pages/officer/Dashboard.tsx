@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   ClipboardList,
   Clock,
@@ -86,7 +86,7 @@ const StatCard = ({
 };
 
 // Pending evaluation card
-const PendingEvaluationCard = ({ evaluation }: { evaluation: EvaluationAssignment }) => {
+const PendingEvaluationCard = ({ evaluation, basePath }: { evaluation: EvaluationAssignment, basePath: string }) => {
   const isUrgent = evaluation.due_date && new Date(evaluation.due_date) <= new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
 
   const formatDate = (dateString: string) => {
@@ -115,7 +115,7 @@ const PendingEvaluationCard = ({ evaluation }: { evaluation: EvaluationAssignmen
           )}
         </div>
       </div>
-      <Link to={`/member/evaluations/${evaluation.id}`}>
+      <Link to={`${basePath}evaluations/${evaluation.id}`}>
         <Button size="sm">Start</Button>
       </Link>
     </div>
@@ -154,6 +154,9 @@ const getDaysUntilDeadline = (dueDate: string | undefined) => {
 };
 
 const OfficerDashboard = () => {
+  const location = useLocation();
+  const basePath = location.pathname.startsWith('/admin') ? '/admin/my-' : '/member/';
+
   // Fetch data from API
   const { data: currentUser } = useCurrentUser();
   const { data: pendingEvaluations, isLoading: pendingLoading } = useMyPendingEvaluations();
@@ -208,7 +211,7 @@ const OfficerDashboard = () => {
           </h1>
           <p className="text-muted-foreground mt-1">Here's an overview of your evaluation tasks.</p>
         </div>
-        <Link to="/member/evaluations">
+        <Link to={`${basePath}evaluations`}>
           <Button>
             Start Evaluating
             <ArrowRight className="w-4 h-4 ml-2" />
@@ -255,7 +258,7 @@ const OfficerDashboard = () => {
         <div className="lg:col-span-2 bg-card rounded-xl border border-border p-6">
           <div className="flex items-center justify-between mb-5">
             <h2 className="font-semibold text-foreground">Pending Evaluations</h2>
-            <Link to="/member/evaluations" className="text-sm text-primary hover:underline">
+            <Link to={`${basePath}evaluations`} className="text-sm text-primary hover:underline">
               View all
             </Link>
           </div>
@@ -269,7 +272,7 @@ const OfficerDashboard = () => {
               </>
             ) : pendingEvaluations && pendingEvaluations.length > 0 ? (
               pendingEvaluations.slice(0, 5).map((evaluation) => (
-                <PendingEvaluationCard key={evaluation.id} evaluation={evaluation} />
+                <PendingEvaluationCard key={evaluation.id} evaluation={evaluation} basePath={basePath} />
               ))
             ) : (
               <div className="text-center py-8 text-muted-foreground">

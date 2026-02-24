@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Clock, CheckCircle2, AlertCircle, Search, Filter, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,7 +41,7 @@ const formatDate = (dateString: string) => {
 };
 
 // Evaluation card component
-const EvaluationCard = ({ evaluation }: { evaluation: EvaluationAssignment }) => {
+const EvaluationCard = ({ evaluation, basePath }: { evaluation: EvaluationAssignment, basePath: string }) => {
   const statusInfo = getStatusInfo(evaluation.status);
   const urgent = evaluation.due_date ? isUrgent(evaluation.due_date) : false;
   const isSelfEvaluation = evaluation.evaluatee_id === evaluation.evaluator_id;
@@ -91,7 +91,7 @@ const EvaluationCard = ({ evaluation }: { evaluation: EvaluationAssignment }) =>
                 Submitted
               </Button>
             ) : (
-              <Link to={`/member/evaluations/${evaluation.id}`}>
+              <Link to={`${basePath}evaluations/${evaluation.id}`}>
                 <Button size="sm">
                   {evaluation.status === "In Progress" ? "Continue" : "Start"}
                 </Button>
@@ -127,6 +127,8 @@ const EvaluationCardSkeleton = () => (
 );
 
 const OfficerEvaluations = () => {
+  const location = useLocation();
+  const basePath = location.pathname.startsWith('/admin') ? '/admin/my-' : '/member/';
   const [searchQuery, setSearchQuery] = useState("");
 
   // Fetch assignments from API
@@ -175,7 +177,7 @@ const OfficerEvaluations = () => {
         </div>
       ) : (
         evaluations.map((evaluation) => (
-          <EvaluationCard key={evaluation.id} evaluation={evaluation} />
+          <EvaluationCard key={evaluation.id} evaluation={evaluation} basePath={basePath} />
         ))
       )}
     </div>
