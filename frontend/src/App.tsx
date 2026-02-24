@@ -102,6 +102,13 @@ const App = () => (
               <Route path="users" element={<AdminUsers />} />
               <Route path="audit-log" element={<AdminAuditLog />} />
               <Route path="settings" element={<AdminSettings />} />
+
+              {/* My Space (Member overlay) */}
+              <Route path="my-dashboard" element={<OfficerDashboard />} />
+              <Route path="my-evaluations" element={<OfficerEvaluations />} />
+              <Route path="my-evaluations/:id" element={<EvaluationForm />} />
+              <Route path="my-results" element={<OfficerResults />} />
+              <Route path="my-accomplishments" element={<OfficerAccomplishments />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />

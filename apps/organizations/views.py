@@ -66,6 +66,12 @@ class OrganizationViewSet(viewsets.ModelViewSet):
             rank=1
         )
         
+        PositionType.objects.create(
+            organization_id=org,
+            name="Member Administrator",
+            rank=2
+        )
+        
         # Automatically assign the creator as Admin with rank 1
         Membership.objects.create(
             user_id=self.request.user,
