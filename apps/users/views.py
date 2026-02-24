@@ -121,10 +121,11 @@ class UserViewSet(viewsets.ModelViewSet):
         queryset = User.objects.all()
         org_id = self.request.query_params.get('organization_id')
         if org_id:
-            # Only return users who have an active membership in the specified organization
+            # Return users who belong to this organization via OrganizationRole
+            # and are currently active in it.
             queryset = queryset.filter(
-                memberships__unit_id__organization_id=org_id,
-                memberships__is_active=True
+                organization_roles__organization_id=org_id,
+                organization_roles__is_active=True
             ).distinct()
         return queryset
     

@@ -51,6 +51,7 @@ class OrganizationRole(models.Model):
         ('Member', 'Member'),
     )
     role = models.CharField(max_length=50, choices=ROLE_CHOICES, default='Member')
+    is_active = models.BooleanField(default=True)
     
     class Meta:
         unique_together = ('user', 'organization')

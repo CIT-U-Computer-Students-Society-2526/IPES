@@ -80,7 +80,7 @@ const POSITIONS = [
 ];
 
 import { useOrganizationState } from "@/contexts/OrganizationContext";
-import { useUpdateMembership, useOrganizationUnits, usePositionTypes, useCreateMembership } from "@/hooks/useOrganizations";
+import { useUpdateMembership, useOrganizationUnits, usePositionTypes, useCreateMembership, useRemoveMember } from "@/hooks/useOrganizations";
 
 const AdminUsers = () => {
   const { activeOrganizationId } = useOrganizationState();
@@ -108,6 +108,7 @@ const AdminUsers = () => {
   // Mutations
   const updateMembership = useUpdateMembership();
   const createMembership = useCreateMembership();
+  const removeMember = useRemoveMember();
 
   // Filter users
   const filteredUsers = users?.filter((user: User) => {
@@ -234,12 +235,9 @@ const AdminUsers = () => {
 
   const confirmRemoveFromOrganization = async () => {
     if (!userToRemove) return;
-    const membership = userToRemove.memberships?.find(m => m.organization_id === activeOrganizationId);
-    if (!membership) { setUserToRemove(null); return; }
     try {
-      await updateMembership.mutateAsync({
-        id: membership.id,
-        data: { is_active: false }
+      await removeMember.mutateAsync({
+        user_id: userToRemove.id
       });
       toast({
         title: "Success",
