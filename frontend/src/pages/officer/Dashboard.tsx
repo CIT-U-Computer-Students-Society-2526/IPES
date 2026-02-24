@@ -116,8 +116,11 @@ const PendingEvaluationCard = ({ evaluation, basePath }: { evaluation: Evaluatio
         </div>
       </div>
       <Link to={`${basePath}evaluations/${evaluation.id}`}>
-        <Button size="sm">Start</Button>
+        <Button size="sm">
+          {evaluation.status === "In Progress" ? "Continue" : "Start"}
+        </Button>
       </Link>
+
     </div>
   );
 };

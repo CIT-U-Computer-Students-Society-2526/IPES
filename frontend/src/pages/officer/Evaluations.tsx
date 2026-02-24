@@ -140,7 +140,9 @@ const OfficerEvaluations = () => {
     let evaluations: EvaluationAssignment[] = [];
 
     if (status === "pending") {
-      evaluations = pendingAssignments || [];
+      evaluations = pendingAssignments?.filter(a => a.status === "Pending") || [];
+    } else if (status === "inprogress") {
+      evaluations = pendingAssignments?.filter(a => a.status === "In Progress") || [];
     } else if (status === "completed") {
       evaluations = allAssignments?.filter(a => a.status === "Completed") || [];
     } else {
@@ -159,7 +161,8 @@ const OfficerEvaluations = () => {
     return evaluations;
   };
 
-  const pendingCount = pendingAssignments?.length || 0;
+  const pendingCount = pendingAssignments?.filter(a => a.status === "Pending").length || 0;
+  const inProgressCount = pendingAssignments?.filter(a => a.status === "In Progress").length || 0;
   const completedCount = allAssignments?.filter(a => a.status === "Completed").length || 0;
   const totalCount = allAssignments?.length || 0;
 
@@ -212,6 +215,9 @@ const OfficerEvaluations = () => {
           <TabsTrigger value="pending" className="flex-1 sm:flex-none">
             Pending ({pendingCount})
           </TabsTrigger>
+          <TabsTrigger value="inprogress" className="flex-1 sm:flex-none">
+            In Progress ({inProgressCount})
+          </TabsTrigger>
           <TabsTrigger value="completed" className="flex-1 sm:flex-none">
             Completed ({completedCount})
           </TabsTrigger>
@@ -222,6 +228,10 @@ const OfficerEvaluations = () => {
 
         <TabsContent value="pending" className="mt-4">
           {renderEvaluationsList(getFilteredEvaluations("pending"), pendingLoading)}
+        </TabsContent>
+
+        <TabsContent value="inprogress" className="mt-4">
+          {renderEvaluationsList(getFilteredEvaluations("inprogress"), pendingLoading)}
         </TabsContent>
 
         <TabsContent value="completed" className="mt-4">

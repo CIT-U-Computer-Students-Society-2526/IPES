@@ -647,13 +647,14 @@ class EvaluationAssignmentViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['get'])
     def my_pending(self, request):
-        """Get pending evaluations for current user"""
+        """Get pending and in-progress evaluations for current user"""
         assignments = self.get_queryset().filter(
             evaluator_id=request.user,
-            status='Pending'
+            status__in=['Pending', 'In Progress']
         )
         serializer = EvaluationAssignmentSerializer(assignments, many=True)
         return DRFResponse(serializer.data)
+
     
     @action(detail=False, methods=['get'])
     def my_completed(self, request):
