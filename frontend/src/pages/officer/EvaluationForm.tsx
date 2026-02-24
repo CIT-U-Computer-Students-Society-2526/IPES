@@ -25,7 +25,6 @@ import {
   useSaveDraftResponses,
   type Question
 } from "@/hooks/useEvaluations";
-import { useMemberRoutes } from "@/hooks/useMemberRoutes";
 
 // Generate rating label ranges dynamically based on max value
 const getRatingContext = (min: number | undefined, max: number | undefined) => {
@@ -50,8 +49,6 @@ const EvaluationForm = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const { toast } = useToast();
-  const routes = useMemberRoutes();
-
   // API Hooks
   const { data: assignment, isLoading: aLoading, error: aError } = useAssignment(Number(id));
   const { data: questions, isLoading: qLoading } = useFormQuestions(assignment?.form_id || 0);
@@ -102,7 +99,7 @@ const EvaluationForm = () => {
         <AlertCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
         <h2 className="text-xl font-bold">Error</h2>
         <p>Could not load this evaluation. It may not exist or you don't have access.</p>
-        <Button onClick={() => navigate(routes.evaluationsList)} className="mt-6" variant="outline">
+        <Button onClick={() => navigate('/member/evaluations')} className="mt-6" variant="outline">
           Return to My Evaluations
         </Button>
       </div>
@@ -202,7 +199,7 @@ const EvaluationForm = () => {
         description: "Thank you for completing this peer evaluation.",
       });
       setShowSubmitDialog(false);
-      navigate(routes.evaluationsList);
+      navigate('/member/evaluations');
     } catch (err: any) {
       toast({
         title: "Submission Error",
@@ -318,7 +315,7 @@ const EvaluationForm = () => {
       {/* Header */}
       <div className="mb-6">
         <button
-          onClick={() => navigate(routes.evaluationsList)}
+          onClick={() => navigate('/member/evaluations')}
           className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4"
         >
           <ArrowLeft className="w-4 h-4" />

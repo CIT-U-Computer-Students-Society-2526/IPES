@@ -8,8 +8,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useMyPendingEvaluations, useAssignments, type EvaluationAssignment } from "@/hooks/useEvaluations";
-import { useMemberRoutes } from "@/hooks/useMemberRoutes";
-
 // Helper to format status
 const getStatusInfo = (status: string) => {
   switch (status.toLowerCase()) {
@@ -44,7 +42,6 @@ const formatDate = (dateString: string) => {
 
 // Evaluation card component
 const EvaluationCard = ({ evaluation }: { evaluation: EvaluationAssignment }) => {
-  const routes = useMemberRoutes();
   const statusInfo = getStatusInfo(evaluation.status);
   const urgent = evaluation.due_date ? isUrgent(evaluation.due_date) : false;
   const isSelfEvaluation = evaluation.evaluatee_id === evaluation.evaluator_id;
@@ -94,7 +91,7 @@ const EvaluationCard = ({ evaluation }: { evaluation: EvaluationAssignment }) =>
                 Submitted
               </Button>
             ) : (
-              <Link to={routes.evaluationForm(evaluation.id)}>
+              <Link to={`/member/evaluations/${evaluation.id}`}>
                 <Button size="sm">
                   {evaluation.status === "In Progress" ? "Continue" : "Start"}
                 </Button>

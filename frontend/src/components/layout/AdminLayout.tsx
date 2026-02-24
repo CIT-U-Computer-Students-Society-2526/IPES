@@ -37,12 +37,6 @@ const navigation = [
   { name: "Settings", href: "/admin/settings", icon: Settings },
 ];
 
-const memberNavigation = [
-  { name: "My Dashboard", href: "/admin/my-dashboard", icon: LayoutDashboard },
-  { name: "My Evaluations", href: "/admin/my-evaluations", icon: ClipboardCheck },
-  { name: "My Results", href: "/admin/my-results", icon: CheckCircle },
-  { name: "My Accomplishments", href: "/admin/my-accomplishments", icon: Trophy },
-];
 
 const AdminLayout = () => {
   const location = useLocation();
@@ -140,27 +134,6 @@ const AdminLayout = () => {
                 My Space
               </p>
             </div>
-
-            {memberNavigation.map((item) => {
-              const isActive = location.pathname.startsWith(item.href) ||
-                (item.href === '/admin/my-evaluations' && location.pathname.startsWith('/admin/evaluations/'));
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  onClick={() => setSidebarOpen(false)}
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                  )}
-                >
-                  <item.icon className="w-5 h-5" />
-                  {item.name}
-                </Link>
-              );
-            })}
           </nav>
 
           {/* User section */}
