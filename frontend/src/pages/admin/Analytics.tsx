@@ -28,15 +28,28 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { useForms, useFormAnalytics } from "@/hooks/useEvaluations";
+import { useToast } from "@/hooks/use-toast";
 
 const AdminAnalytics = () => {
-  const { data: forms, isLoading: isLoadingForms } = useForms({ is_active: undefined, is_published: true }); // Fetching all published/active forms related to the org
+  const { data: forms, isLoading: isLoadingForms } = useForms(); // Fetch all forms for the org
   const [selectedFormId, setSelectedFormId] = useState<string>("all");
+  const { toast } = useToast();
 
-  // Filter out soft-deleted forms, but forms hook already might do this. Better safe.
-  const availableForms = forms || [];
+  const availableForms = (forms || []).filter(form => {
+    // Hide soft-deleted forms
+    if (form.is_deleted) return false;
+    // Hide draft forms (inactive and results not released)
+    if (!form.is_active && !form.results_released) return false;
+    return true;
+  });
 
   useEffect(() => {
     // Attempt to set a default form if available
@@ -51,9 +64,114 @@ const AdminAnalytics = () => {
 
   const { data: analyticsData, isLoading: isLoadingAnalytics } = useFormAnalytics(formIdToFetch);
 
-  const handleExport = () => {
-    // To be implemented
-    console.log("Exporting data for form:", selectedFormId);
+  const getExportData = () => {
+    if (!analyticsData) return null;
+
+    // Aggregate the data well into a flat structure suitable for CSV or direct JSON
+    return {
+      form_details: analyticsData.form_details,
+      overview: {
+        form_id: selectedFormId,
+        overall_score: analyticsData.overall_score,
+        total_evaluations: analyticsData.total_evaluations,
+        participation_rate: analyticsData.participation_rate,
+      },
+      top_questions: analyticsData.category_data,
+      top_performers: analyticsData.top_performers,
+      unit_performance: analyticsData.unit_breakdown,
+      raw_responses: analyticsData.raw_data
+    };
+  };
+
+  const handleExportJSON = () => {
+    const data = getExportData();
+    if (!data) return;
+
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", `analytics_form_${selectedFormId}.json`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+
+    toast({
+      title: "Success",
+      description: "Analytics data exported as JSON",
+    });
+  };
+
+  const handleExportCSV = () => {
+    const data = getExportData();
+    if (!data) return;
+
+    let csvContent = "";
+
+    // 0. Form Details Section
+    csvContent += "FORM DETAILS\n";
+    csvContent += "title,description,created_at,end_date,is_active,results_released\n";
+    if (data.form_details) {
+      const title = `"${(data.form_details.title || "").replace(/"/g, '""')}"`;
+      const desc = `"${(data.form_details.description || "").replace(/"/g, '""')}"`;
+      csvContent += `${title},${desc},${data.form_details.created_at || ""},${data.form_details.end_date || ""},${data.form_details.is_active || false},${data.form_details.results_released || false}\n\n`;
+    }
+
+    // 1. Overview Section
+    csvContent += "OVERVIEW\n";
+    csvContent += "overall_score,total_evaluations,participation_rate\n";
+    csvContent += `${data.overview.overall_score},${data.overview.total_evaluations},${data.overview.participation_rate}%\n\n`;
+
+    // 2. Top Questions
+    csvContent += "TOP QUESTIONS\n";
+    csvContent += "question,average_score\n";
+    data.top_questions.forEach(q => {
+      // Escape quotes for CSV
+      const escapedName = `"${q.name.replace(/"/g, '""')}"`;
+      csvContent += `${escapedName},${q.score}\n`;
+    });
+    csvContent += "\n";
+
+    // 3. Top Performers
+    csvContent += "TOP PERFORMERS\n";
+    csvContent += "rank,name,unit,score\n";
+    data.top_performers.forEach(p => {
+      csvContent += `${p.rank},"${p.name}","${p.unit}",${p.score}\n`;
+    });
+    csvContent += "\n";
+
+    // 4. Unit Performance
+    csvContent += "UNIT PERFORMANCE\n";
+    csvContent += "unit,members_evaluated,average_score,completion_rate\n";
+    data.unit_performance.forEach(u => {
+      csvContent += `"${u.unit}",${u.members},${u.avgScore},${u.completion}%\n`;
+    });
+    csvContent += "\n";
+
+    // 5. Raw Data
+    csvContent += "RAW DATA\n";
+    csvContent += "evaluator,evaluatee,question,score,response,submitted_at\n";
+    if (data.raw_responses && data.raw_responses.length > 0) {
+      data.raw_responses.forEach(r => {
+        const escapedQuestion = `"${r.question_text.replace(/"/g, '""')}"`;
+        const escapedResponse = r.text_response ? `"${r.text_response.replace(/"/g, '""')}"` : "";
+        csvContent += `"${r.evaluator_name}","${r.evaluatee_name}",${escapedQuestion},${r.score || ""},${escapedResponse},${r.submitted_at || ""}\n`;
+      });
+    } else {
+      csvContent += "No raw responses available.\n";
+    }
+
+    const dataStr = "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", `analytics_form_${selectedFormId}.csv`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+
+    toast({
+      title: "Success",
+      description: "Analytics data exported as CSV",
+    });
   };
 
   const isLoading = isLoadingForms || isLoadingAnalytics;
@@ -86,10 +204,23 @@ const AdminAnalytics = () => {
               )}
             </SelectContent>
           </Select>
-          <Button variant="outline" onClick={handleExport} disabled={!formIdToFetch || isLoading}>
-            <Download className="w-4 h-4 mr-2" />
-            Export
-          </Button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" disabled={!formIdToFetch || isLoading}>
+                <Download className="w-4 h-4 mr-2" />
+                Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleExportCSV}>
+                Export as CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportJSON}>
+                Export as JSON
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -160,7 +291,7 @@ const AdminAnalytics = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Score by Category (Top Questions) */}
-            <Card>
+            <Card className="lg:col-span-2">
               <CardHeader>
                 <CardTitle>Top Scoring Questions</CardTitle>
               </CardHeader>

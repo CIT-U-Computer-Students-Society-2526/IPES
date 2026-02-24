@@ -352,14 +352,48 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
                 
         unit_breakdown.sort(key=lambda x: x['avgScore'], reverse=True)
             
+        # 5. Raw Data (for export)
+        from .models import Response
+        raw_responses = Response.objects.filter(
+            assignment_id__form_id=form,
+            assignment_id__status='Completed'
+        ).select_related(
+            'assignment_id',
+            'assignment_id__evaluator_id',
+            'assignment_id__evaluatee_id',
+            'question_id'
+        )
+        
+        raw_data = []
+        for r in raw_responses:
+            evaluator = r.assignment_id.evaluator_id
+            evaluatee = r.assignment_id.evaluatee_id
+            raw_data.append({
+                'evaluator_name': f"{evaluator.first_name} {evaluator.last_name}".strip() if evaluator else 'Unknown',
+                'evaluatee_name': f"{evaluatee.first_name} {evaluatee.last_name}".strip() if evaluatee else 'Unknown',
+                'question_text': r.question_id.text,
+                'score': r.score_value,
+                'text_response': r.text,
+                'submitted_at': r.assignment_id.submitted_at.isoformat() if r.assignment_id.submitted_at else None
+            })
+
         return DRFResponse({
+            'form_details': {
+                'title': form.title,
+                'description': form.description,
+                'created_at': form.created_at.isoformat() if form.created_at else None,
+                'end_date': form.end_date.isoformat() if form.end_date else None,
+                'is_active': form.is_active,
+                'results_released': form.results_released
+            },
             'overall_score': overall_score,
             'total_evaluations': total_evaluations,
             'participation_rate': participation_rate,
             'category_data': category_data,
             'top_performers': top_performers[:5], # Keep only top 5
             'unit_breakdown': unit_breakdown,
-            'unit_data': unit_data
+            'unit_data': unit_data,
+            'raw_data': raw_data
         })
 
 
