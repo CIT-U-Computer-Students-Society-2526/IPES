@@ -231,6 +231,155 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
         
         return DRFResponse(serializer.data, status=status.HTTP_201_CREATED)
 
+    @action(detail=True, methods=['get'])
+    def analytics(self, request, pk=None):
+        """Get comprehensive analytics for a specific evaluation form"""
+        form = self.get_object()
+        from django.db.models import Avg, Count, Q
+        
+        # 1. Basic Stats
+        assignments = EvaluationAssignment.objects.filter(form_id=form)
+        total_evaluations = assignments.count()
+        completed = assignments.filter(status='Completed')
+        completed_count = completed.count()
+        
+        participation_rate = round((completed_count / total_evaluations * 100), 1) if total_evaluations > 0 else 0
+        overall_score = completed.aggregate(avg=Avg('total_score'))['avg']
+        overall_score = round(overall_score, 2) if overall_score else 0.0
+        
+        # 2. Category Data (Questions - taking top 6 highest scoring questions)
+        from .models import Response
+        question_stats = Response.objects.filter(
+            assignment_id__form_id=form, 
+            assignment_id__status='Completed',
+            score_value__isnull=False
+        ).values('question_id__text').annotate(
+            avg_score=Avg('score_value')
+        ).order_by('-avg_score')[:6]
+        
+        category_data = []
+        for qs in question_stats:
+            text = qs['question_id__text']
+            # Truncate to first 15 chars if too long
+            short_name = (text[:15] + '...') if len(text) > 15 else text
+            category_data.append({
+                'name': short_name,
+                'score': round(qs['avg_score'], 1)
+            })
+            
+        # 3. Trend Data
+        from django.db.models.functions import TruncMonth
+        trends = completed.annotate(
+            month=TruncMonth('submitted_at')
+        ).values('month').annotate(
+            avg_score=Avg('total_score')
+        ).order_by('month')
+        
+        trend_data = []
+        for t in trends:
+            if t['month']:
+                month_name = t['month'].strftime('%b')
+                trend_data.append({
+                    'month': month_name,
+                    'score': round(t['avg_score'], 1)
+                })
+        
+        # 4. Top Performers and Unit Breakdown
+        from apps.organizations.models import Membership
+        
+        # Get active memberships in the org
+        memberships = Membership.objects.filter(
+            unit_id__organization_id=form.organization_id,
+            is_active=True
+        ).select_related('user_id', 'unit_id')
+        
+        # Map users to their units
+        user_units = {}
+        for m in memberships:
+            user_units[m.user_id_id] = m.unit_id.name if m.unit_id else 'Unknown'
+            
+        # Evaluatee stats
+        evaluatee_stats = assignments.values('evaluatee_id', 'evaluatee_id__first_name', 'evaluatee_id__last_name').annotate(
+            total=Count('id'),
+            completed=Count('id', filter=Q(status='Completed')),
+            avg_score=Avg('total_score', filter=Q(status='Completed'))
+        ).order_by('-avg_score')
+        
+        top_performers = []
+        rank = 1
+        unit_stats_map = {}
+        
+        for es in evaluatee_stats:
+            uid = es['evaluatee_id']
+            unit_name = user_units.get(uid, 'Unknown')
+            name = f"{es['evaluatee_id__first_name']} {es['evaluatee_id__last_name'][0]}." if es['evaluatee_id__last_name'] else es['evaluatee_id__first_name']
+            
+            # Add to top performers if they have a score
+            if es['avg_score'] is not None and rank <= 5:
+                top_performers.append({
+                    'rank': rank,
+                    'name': name,
+                    'unit': unit_name,
+                    'score': round(es['avg_score'], 1),
+                    'trend': 'same' # Without historical, just hardcode format for now
+                })
+                rank += 1
+                
+            # Add to unit stats map
+            if unit_name not in unit_stats_map:
+                unit_stats_map[unit_name] = {
+                    'members': set(),
+                    'total_assignments': 0,
+                    'completed_assignments': 0,
+                    'sum_score': 0,
+                    'scored_count': 0
+                }
+            
+            usm = unit_stats_map[unit_name]
+            usm['members'].add(uid)
+            usm['total_assignments'] += es['total']
+            usm['completed_assignments'] += es['completed']
+            if es['avg_score'] is not None:
+                usm['sum_score'] += es['avg_score']
+                usm['scored_count'] += 1
+                
+        unit_breakdown = []
+        unit_data = [] # For pie chart
+        colors = ['#4f46e5', '#06b6d4', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#ef4444', '#14b8a6', '#f97316', '#6366f1']
+        
+        c_idx = 0
+        for unit_name, metrics in unit_stats_map.items():
+            avg = (metrics['sum_score'] / metrics['scored_count']) if metrics['scored_count'] > 0 else 0
+            comp = (metrics['completed_assignments'] / metrics['total_assignments'] * 100) if metrics['total_assignments'] > 0 else 0
+            
+            unit_breakdown.append({
+                'unit': unit_name,
+                'members': len(metrics['members']),
+                'avgScore': round(avg, 1),
+                'completion': round(comp, 0)
+            })
+            
+            if avg > 0:
+                unit_data.append({
+                    'name': unit_name,
+                    'value': round(avg, 1),
+                    'color': colors[c_idx % len(colors)]
+                })
+                c_idx += 1
+                
+        unit_breakdown.sort(key=lambda x: x['avgScore'], reverse=True)
+            
+        return DRFResponse({
+            'overall_score': overall_score,
+            'total_evaluations': total_evaluations,
+            'participation_rate': participation_rate,
+            'category_data': category_data,
+            'trend_data': trend_data,
+            'top_performers': top_performers,
+            'unit_breakdown': unit_breakdown,
+            'unit_data': unit_data
+        })
+
 
 def _apply_rule(rule, form):
     """Apply a single AssignmentRule, creating missing EvaluationAssignments.

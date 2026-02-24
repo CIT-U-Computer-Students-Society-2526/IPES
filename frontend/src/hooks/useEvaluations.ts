@@ -251,6 +251,28 @@ export const useDeleteForm = () => {
   });
 };
 
+// Fetch form analytics
+export const useFormAnalytics = (formId: number | undefined) => {
+  return useQuery({
+    queryKey: ['forms', formId, 'analytics'],
+    queryFn: async () => {
+      const response = await api.get(`/forms/${formId}/analytics/`);
+      return response.json() as Promise<{
+        overall_score: number;
+        total_evaluations: number;
+        participation_rate: number;
+        category_data: { name: string; score: number }[];
+        trend_data: { month: string; score: number }[];
+        top_performers: { rank: number; name: string; unit: string; score: number; trend: string }[];
+        unit_breakdown: { unit: string; members: number; avgScore: number; completion: number }[];
+        unit_data: { name: string; value: number; color: string }[];
+      }>;
+    },
+    enabled: !!formId,
+  });
+};
+
+
 // ===== Assignment Rule Hooks =====
 
 // Fetch rules for a form
