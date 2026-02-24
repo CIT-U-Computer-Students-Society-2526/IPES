@@ -125,6 +125,38 @@ const SelectOrganization = () => {
 
     const memberships = user?.memberships || [];
 
+    // Group memberships by organization
+    const groupedOrgs = React.useMemo(() => {
+        const groups = new Map<number, {
+            orgId: number;
+            orgName: string;
+            isAdmin: boolean;
+            positions: number;
+            primaryMembership: Membership;
+        }>();
+
+        memberships.forEach(m => {
+            if (!groups.has(m.organization_id)) {
+                groups.set(m.organization_id, {
+                    orgId: m.organization_id,
+                    orgName: m.organization_name,
+                    isAdmin: m.role === 'Admin',
+                    positions: 1,
+                    primaryMembership: m
+                });
+            } else {
+                const group = groups.get(m.organization_id)!;
+                group.positions += 1;
+                if (m.role === 'Admin') {
+                    group.isAdmin = true;
+                    group.primaryMembership = m; // Prioritize admin routing
+                }
+            }
+        });
+
+        return Array.from(groups.values());
+    }, [memberships]);
+
     return (
         <div className="min-h-screen bg-muted/30 flex flex-col items-center justify-center p-4">
             <div className="w-full max-w-3xl space-y-8">
@@ -263,19 +295,24 @@ const SelectOrganization = () => {
                     </Card>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {memberships.map((membership) => (
+                        {groupedOrgs.map((group) => (
                             <Card
-                                key={membership.id}
-                                className="hover:border-primary/50 transition-colors cursor-pointer group"
-                                onClick={() => handleSelectOrganization(membership)}
+                                key={group.orgId}
+                                className="hover:border-primary/50 transition-colors cursor-pointer group hover:shadow-md"
+                                onClick={() => handleSelectOrganization(group.primaryMembership)}
                             >
                                 <CardHeader className="pb-4">
                                     <div className="flex items-start justify-between">
                                         <div className="space-y-1">
                                             <CardTitle className="text-xl group-hover:text-primary transition-colors">
-                                                {membership.organization_name}
+                                                {group.orgName}
                                             </CardTitle>
-                                            <CardDescription>{membership.unit_name}</CardDescription>
+                                            <CardDescription>
+                                                {group.positions === 1
+                                                    ? group.primaryMembership.unit_name
+                                                    : `${group.positions} active positions`
+                                                }
+                                            </CardDescription>
                                         </div>
                                         <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                                             <BuildingIcon className="h-5 w-5 text-primary" />
@@ -285,16 +322,16 @@ const SelectOrganization = () => {
                                 <CardContent>
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center space-x-2 text-sm">
-                                            {membership.role === 'Admin' ? (
+                                            {group.isAdmin ? (
                                                 <ShieldIcon className="h-4 w-4 text-emerald-500" />
                                             ) : (
                                                 <UserIcon className="h-4 w-4 text-blue-500" />
                                             )}
                                             <span className="font-medium">
-                                                {membership.role}
+                                                {group.isAdmin ? 'Admin' : 'Member'}
                                             </span>
-                                            <span className="text-muted-foreground">
-                                                • {membership.position_name}
+                                            <span className="text-muted-foreground truncate max-w-[150px] sm:max-w-[200px]">
+                                                • {group.positions === 1 ? group.primaryMembership.position_name : 'Multiple Roles'}
                                             </span>
                                         </div>
                                         <Button variant="ghost" size="icon" className="group-hover:translate-x-1 transition-transform">
