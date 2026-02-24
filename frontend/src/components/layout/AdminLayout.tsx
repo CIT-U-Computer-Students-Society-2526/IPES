@@ -16,6 +16,7 @@ import {
   Menu,
   X,
   ClipboardCheck,
+  CheckCircle,
   Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,13 @@ const navigation = [
   { name: "Analytics", href: "/admin/analytics", icon: BarChart3 },
   { name: "Audit Log", href: "/admin/audit-log", icon: Shield },
   { name: "Settings", href: "/admin/settings", icon: Settings },
+];
+
+const memberNavigation = [
+  { name: "My Dashboard", href: "/admin/my-dashboard", icon: LayoutDashboard },
+  { name: "My Evaluations", href: "/admin/my-evaluations", icon: ClipboardCheck },
+  { name: "My Results", href: "/admin/my-results", icon: CheckCircle },
+  { name: "My Accomplishments", href: "/admin/my-accomplishments", icon: Trophy },
 ];
 
 const AdminLayout = () => {
@@ -109,6 +117,33 @@ const AdminLayout = () => {
           <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
             {navigation.map((item) => {
               const isActive = location.pathname === item.href;
+              return (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  onClick={() => setSidebarOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                    isActive
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  )}
+                >
+                  <item.icon className="w-5 h-5" />
+                  {item.name}
+                </Link>
+              );
+            })}
+
+            <div className="pt-4 pb-2">
+              <p className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                My Space
+              </p>
+            </div>
+
+            {memberNavigation.map((item) => {
+              const isActive = location.pathname.startsWith(item.href) ||
+                (item.href === '/admin/my-evaluations' && location.pathname.startsWith('/admin/evaluations/'));
               return (
                 <Link
                   key={item.name}
