@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 from .models import User
+from apps.organizations.models import OrganizationRole
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -17,6 +18,8 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'date_joined']
         
     def get_memberships(self, obj):
+        user_roles = {r.organization_id: r.role for r in obj.organization_roles.all()}
+        
         return [
             {
                 'id': m.id,
@@ -28,7 +31,7 @@ class UserSerializer(serializers.ModelSerializer):
                 'position_id': m.position_id.id,
                 'position_name': m.position_id.name,
                 'position_rank': m.position_id.rank,
-                'role': m.role,
+                'role': user_roles.get(m.unit_id.organization_id.id, 'Member'),
                 'is_active': m.is_active
             }
             for m in obj.memberships.filter(is_active=True, unit_id__organization_id__is_active=True)
