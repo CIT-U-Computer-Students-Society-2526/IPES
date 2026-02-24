@@ -1,30 +1,30 @@
-import { BarChart3, TrendingUp, Users, MessageSquare } from "lucide-react";
+import { BarChart3, TrendingUp, Users, MessageSquare, Loader2 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-
-const overallScore = 4.2;
-const maxScore = 5;
-
-const categoryScores = [
-  { name: "Leadership", score: 4.5, maxScore: 5 },
-  { name: "Teamwork", score: 4.3, maxScore: 5 },
-  { name: "Communication", score: 4.0, maxScore: 5 },
-  { name: "Output Quality", score: 4.2, maxScore: 5 },
-  { name: "Punctuality", score: 3.8, maxScore: 5 },
-];
-
-const feedbackComments = [
-  { id: 1, text: "Great leadership skills and always willing to help team members.", type: "positive" },
-  { id: 2, text: "Could improve on meeting deadlines more consistently.", type: "constructive" },
-  { id: 3, text: "Excellent communication and collaboration with other committees.", type: "positive" },
-];
-
-const evaluationHistory = [
-  { period: "Q4 2025", score: 4.2, evaluators: 8 },
-  { period: "Q3 2025", score: 4.0, evaluators: 7 },
-  { period: "Q2 2025", score: 3.8, evaluators: 6 },
-];
+import { useMyPerformance } from "@/hooks/useEvaluations";
 
 const OfficerResults = () => {
+  const { data: performanceData, isLoading, error } = useMyPerformance();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error || !performanceData) {
+    return (
+      <div className="flex items-center justify-center h-64 text-destructive">
+        Error loading results data. Please try again later.
+      </div>
+    );
+  }
+
+  const { overallScore, categoryScores, feedbackComments, evaluationHistory } = performanceData;
+  const maxScore = 5;
+
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="page-header">
@@ -48,7 +48,7 @@ const OfficerResults = () => {
               Based on evaluations from Q4 2025
             </p>
           </div>
-          
+
           <div className="flex items-center gap-8">
             <div className="text-center">
               <div className="flex items-center justify-center w-12 h-12 rounded-full bg-success/10 mx-auto mb-2">
@@ -79,8 +79,8 @@ const OfficerResults = () => {
                   <span className="text-foreground font-medium">{category.name}</span>
                   <span className="text-muted-foreground">{category.score}/{category.maxScore}</span>
                 </div>
-                <Progress 
-                  value={(category.score / category.maxScore) * 100} 
+                <Progress
+                  value={(category.score / category.maxScore) * 100}
                   className="h-2"
                 />
               </div>
@@ -95,18 +95,21 @@ const OfficerResults = () => {
             <h2 className="font-semibold text-foreground">Feedback Highlights</h2>
           </div>
           <div className="space-y-4">
-            {feedbackComments.map((comment) => (
-              <div 
-                key={comment.id}
-                className={`p-4 rounded-lg border ${
-                  comment.type === 'positive' 
-                    ? 'bg-success/5 border-success/20' 
+            {feedbackComments && feedbackComments.length > 0 ? (
+              feedbackComments.map((comment) => (
+                <div
+                  key={comment.id}
+                  className={`p-4 rounded-lg border ${comment.type === 'positive'
+                    ? 'bg-success/5 border-success/20'
                     : 'bg-warning/5 border-warning/20'
-                }`}
-              >
-                <p className="text-sm text-foreground">{comment.text}</p>
-              </div>
-            ))}
+                    }`}
+                >
+                  <p className="text-sm text-foreground">{comment.text}</p>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground italic">No feedback comments available yet.</p>
+            )}
           </div>
           <p className="text-xs text-muted-foreground mt-4">
             * Comments are anonymized for fairness
@@ -149,7 +152,7 @@ const OfficerResults = () => {
 
       <div className="bg-muted/50 rounded-lg p-4">
         <p className="text-sm text-muted-foreground text-center">
-          Evaluation results are confidential and intended for personal improvement. 
+          Evaluation results are confidential and intended for personal improvement.
           For concerns, please contact your organization administrator.
         </p>
       </div>
