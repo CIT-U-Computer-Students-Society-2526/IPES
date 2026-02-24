@@ -408,6 +408,8 @@ def _apply_rule(rule, form):
         qs = Membership.objects.filter(
             unit_id__organization_id=org,
             is_active=True,
+        ).exclude(
+            unit_id__type_id__name="System"
         ).select_related('user_id')
         if unit:
             qs = qs.filter(unit_id=unit)
@@ -645,13 +647,14 @@ class EvaluationAssignmentViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['get'])
     def my_pending(self, request):
-        """Get pending evaluations for current user"""
+        """Get pending and in-progress evaluations for current user"""
         assignments = self.get_queryset().filter(
             evaluator_id=request.user,
-            status='Pending'
+            status__in=['Pending', 'In Progress']
         )
         serializer = EvaluationAssignmentSerializer(assignments, many=True)
         return DRFResponse(serializer.data)
+
     
     @action(detail=False, methods=['get'])
     def my_completed(self, request):
@@ -662,6 +665,129 @@ class EvaluationAssignmentViewSet(viewsets.ModelViewSet):
         )
         serializer = EvaluationAssignmentSerializer(assignments, many=True)
         return DRFResponse(serializer.data)
+        
+    @action(detail=False, methods=['get'])
+    def my_performance(self, request):
+        """Get aggregate performance data from received evaluations for a specific form or latest released form"""
+        user = request.user
+        form_id = request.query_params.get('form_id')
+
+        # Get all completed assignments for the user as evaluatee
+        all_evaluatee_assignments = EvaluationAssignment.objects.filter(
+            evaluatee_id=user,
+            status='Completed'
+        ).select_related('form_id')
+
+        # Find forms that have released results and the user has evaluations for
+        released_form_ids = EvaluationForm.objects.filter(
+            id__in=all_evaluatee_assignments.values_list('form_id', flat=True),
+            results_released=True
+        ).order_by('-end_date', '-id').values_list('id', flat=True)
+
+        if not released_form_ids:
+            return DRFResponse({
+                'overallScore': 0,
+                'categoryScores': [],
+                'feedbackComments': [],
+                'evaluationHistory': [],
+                'available_forms': [],
+                'evaluatorCount': 0,
+                'selectedFormId': None
+            })
+
+        # Available forms for the selector
+        available_forms = EvaluationForm.objects.filter(id__in=released_form_ids).values('id', 'title').order_by('-end_date', '-id')
+
+        # Determine selected form
+        selected_form_id = None
+        if form_id:
+            try:
+                selected_form_id = int(form_id)
+                if selected_form_id not in released_form_ids:
+                    selected_form_id = released_form_ids[0]
+            except (ValueError, TypeError):
+                selected_form_id = released_form_ids[0]
+        else:
+            selected_form_id = released_form_ids[0]
+
+        # Filter assignments for the selected form
+        assignments = all_evaluatee_assignments.filter(form_id_id=selected_form_id)
+        
+        overall_score = assignments.aggregate(avg=models.Avg('total_score'))['avg'] or 0
+        overall_score = round(overall_score, 1)
+        evaluator_count = assignments.count()
+
+        # evaluationHistory: still useful to show historical averages for comparison maybe?
+        # Let's keep it but calculate it from ALL released assignments
+        history_map = {}
+        for assignment in all_evaluatee_assignments:
+            if assignment.form_id.results_released:
+                title = assignment.form_id.title
+                if title not in history_map:
+                    history_map[title] = {'score_sum': 0, 'count': 0, 'evaluators': set()}
+                if assignment.total_score is not None:
+                    history_map[title]['score_sum'] += assignment.total_score
+                    history_map[title]['count'] += 1
+                    history_map[title]['evaluators'].add(assignment.evaluator_id_id)
+
+        evaluation_history = []
+        for period, data in history_map.items():
+            if data['count'] > 0:
+                evaluation_history.append({
+                    'period': period,
+                    'score': round(data['score_sum'] / data['count'], 1),
+                    'evaluators': len(data['evaluators'])
+                })
+        
+        # Category Scores and Feedback Comments for SELECTED FORM ONLY
+        responses = Response.objects.filter(assignment_id__in=assignments).select_related('question_id')
+        
+        category_map = {}
+        feedback_comments = []
+        comment_id = 1
+        
+        for response in responses:
+            question = response.question_id
+            # Use question text as category since category field is missing in model
+            category = (question.text[:30] + '...') if len(question.text) > 30 else question.text
+            
+            if category not in category_map:
+                category_map[category] = {'score_sum': 0, 'weight_sum': 0, 'max_score': 5}
+            
+            if response.score_value is not None and question.weight:
+                category_map[category]['score_sum'] += response.score_value * question.weight
+                category_map[category]['weight_sum'] += question.weight
+                
+            if response.text and response.text.strip():
+                feedback_type = 'positive' if (response.score_value and response.score_value >= 4) else 'constructive'
+                if not response.score_value:
+                    feedback_type = 'info'
+                    
+                feedback_comments.append({
+                    'id': comment_id,
+                    'text': response.text.strip(),
+                    'type': feedback_type
+                })
+                comment_id += 1
+
+        category_scores = []
+        for name, data in category_map.items():
+            if data['weight_sum'] > 0:
+                category_scores.append({
+                    'name': name,
+                    'score': round(data['score_sum'] / data['weight_sum'], 1),
+                    'maxScore': 5
+                })
+
+        return DRFResponse({
+            'overallScore': overall_score,
+            'categoryScores': category_scores,
+            'feedbackComments': feedback_comments[:10],
+            'evaluationHistory': evaluation_history,
+            'available_forms': list(available_forms),
+            'evaluatorCount': evaluator_count,
+            'selectedFormId': selected_form_id
+        })
     
     @action(detail=True, methods=['get'])
     def responses(self, request, pk=None):

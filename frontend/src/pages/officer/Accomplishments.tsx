@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Trophy, Plus, ExternalLink, Clock, CheckCircle2, XCircle, Pencil } from "lucide-react";
+import { Trophy, Plus, ExternalLink, Clock, CheckCircle2, XCircle, Pencil, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -13,60 +14,26 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-
-const accomplishments = [
-  { 
-    id: 1, 
-    title: "Led Research Week 2025", 
-    description: "Organized and led the annual Research Week event with 500+ attendees",
-    date: "November 2025",
-    status: "verified",
-    proofLink: "https://example.com/proof1"
-  },
-  { 
-    id: 2, 
-    title: "Published Committee Report Q3", 
-    description: "Authored and published the Q3 committee progress report",
-    date: "October 2025",
-    status: "verified",
-    proofLink: "https://example.com/proof2"
-  },
-  { 
-    id: 3, 
-    title: "Mentored 5 Junior Researchers", 
-    description: "Provided guidance and mentorship to new committee members",
-    date: "September 2025",
-    status: "pending",
-    proofLink: null
-  },
-  { 
-    id: 4, 
-    title: "Organized Workshop Series", 
-    description: "Conducted 3 workshop sessions on research methodology",
-    date: "August 2025",
-    status: "rejected",
-    proofLink: "https://example.com/proof4",
-    rejectionReason: "Insufficient documentation provided"
-  },
-];
+import { useMyAccomplishments, useCreateAccomplishment, AccomplishmentCreate } from "@/hooks/usePortfolio";
+import { useToast } from "@/hooks/use-toast";
 
 const getStatusBadge = (status: string) => {
   switch (status) {
-    case "verified":
+    case "Verified":
       return (
         <span className="status-badge status-completed flex items-center gap-1">
           <CheckCircle2 className="w-3 h-3" />
           Verified
         </span>
       );
-    case "pending":
+    case "Pending":
       return (
         <span className="status-badge status-pending flex items-center gap-1">
           <Clock className="w-3 h-3" />
           Pending
         </span>
       );
-    case "rejected":
+    case "Rejected":
       return (
         <span className="status-badge bg-destructive/10 text-destructive flex items-center gap-1">
           <XCircle className="w-3 h-3" />
@@ -80,16 +47,34 @@ const getStatusBadge = (status: string) => {
 
 const OfficerAccomplishments = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [newAccomplishment, setNewAccomplishment] = useState({
+  const [newAccomplishment, setNewAccomplishment] = useState<AccomplishmentCreate>({
     title: "",
     description: "",
-    proofLink: ""
+    type: "project",
+    date_completed: new Date().toISOString().split('T')[0],
+    proof_link: ""
   });
 
-  const handleSubmit = () => {
-    // Handle submission
-    setIsDialogOpen(false);
-    setNewAccomplishment({ title: "", description: "", proofLink: "" });
+  const { data: accomplishments = [], isLoading } = useMyAccomplishments();
+  const createAccomplishment = useCreateAccomplishment();
+  const { toast } = useToast();
+
+  const handleSubmit = async () => {
+    try {
+      await createAccomplishment.mutateAsync(newAccomplishment);
+      toast({
+        title: "Success",
+        description: "Accomplishment submitted successfully.",
+      });
+      setIsDialogOpen(false);
+      setNewAccomplishment({ title: "", description: "", type: "project", date_completed: new Date().toISOString().split('T')[0], proof_link: "" });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to submit accomplishment.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -116,17 +101,43 @@ const OfficerAccomplishments = () => {
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="title">Title</Label>
-                <Input 
-                  id="title" 
+                <Input
+                  id="title"
                   placeholder="e.g., Led Research Week 2025"
                   value={newAccomplishment.title}
                   onChange={(e) => setNewAccomplishment(prev => ({ ...prev, title: e.target.value }))}
                 />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="type">Type</Label>
+                <Select value={newAccomplishment.type} onValueChange={(val: any) => setNewAccomplishment(prev => ({ ...prev, type: val }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="award">Award</SelectItem>
+                    <SelectItem value="certification">Certification</SelectItem>
+                    <SelectItem value="project">Project</SelectItem>
+                    <SelectItem value="training">Training</SelectItem>
+                    <SelectItem value="presentation">Presentation</SelectItem>
+                    <SelectItem value="publication">Publication</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="date_completed">Date Completed</Label>
+                <Input
+                  id="date_completed"
+                  type="date"
+                  value={newAccomplishment.date_completed}
+                  onChange={(e) => setNewAccomplishment(prev => ({ ...prev, date_completed: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
-                <Textarea 
-                  id="description" 
+                <Textarea
+                  id="description"
                   placeholder="Describe your accomplishment..."
                   value={newAccomplishment.description}
                   onChange={(e) => setNewAccomplishment(prev => ({ ...prev, description: e.target.value }))}
@@ -134,11 +145,11 @@ const OfficerAccomplishments = () => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="proof">Proof Link (optional)</Label>
-                <Input 
-                  id="proof" 
+                <Input
+                  id="proof"
                   placeholder="https://..."
-                  value={newAccomplishment.proofLink}
-                  onChange={(e) => setNewAccomplishment(prev => ({ ...prev, proofLink: e.target.value }))}
+                  value={newAccomplishment.proof_link}
+                  onChange={(e) => setNewAccomplishment(prev => ({ ...prev, proof_link: e.target.value }))}
                 />
               </div>
             </div>
@@ -146,7 +157,8 @@ const OfficerAccomplishments = () => {
               <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleSubmit}>
+              <Button onClick={handleSubmit} disabled={createAccomplishment.isPending}>
+                {createAccomplishment.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                 Submit
               </Button>
             </DialogFooter>
@@ -163,7 +175,7 @@ const OfficerAccomplishments = () => {
             </div>
             <div>
               <p className="text-2xl font-bold text-foreground">
-                {accomplishments.filter(a => a.status === 'verified').length}
+                {accomplishments.filter(a => a.status === 'Verified').length}
               </p>
               <p className="text-sm text-muted-foreground">Verified</p>
             </div>
@@ -176,7 +188,7 @@ const OfficerAccomplishments = () => {
             </div>
             <div>
               <p className="text-2xl font-bold text-foreground">
-                {accomplishments.filter(a => a.status === 'pending').length}
+                {accomplishments.filter(a => a.status === 'Pending').length}
               </p>
               <p className="text-sm text-muted-foreground">Pending</p>
             </div>
@@ -201,49 +213,60 @@ const OfficerAccomplishments = () => {
           <h2 className="font-semibold text-foreground">All Accomplishments</h2>
         </div>
         <div className="divide-y divide-border">
-          {accomplishments.map((item) => (
-            <div key={item.id} className="p-4 hover:bg-muted/30 transition-colors">
-              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-medium text-foreground">{item.title}</h3>
-                    {getStatusBadge(item.status)}
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-2">{item.description}</p>
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <span>{item.date}</span>
-                    {item.proofLink && (
-                      <a 
-                        href={item.proofLink} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-primary hover:underline"
-                      >
-                        <ExternalLink className="w-3 h-3" />
-                        View proof
-                      </a>
+          {isLoading ? (
+            <div className="p-8 flex justify-center text-muted-foreground">
+              <Loader2 className="w-8 h-8 animate-spin" />
+            </div>
+          ) : accomplishments.length === 0 ? (
+            <div className="p-8 text-center text-muted-foreground">
+              No accomplishments found.
+            </div>
+          ) : (
+            accomplishments.map((item) => (
+              <div key={item.id} className="p-4 hover:bg-muted/30 transition-colors">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-medium text-foreground">{item.title}</h3>
+                      {getStatusBadge(item.status)}
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-2">{item.description}</p>
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <span>{new Date(item.date_completed).toLocaleDateString()}</span>
+                      <span className="capitalize px-2 py-0.5 rounded-full bg-secondary/50 text-secondary-foreground">{item.type}</span>
+                      {item.proof_link && (
+                        <a
+                          href={item.proof_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-primary hover:underline"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          View proof
+                        </a>
+                      )}
+                    </div>
+                    {item.status === 'Rejected' && item.comments && (
+                      <p className="text-xs text-destructive mt-2">
+                        Reason: {item.comments}
+                      </p>
                     )}
                   </div>
-                  {item.status === 'rejected' && item.rejectionReason && (
-                    <p className="text-xs text-destructive mt-2">
-                      Reason: {item.rejectionReason}
-                    </p>
+                  {item.status === 'Pending' && (
+                    <Button variant="ghost" size="sm">
+                      <Pencil className="w-4 h-4" />
+                    </Button>
                   )}
                 </div>
-                {item.status === 'pending' && (
-                  <Button variant="ghost" size="sm">
-                    <Pencil className="w-4 h-4" />
-                  </Button>
-                )}
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 
       <div className="bg-muted/50 rounded-lg p-4">
         <p className="text-sm text-muted-foreground text-center">
-          Verified accomplishments will be visible to evaluators. 
+          Verified accomplishments will be visible to evaluators.
           Make sure to provide accurate information and valid proof links.
         </p>
       </div>

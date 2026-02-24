@@ -7,7 +7,7 @@ from django.shortcuts import get_object_or_404
 
 from apps.audit.utils import log_action, AuditActions
 
-from .models import Organization, UnitType, OrganizationUnit, PositionType, Membership, JoinRequest
+from .models import Organization, UnitType, OrganizationUnit, PositionType, Membership, JoinRequest, OrganizationRole
 from .serializers import (
     OrganizationSerializer,
     UnitTypeSerializer,
@@ -66,14 +66,25 @@ class OrganizationViewSet(viewsets.ModelViewSet):
             rank=1
         )
         
+        PositionType.objects.create(
+            organization_id=org,
+            name="Member Administrator",
+            rank=2
+        )
+        
         # Automatically assign the creator as Admin with rank 1
         Membership.objects.create(
             user_id=self.request.user,
             unit_id=org_unit,
             position_id=position,
-            role='Admin',
             date_start=timezone.now().date(),
             is_active=True
+        )
+        
+        OrganizationRole.objects.create(
+            user=self.request.user,
+            organization=org,
+            role='Admin'
         )
         
         log_action(
@@ -121,6 +132,49 @@ class OrganizationViewSet(viewsets.ModelViewSet):
         )
         
         return Response({'message': 'Join request submitted successfully'}, status=status.HTTP_201_CREATED)
+        
+    @action(detail=True, methods=['post'], url_path='remove-member')
+    def remove_member(self, request, pk=None):
+        """
+        Organizational-level removal of a member.
+        Deactivates the OrganizationRole and all active Memberships for the user.
+        """
+        org = self.get_object()
+        user_id = request.data.get('user_id')
+        
+        if not user_id:
+            return Response({'error': 'user_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        # Verify caller is an Admin in this org
+        if not OrganizationRole.objects.filter(user=request.user, organization=org, role='Admin', is_active=True).exists():
+            return Response({'error': 'Not authorized to remove members from this organization'}, status=status.HTTP_403_FORBIDDEN)
+            
+        # 1. Deactivate the OrganizationRole
+        role = OrganizationRole.objects.filter(user_id=user_id, organization=org).first()
+        if role:
+            role.is_active = False
+            role.save()
+            
+        # 2. Deactivate all active memberships for this user in this org
+        current_date = timezone.now().date()
+        Membership.objects.filter(
+            user_id=user_id,
+            unit_id__organization_id=org,
+            is_active=True
+        ).update(is_active=False, date_end=current_date)
+        
+        # 3. Log action
+        from apps.users.models import User
+        target_user = User.objects.filter(id=user_id).first()
+        log_action(
+            request.user,
+            AuditActions.USER_DEACTIVATED, # Reusing this for member removal
+            request,
+            org_name=org.name,
+            target_user_email=target_user.email if target_user else f"User ID: {user_id}"
+        )
+        
+        return Response({'message': 'Member removed from organization successfully'})
         
     @action(detail=True, methods=['post'], url_path='delete-organization')
     def delete_organization(self, request, pk=None):
@@ -454,7 +508,7 @@ class MembershipViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Invalid unit'}, status=status.HTTP_400_BAD_REQUEST)
             
         # Verify caller is an Admin in this org
-        if not Membership.objects.filter(user_id=request.user, unit_id__organization_id=org, role='Admin', is_active=True).exists():
+        if not OrganizationRole.objects.filter(user=request.user, organization=org, role='Admin').exists():
             return Response({'error': 'Not authorized to add memberships to this organization'}, status=status.HTTP_403_FORBIDDEN)
             
         return super().create(request, *args, **kwargs)
@@ -504,7 +558,7 @@ class JoinRequestViewSet(viewsets.ModelViewSet):
         join_request = self.get_object()
         
         # Verify user is an admin of this specific org
-        if not Membership.objects.filter(user_id=request.user, unit_id__organization_id=join_request.organization, role='Admin', is_active=True).exists():
+        if not OrganizationRole.objects.filter(user=request.user, organization=join_request.organization, role='Admin').exists():
             return Response({'error': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
             
         if join_request.status != 'Pending':
@@ -541,7 +595,6 @@ class JoinRequestViewSet(viewsets.ModelViewSet):
         if existing_membership:
             existing_membership.unit_id = unit
             existing_membership.position_id = position
-            existing_membership.role = role_choice
             existing_membership.date_start = timezone.now().date()
             existing_membership.date_end = None
             existing_membership.is_active = True
@@ -551,10 +604,15 @@ class JoinRequestViewSet(viewsets.ModelViewSet):
                 user_id=rejoining_user,
                 unit_id=unit,
                 position_id=position,
-                role=role_choice,
                 date_start=timezone.now().date(),
                 is_active=True
             )
+            
+        OrganizationRole.objects.update_or_create(
+            user=rejoining_user,
+            organization=join_request.organization,
+            defaults={'role': role_choice}
+        )
         
         join_request.status = 'Approved'
         join_request.save()
@@ -575,7 +633,7 @@ class JoinRequestViewSet(viewsets.ModelViewSet):
         join_request = self.get_object()
         
         # Verify user is an admin of this specific org
-        if not Membership.objects.filter(user_id=request.user, unit_id__organization_id=join_request.organization, role='Admin', is_active=True).exists():
+        if not OrganizationRole.objects.filter(user=request.user, organization=join_request.organization, role='Admin').exists():
             return Response({'error': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
             
         join_request.status = 'Rejected'

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Clock, CheckCircle2, AlertCircle, Search, Filter, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useMyPendingEvaluations, useAssignments, type EvaluationAssignment } from "@/hooks/useEvaluations";
-
+import { useCurrentUser } from "@/hooks/useUsers";
 // Helper to format status
 const getStatusInfo = (status: string) => {
   switch (status.toLowerCase()) {
@@ -42,7 +42,7 @@ const formatDate = (dateString: string) => {
 };
 
 // Evaluation card component
-const EvaluationCard = ({ evaluation }: { evaluation: EvaluationAssignment }) => {
+const EvaluationCard = ({ evaluation, basePath }: { evaluation: EvaluationAssignment, basePath: string }) => {
   const statusInfo = getStatusInfo(evaluation.status);
   const urgent = evaluation.due_date ? isUrgent(evaluation.due_date) : false;
   const isSelfEvaluation = evaluation.evaluatee_id === evaluation.evaluator_id;
@@ -92,7 +92,7 @@ const EvaluationCard = ({ evaluation }: { evaluation: EvaluationAssignment }) =>
                 Submitted
               </Button>
             ) : (
-              <Link to={`/officer/evaluations/${evaluation.id}`}>
+              <Link to={`${basePath}evaluations/${evaluation.id}`}>
                 <Button size="sm">
                   {evaluation.status === "In Progress" ? "Continue" : "Start"}
                 </Button>
@@ -128,18 +128,25 @@ const EvaluationCardSkeleton = () => (
 );
 
 const OfficerEvaluations = () => {
+  const location = useLocation();
+  const basePath = location.pathname.startsWith('/admin') ? '/admin/my-' : '/member/';
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Fetch assignments from API
+  // Fetch data from API
+  const { data: currentUser } = useCurrentUser();
   const { data: pendingAssignments, isLoading: pendingLoading } = useMyPendingEvaluations();
-  const { data: allAssignments, isLoading: allLoading } = useAssignments();
+  const { data: allAssignments, isLoading: allLoading } = useAssignments({
+    evaluator_id: currentUser?.id
+  });
 
   // Combine and filter assignments
   const getFilteredEvaluations = (status: string) => {
     let evaluations: EvaluationAssignment[] = [];
 
     if (status === "pending") {
-      evaluations = pendingAssignments || [];
+      evaluations = pendingAssignments?.filter(a => a.status === "Pending") || [];
+    } else if (status === "inprogress") {
+      evaluations = pendingAssignments?.filter(a => a.status === "In Progress") || [];
     } else if (status === "completed") {
       evaluations = allAssignments?.filter(a => a.status === "Completed") || [];
     } else {
@@ -158,7 +165,8 @@ const OfficerEvaluations = () => {
     return evaluations;
   };
 
-  const pendingCount = pendingAssignments?.length || 0;
+  const pendingCount = pendingAssignments?.filter(a => a.status === "Pending").length || 0;
+  const inProgressCount = pendingAssignments?.filter(a => a.status === "In Progress").length || 0;
   const completedCount = allAssignments?.filter(a => a.status === "Completed").length || 0;
   const totalCount = allAssignments?.length || 0;
 
@@ -176,7 +184,7 @@ const OfficerEvaluations = () => {
         </div>
       ) : (
         evaluations.map((evaluation) => (
-          <EvaluationCard key={evaluation.id} evaluation={evaluation} />
+          <EvaluationCard key={evaluation.id} evaluation={evaluation} basePath={basePath} />
         ))
       )}
     </div>
@@ -211,6 +219,9 @@ const OfficerEvaluations = () => {
           <TabsTrigger value="pending" className="flex-1 sm:flex-none">
             Pending ({pendingCount})
           </TabsTrigger>
+          <TabsTrigger value="inprogress" className="flex-1 sm:flex-none">
+            In Progress ({inProgressCount})
+          </TabsTrigger>
           <TabsTrigger value="completed" className="flex-1 sm:flex-none">
             Completed ({completedCount})
           </TabsTrigger>
@@ -221,6 +232,10 @@ const OfficerEvaluations = () => {
 
         <TabsContent value="pending" className="mt-4">
           {renderEvaluationsList(getFilteredEvaluations("pending"), pendingLoading)}
+        </TabsContent>
+
+        <TabsContent value="inprogress" className="mt-4">
+          {renderEvaluationsList(getFilteredEvaluations("inprogress"), pendingLoading)}
         </TabsContent>
 
         <TabsContent value="completed" className="mt-4">

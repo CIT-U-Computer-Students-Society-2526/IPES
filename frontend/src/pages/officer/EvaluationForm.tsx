@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { ArrowLeft, User, Trophy, Save, Send, Clock, ChevronRight, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -47,9 +47,10 @@ const getRatingContext = (min: number | undefined, max: number | undefined) => {
 
 const EvaluationForm = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const basePath = location.pathname.startsWith('/admin') ? '/admin/my-' : '/member/';
   const { id } = useParams();
   const { toast } = useToast();
-
   // API Hooks
   const { data: assignment, isLoading: aLoading, error: aError } = useAssignment(Number(id));
   const { data: questions, isLoading: qLoading } = useFormQuestions(assignment?.form_id || 0);
@@ -100,7 +101,7 @@ const EvaluationForm = () => {
         <AlertCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
         <h2 className="text-xl font-bold">Error</h2>
         <p>Could not load this evaluation. It may not exist or you don't have access.</p>
-        <Button onClick={() => navigate("/officer/evaluations")} className="mt-6" variant="outline">
+        <Button onClick={() => navigate(`${basePath}evaluations`)} className="mt-6" variant="outline">
           Return to My Evaluations
         </Button>
       </div>
@@ -109,7 +110,6 @@ const EvaluationForm = () => {
 
   const isCompleted = assignment.status === 'Completed';
 
-  // Grouping questions for basic UI (Since API doesn't use categories yet, we group all under 'Questions')
   const sections = [
     { name: "Evaluatee Info", questions: [] as Question[] },
     { name: "Evaluation Questions", questions: questions },
@@ -201,7 +201,7 @@ const EvaluationForm = () => {
         description: "Thank you for completing this peer evaluation.",
       });
       setShowSubmitDialog(false);
-      navigate("/officer/evaluations");
+      navigate(`${basePath}evaluations`);
     } catch (err: any) {
       toast({
         title: "Submission Error",
@@ -317,7 +317,7 @@ const EvaluationForm = () => {
       {/* Header */}
       <div className="mb-6">
         <button
-          onClick={() => navigate("/officer/evaluations")}
+          onClick={() => navigate(`${basePath}evaluations`)}
           className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4"
         >
           <ArrowLeft className="w-4 h-4" />

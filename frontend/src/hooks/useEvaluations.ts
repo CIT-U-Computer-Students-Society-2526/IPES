@@ -400,7 +400,8 @@ export const useDeleteQuestion = () => {
 // ===== Assignment Hooks =====
 
 // Fetch all assignments
-export const useAssignments = (params?: { status?: string; form_id?: number; organization_id?: number }) => {
+export const useAssignments = (params?: { status?: string; form_id?: number; organization_id?: number; evaluator_id?: number }) => {
+
   const { activeOrganizationId } = useOrganizationState();
   const effectiveParams = { ...params, organization_id: params?.organization_id || activeOrganizationId || undefined };
 
@@ -440,6 +441,28 @@ export const useMyCompletedEvaluations = () => {
       const response = await api.get('/assignments/?status=Submitted');
       const data = await response.json() as { results: EvaluationAssignment[] } | EvaluationAssignment[];
       return Array.isArray(data) ? data : data.results || [];
+    },
+  });
+};
+
+export type MyPerformanceData = {
+  overallScore: number;
+  categoryScores: { name: string; score: number; maxScore: number }[];
+  feedbackComments: { id: number; text: string; type: string }[];
+  evaluationHistory: { period: string; score: number; evaluators: number }[];
+  available_forms: { id: number; title: string }[];
+  evaluatorCount: number;
+  selectedFormId: number | null;
+};
+
+// Fetch aggregated performance data
+export const useMyPerformance = (formId?: number) => {
+  return useQuery({
+    queryKey: ['assignments', 'my_performance', formId],
+    queryFn: async () => {
+      const url = formId ? `/assignments/my_performance/?form_id=${formId}` : '/assignments/my_performance/';
+      const response = await api.get(url);
+      return response.json() as Promise<MyPerformanceData>;
     },
   });
 };

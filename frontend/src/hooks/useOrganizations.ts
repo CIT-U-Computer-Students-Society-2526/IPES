@@ -148,6 +148,23 @@ export const useJoinOrganization = () => {
   });
 };
 
+// Remove a member from the organization
+export const useRemoveMember = () => {
+  const queryClient = useQueryClient();
+  const { activeOrganizationId } = useOrganizationState();
+
+  return useMutation<{ message: string }, Error, { user_id: number }>({
+    mutationFn: async (data) => {
+      const response = await api.post(`/organizations/${activeOrganizationId}/remove-member/`, data);
+      return response.json() as Promise<{ message: string }>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['organizations', 'analytics'] });
+    }
+  });
+};
+
 // Fetch Organization Units
 export interface OrganizationUnit {
   id: number;

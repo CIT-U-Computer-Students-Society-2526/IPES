@@ -11,13 +11,14 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import { useCurrentUser, useCurrentMembership, useUpdateCurrentUser } from "@/hooks/useUsers";
+import { useCurrentUser, useUpdateCurrentUser } from "@/hooks/useUsers";
+import { useOrganizationState } from "@/contexts/OrganizationContext";
 import { toast } from "sonner";
 
 export function ProfileEditorDialog({ children }: { children: React.ReactNode }) {
     const [open, setOpen] = useState(false);
     const { data: user, isLoading: isUserLoading } = useCurrentUser();
-    const { data: membership, isLoading: isMembershipLoading } = useCurrentMembership();
+    const { activeOrganizationId } = useOrganizationState();
     const { mutate: updateProfile, isPending: isUpdating } = useUpdateCurrentUser();
 
     const [isEditing, setIsEditing] = useState(false);
@@ -36,7 +37,7 @@ export function ProfileEditorDialog({ children }: { children: React.ReactNode })
         }
     }, [user, open]);
 
-    if (isUserLoading || isMembershipLoading || !user || !membership) {
+    if (isUserLoading || !user) {
         return (
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogTrigger asChild>{children}</DialogTrigger>
@@ -51,6 +52,14 @@ export function ProfileEditorDialog({ children }: { children: React.ReactNode })
 
     const initials = `${user.first_name?.[0] || ""}${user.last_name?.[0] || ""}`.toUpperCase() || "U";
     const fullName = `${user.first_name || ""} ${user.last_name || ""}`.trim() || user.email;
+
+    // Filter memberships for the current active organization
+    const activeOrgMemberships = user.memberships?.filter(
+        (m) => m.organization_id === activeOrganizationId
+    ) || [];
+
+    const displayMemberships = activeOrgMemberships.slice(0, 3);
+    const extraMembershipsCount = activeOrgMemberships.length > 3 ? activeOrgMemberships.length - 3 : 0;
 
     const handleSave = () => {
         updateProfile(formData, {
@@ -83,33 +92,52 @@ export function ProfileEditorDialog({ children }: { children: React.ReactNode })
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="mt-4 space-y-6">
-                    <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                <div className="mt-4 space-y-6 min-w-0">
+                    <div className="flex items-start justify-between gap-4 w-full min-w-0">
+                        <div className="flex items-center gap-4 flex-1 min-w-0 overflow-hidden">
+                            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                                 <span className="text-xl font-semibold text-primary">{initials}</span>
                             </div>
-                            <div>
-                                <h2 className="text-lg font-semibold text-foreground">{fullName}</h2>
-                                <p className="text-sm text-muted-foreground">{membership.position_name}</p>
-                                <p className="text-xs text-muted-foreground mt-0.5">{membership.unit_name}</p>
+                            <div className="flex-1 min-w-0 overflow-hidden pr-4">
+                                <h2 className="text-lg font-semibold text-foreground truncate w-full">{fullName}</h2>
+                                {activeOrganizationId ? (
+                                    <div className="mt-1 space-y-0.5 w-full">
+                                        {displayMemberships.map((m) => (
+                                            <p key={m.id} className="text-xs text-muted-foreground truncate" title={`${m.role} • ${m.position_name} in ${m.unit_name}`}>
+                                                <span className="font-medium text-foreground/80">{m.role}</span> • {m.position_name} in <span className="italic">{m.unit_name}</span>
+                                            </p>
+                                        ))}
+                                        {extraMembershipsCount > 0 && (
+                                            <p className="text-xs text-muted-foreground italic mt-1 truncate">
+                                                ... and {extraMembershipsCount} more position{extraMembershipsCount !== 1 ? 's' : ''}
+                                            </p>
+                                        )}
+                                        {activeOrgMemberships.length === 0 && (
+                                            <p className="text-sm text-muted-foreground">System Administrator</p>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground mt-0.5">Please select an organization</p>
+                                )}
                             </div>
                         </div>
-                        {!isEditing ? (
-                            <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
-                                Edit
-                            </Button>
-                        ) : (
-                            <div className="flex items-center gap-2">
-                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCancel} disabled={isUpdating}>
-                                    <X className="w-4 h-4" />
+                        <div className="shrink-0">
+                            {!isEditing ? (
+                                <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                                    Edit
                                 </Button>
-                                <Button size="sm" onClick={handleSave} disabled={isUpdating}>
-                                    {isUpdating ? <Loader2 className="w-3 h-3 mr-2 animate-spin" /> : <Save className="w-3 h-3 mr-2" />}
-                                    Save
-                                </Button>
-                            </div>
-                        )}
+                            ) : (
+                                <div className="flex items-center gap-2">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCancel} disabled={isUpdating}>
+                                        <X className="w-4 h-4" />
+                                    </Button>
+                                    <Button size="sm" onClick={handleSave} disabled={isUpdating}>
+                                        {isUpdating ? <Loader2 className="w-3 h-3 mr-2 animate-spin" /> : <Save className="w-3 h-3 mr-2" />}
+                                        Save
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     <div className="grid gap-4 py-4 border-t border-border/50">
@@ -147,24 +175,6 @@ export function ProfileEditorDialog({ children }: { children: React.ReactNode })
                             </Label>
                             <Input id="email" value={user.email} readOnly className="bg-muted/50 h-9" />
                             <p className="text-[10px] text-muted-foreground">Email address cannot be changed.</p>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="grid gap-2">
-                                <Label htmlFor="unit" className="text-xs font-medium flex items-center gap-1.5">
-                                    <Building2 className="w-3 h-3 text-muted-foreground" />
-                                    Organization Unit
-                                </Label>
-                                <Input id="unit" value={membership.unit_name} readOnly className="bg-muted/50 h-9" />
-                            </div>
-
-                            <div className="grid gap-2">
-                                <Label htmlFor="role" className="text-xs font-medium flex items-center gap-1.5">
-                                    <Shield className="w-3 h-3 text-muted-foreground" />
-                                    System Role
-                                </Label>
-                                <Input id="role" value={membership.role} readOnly className="bg-muted/50 h-9" />
-                            </div>
                         </div>
                     </div>
                 </div>

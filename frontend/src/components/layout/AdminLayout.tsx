@@ -16,6 +16,7 @@ import {
   Menu,
   X,
   ClipboardCheck,
+  CheckCircle,
   Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,7 @@ const navigation = [
   { name: "Audit Log", href: "/admin/audit-log", icon: Shield },
   { name: "Settings", href: "/admin/settings", icon: Settings },
 ];
+
 
 const AdminLayout = () => {
   const location = useLocation();
@@ -66,6 +68,11 @@ const AdminLayout = () => {
   }
 
   const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email;
+
+  // Check if they have a membership role that is NOT part of the system org unit
+  const hasMemberRole = user.memberships?.some(
+    (m) => m.organization_id === activeOrganizationId && m.unit_name !== 'Administrators'
+  );
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -126,6 +133,83 @@ const AdminLayout = () => {
                 </Link>
               );
             })}
+
+            {/* My Space Section */}
+            {hasMemberRole && (
+              <>
+                <div className="px-3 pt-4 pb-2">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    My Space
+                  </span>
+                </div>
+                <Link
+                  to="/admin/my-dashboard"
+                  onClick={() => setSidebarOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                    location.pathname === "/admin/my-dashboard"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  )}
+                >
+                  <LayoutDashboard className="w-5 h-5" />
+                  Dashboard
+                </Link>
+                <Link
+                  to="/admin/my-evaluations"
+                  onClick={() => setSidebarOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                    location.pathname.startsWith("/admin/my-evaluations")
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  )}
+                >
+                  <ClipboardList className="w-5 h-5" />
+                  My Evaluations
+                </Link>
+                <Link
+                  to="/admin/my-results"
+                  onClick={() => setSidebarOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                    location.pathname === "/admin/my-results"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  )}
+                >
+                  <BarChart3 className="w-5 h-5" />
+                  My Results
+                </Link>
+                <Link
+                  to="/admin/my-accomplishments"
+                  onClick={() => setSidebarOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                    location.pathname === "/admin/my-accomplishments"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  )}
+                >
+                  <Trophy className="w-5 h-5" />
+                  Accomplishments
+                </Link>
+              </>
+            )}
+
+            {/* Spacer */}
+            <div className="flex-1" />
+
+            {/* Bottom Actions */}
+            <div className="pt-4 mt-4 border-t border-border">
+              <Link
+                to="/select-organization"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <LogOut className="w-5 h-5 rotate-180" />
+                Switch Organization
+              </Link>
+            </div>
           </nav>
 
           {/* User section */}

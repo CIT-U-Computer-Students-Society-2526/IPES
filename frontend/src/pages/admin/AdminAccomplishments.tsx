@@ -1,14 +1,15 @@
 import { useState } from "react";
-import { 
-  Trophy, 
-  Search, 
+import {
+  Trophy,
+  Search,
   Filter,
   CheckCircle2,
   XCircle,
   Clock,
   ExternalLink,
   Eye,
-  MessageSquare
+  MessageSquare,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,66 +32,24 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
-const accomplishments = [
-  { 
-    id: 1, 
-    title: "Led University Week Planning Committee",
-    officer: "Maria Santos",
-    unit: "Executive",
-    date: "2024-01-05",
-    status: "Pending",
-    proof: "https://drive.google.com/example1",
-    description: "Organized and led a team of 15 members to plan the annual University Week celebration."
-  },
-  { 
-    id: 2, 
-    title: "Completed Financial Audit Report",
-    officer: "Carlos Garcia",
-    unit: "Finance",
-    date: "2024-01-08",
-    status: "Verified",
-    proof: "https://drive.google.com/example2",
-    description: "Prepared comprehensive financial audit report for Q3-Q4 2023."
-  },
-  { 
-    id: 3, 
-    title: "Organized Academic Excellence Awards",
-    officer: "Ana Reyes",
-    unit: "Academics",
-    date: "2024-01-10",
-    status: "Verified",
-    proof: "https://drive.google.com/example3",
-    description: "Planned and executed the Academic Excellence Awards ceremony for 200+ scholars."
-  },
-  { 
-    id: 4, 
-    title: "Drafted Partnership Proposal",
-    officer: "Rosa Mendoza",
-    unit: "External",
-    date: "2024-01-12",
-    status: "Pending",
-    proof: "https://drive.google.com/example4",
-    description: "Created partnership proposal for collaboration with 3 external organizations."
-  },
-  { 
-    id: 5, 
-    title: "Sports Festival Coordination",
-    officer: "Luis Tan",
-    unit: "Sports",
-    date: "2024-01-03",
-    status: "Rejected",
-    proof: "https://drive.google.com/example5",
-    description: "Coordinated inter-college sports festival.",
-    rejectReason: "Insufficient documentation. Please provide photos and attendance records."
-  },
-];
+import { useAccomplishments, useVerifyAccomplishment, Accomplishment } from "@/hooks/usePortfolio";
+import { useToast } from "@/hooks/use-toast";
+import { useOrganizationState } from "@/contexts/OrganizationContext";
 
 const AdminAccomplishments = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("pending");
-  const [selectedAccomplishment, setSelectedAccomplishment] = useState<typeof accomplishments[0] | null>(null);
+  const [selectedAccomplishment, setSelectedAccomplishment] = useState<Accomplishment | null>(null);
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  const [reviewNotes, setReviewNotes] = useState("");
+
+  const { activeOrganizationId } = useOrganizationState();
+  const { data: accomplishments = [], isLoading } = useAccomplishments({
+    organization_id: activeOrganizationId
+  } as any);
+
+  const verifyAccomplishment = useVerifyAccomplishment();
+  const { toast } = useToast();
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -112,10 +71,35 @@ const AdminAccomplishments = () => {
 
   const filteredAccomplishments = accomplishments.filter(a => {
     const matchesSearch = a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          a.officer.toLowerCase().includes(searchQuery.toLowerCase());
+      (a.user_name || "").toLowerCase().includes(searchQuery.toLowerCase());
     const matchesTab = activeTab === "all" || a.status.toLowerCase() === activeTab;
     return matchesSearch && matchesTab;
   });
+
+  const handleVerify = async (status: 'Verified' | 'Rejected') => {
+    if (!selectedAccomplishment) return;
+    try {
+      await verifyAccomplishment.mutateAsync({
+        id: selectedAccomplishment.id,
+        data: {
+          status,
+          comments: reviewNotes,
+        }
+      });
+      toast({
+        title: "Success",
+        description: `Accomplishment ${status.toLowerCase()} successfully.`,
+      });
+      setReviewDialogOpen(false);
+      setReviewNotes("");
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: `Failed to update accomplishment status.`,
+        variant: "destructive",
+      });
+    }
+  };
 
   const stats = {
     pending: accomplishments.filter(a => a.status === "Pending").length,
@@ -205,8 +189,8 @@ const AdminAccomplishments = () => {
             <div className="flex items-center gap-2">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input 
-                  placeholder="Search..." 
+                <Input
+                  placeholder="Search..."
                   className="pl-10 w-64"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -231,45 +215,61 @@ const AdminAccomplishments = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredAccomplishments.map((acc) => (
-                <TableRow key={acc.id}>
-                  <TableCell>
-                    <div className="max-w-xs">
-                      <p className="font-medium text-foreground truncate">{acc.title}</p>
-                      <p className="text-xs text-muted-foreground truncate">{acc.description}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell>{acc.officer}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{acc.unit}</Badge>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{acc.date}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {getStatusIcon(acc.status)}
-                      <Badge className={getStatusColor(acc.status)}>{acc.status}</Badge>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => window.open(acc.proof, '_blank')}
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => { setSelectedAccomplishment(acc); setReviewDialogOpen(true); }}
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                    </div>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    <Loader2 className="w-6 h-6 animate-spin mx-auto" />
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : filteredAccomplishments.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    No accomplishments found.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredAccomplishments.map((acc) => (
+                  <TableRow key={acc.id}>
+                    <TableCell>
+                      <div className="max-w-xs">
+                        <p className="font-medium text-foreground truncate">{acc.title}</p>
+                        <p className="text-xs text-muted-foreground truncate">{acc.description}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell>{acc.user_name || 'Unknown Officer'}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="capitalize">{acc.type}</Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{new Date(acc.date_completed).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {getStatusIcon(acc.status)}
+                        <Badge className={getStatusColor(acc.status)}>{acc.status}</Badge>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        {acc.proof_link && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => window.open(acc.proof_link, '_blank')}
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => { setSelectedAccomplishment(acc); setReviewDialogOpen(true); }}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>
@@ -294,48 +294,63 @@ const AdminAccomplishments = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-muted-foreground">Officer</Label>
-                  <p className="font-medium">{selectedAccomplishment.officer}</p>
+                  <p className="font-medium">{selectedAccomplishment.user_name || 'Unknown Officer'}</p>
                 </div>
                 <div>
-                  <Label className="text-muted-foreground">Unit</Label>
-                  <p className="font-medium">{selectedAccomplishment.unit}</p>
+                  <Label className="text-muted-foreground">Type</Label>
+                  <p className="font-medium capitalize">{selectedAccomplishment.type}</p>
                 </div>
               </div>
-              <div>
-                <Label className="text-muted-foreground">Proof Link</Label>
-                <a 
-                  href={selectedAccomplishment.proof} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline flex items-center gap-1"
-                >
-                  View Documentation <ExternalLink className="w-3 h-3" />
-                </a>
-              </div>
+              {selectedAccomplishment.proof_link && (
+                <div>
+                  <Label className="text-muted-foreground">Proof Link</Label>
+                  <a
+                    href={selectedAccomplishment.proof_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline flex items-center gap-1"
+                  >
+                    View Documentation <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+              )}
 
               {selectedAccomplishment.status === "Pending" && (
                 <>
                   <div className="space-y-2">
                     <Label>Reviewer Notes (optional)</Label>
-                    <Textarea placeholder="Add any notes about this accomplishment..." />
+                    <Textarea
+                      placeholder="Add any notes about this accomplishment..."
+                      value={reviewNotes}
+                      onChange={(e) => setReviewNotes(e.target.value)}
+                    />
                   </div>
                   <div className="flex gap-2">
-                    <Button className="flex-1 bg-green-600 hover:bg-green-700">
-                      <CheckCircle2 className="w-4 h-4 mr-2" />
+                    <Button
+                      className="flex-1 bg-green-600 hover:bg-green-700"
+                      onClick={() => handleVerify("Verified")}
+                      disabled={verifyAccomplishment.isPending}
+                    >
+                      {verifyAccomplishment.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
                       Verify
                     </Button>
-                    <Button variant="destructive" className="flex-1">
-                      <XCircle className="w-4 h-4 mr-2" />
+                    <Button
+                      variant="destructive"
+                      className="flex-1"
+                      onClick={() => handleVerify("Rejected")}
+                      disabled={verifyAccomplishment.isPending}
+                    >
+                      {verifyAccomplishment.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <XCircle className="w-4 h-4 mr-2" />}
                       Reject
                     </Button>
                   </div>
                 </>
               )}
 
-              {selectedAccomplishment.status === "Rejected" && selectedAccomplishment.rejectReason && (
+              {selectedAccomplishment.status === "Rejected" && selectedAccomplishment.comments && (
                 <div className="p-3 bg-red-50 rounded-lg">
                   <Label className="text-red-700">Rejection Reason</Label>
-                  <p className="text-sm text-red-600">{selectedAccomplishment.rejectReason}</p>
+                  <p className="text-sm text-red-600">{selectedAccomplishment.comments}</p>
                 </div>
               )}
             </div>
