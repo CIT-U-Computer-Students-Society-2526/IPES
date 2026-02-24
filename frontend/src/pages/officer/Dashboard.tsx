@@ -1,8 +1,8 @@
 import { Link } from "react-router-dom";
-import { 
-  ClipboardList, 
-  Clock, 
-  CheckCircle2, 
+import {
+  ClipboardList,
+  Clock,
+  CheckCircle2,
   AlertCircle,
   ArrowRight,
   TrendingUp,
@@ -14,22 +14,27 @@ import { Progress } from "@/components/ui/progress";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { useMyPendingEvaluations, useMyCompletedEvaluations, type EvaluationAssignment } from "@/hooks/useEvaluations";
+import {
+  useMyPendingEvaluations,
+  useMyCompletedEvaluations,
+  useMyPerformance,
+  type EvaluationAssignment
+} from "@/hooks/useEvaluations";
 import { useMyAccomplishments } from "@/hooks/usePortfolio";
 import { useCurrentUser } from "@/hooks/useUsers";
 import type { Accomplishment } from "@/hooks/usePortfolio";
 import type { User } from "@/hooks/useUsers";
 
 // Stats card component
-const StatCard = ({ 
-  label, 
-  value, 
+const StatCard = ({
+  label,
+  value,
   suffix,
-  icon: Icon, 
+  icon: Icon,
   color,
   isLoading,
   badge
-}: { 
+}: {
   label: string;
   value: string | number;
   suffix?: string;
@@ -82,7 +87,7 @@ const StatCard = ({
 // Pending evaluation card
 const PendingEvaluationCard = ({ evaluation }: { evaluation: EvaluationAssignment }) => {
   const isUrgent = evaluation.due_date && new Date(evaluation.due_date) <= new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
-  
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -117,21 +122,20 @@ const PendingEvaluationCard = ({ evaluation }: { evaluation: EvaluationAssignmen
 };
 
 // Notification item
-const NotificationItem = ({ 
-  message, 
-  time, 
-  type 
-}: { 
-  message: string; 
-  time: string; 
-  type: 'success' | 'warning' | 'info' 
+const NotificationItem = ({
+  message,
+  time,
+  type
+}: {
+  message: string;
+  time: string;
+  type: 'success' | 'warning' | 'info'
 }) => (
   <div className="flex gap-3">
-    <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
-      type === 'success' ? 'bg-success' :
-      type === 'warning' ? 'bg-warning' :
-      'bg-primary'
-    }`} />
+    <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${type === 'success' ? 'bg-success' :
+        type === 'warning' ? 'bg-warning' :
+          'bg-primary'
+      }`} />
     <div>
       <p className="text-sm text-foreground">{message}</p>
       <p className="text-xs text-muted-foreground mt-1">{time}</p>
@@ -154,16 +158,17 @@ const OfficerDashboard = () => {
   const { data: pendingEvaluations, isLoading: pendingLoading } = useMyPendingEvaluations();
   const { data: completedEvaluations, isLoading: completedLoading } = useMyCompletedEvaluations();
   const { data: accomplishments, isLoading: accomplishmentsLoading } = useMyAccomplishments();
+  const { data: performanceData, isLoading: performanceLoading } = useMyPerformance();
 
   // Calculate stats
   const pendingCount = pendingEvaluations?.length || 0;
   const completedCount = completedEvaluations?.length || 0;
   const verifiedAccomplishments = accomplishments?.filter(a => a.status === 'Verified').length || 0;
   const totalAccomplishments = accomplishments?.length || 0;
-  
-  // Calculate average rating from completed evaluations (mock for now)
-  const averageRating = 4.2;
-  
+
+  // Calculate average rating from received evaluations
+  const averageRating = performanceData?.overallScore || 0;
+
   // Get days until nearest deadline
   const nearestDeadline = pendingEvaluations?.reduce((nearest, item) => {
     if (!item.due_date) return nearest;
@@ -171,7 +176,7 @@ const OfficerDashboard = () => {
     const nearestDate = nearest ? new Date(nearest).getTime() : Infinity;
     return itemDate < nearestDate ? item.due_date : nearest;
   }, undefined as string | undefined);
-  
+
   const daysUntilDeadline = getDaysUntilDeadline(nearestDeadline);
 
   // Generate notifications from data
@@ -190,7 +195,7 @@ const OfficerDashboard = () => {
     }] : []),
   ];
 
-  const isLoading = pendingLoading || completedLoading || accomplishmentsLoading;
+  const isLoading = pendingLoading || completedLoading || accomplishmentsLoading || performanceLoading;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -212,33 +217,33 @@ const OfficerDashboard = () => {
 
       {/* Stats cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard 
-          label="Pending Evaluations" 
-          value={pendingCount} 
-          icon={ClipboardList} 
+        <StatCard
+          label="Pending Evaluations"
+          value={pendingCount}
+          icon={ClipboardList}
           color="warning"
           isLoading={pendingLoading}
           badge={pendingCount > 0 ? "Action needed" : undefined}
         />
-        <StatCard 
-          label="Completed This Term" 
-          value={completedCount} 
-          icon={CheckCircle2} 
+        <StatCard
+          label="Completed This Term"
+          value={completedCount}
+          icon={CheckCircle2}
           color="success"
           isLoading={completedLoading}
         />
-        <StatCard 
-          label="Average Rating" 
-          value={averageRating} 
+        <StatCard
+          label="Average Rating"
+          value={averageRating}
           suffix="/5"
-          icon={TrendingUp} 
+          icon={TrendingUp}
           color="primary"
-          isLoading={completedLoading}
+          isLoading={performanceLoading}
         />
-        <StatCard 
+        <StatCard
           label={daysUntilDeadline !== null ? "Days Until Deadline" : "No Deadlines"}
           value={daysUntilDeadline !== null ? daysUntilDeadline : "—"}
-          icon={Calendar} 
+          icon={Calendar}
           color="accent"
           isLoading={pendingLoading}
         />
@@ -253,7 +258,7 @@ const OfficerDashboard = () => {
               View all
             </Link>
           </div>
-          
+
           <div className="space-y-3">
             {isLoading ? (
               <>
@@ -288,10 +293,10 @@ const OfficerDashboard = () => {
                     {completedCount}/{completedCount + pendingCount}
                   </span>
                 </div>
-                <Progress 
-                  value={completedCount} 
-                  max={completedCount + pendingCount || 1} 
-                  className="h-2" 
+                <Progress
+                  value={completedCount}
+                  max={completedCount + pendingCount || 1}
+                  className="h-2"
                 />
               </div>
               <div>
@@ -301,10 +306,10 @@ const OfficerDashboard = () => {
                     {verifiedAccomplishments}/{totalAccomplishments}
                   </span>
                 </div>
-                <Progress 
-                  value={verifiedAccomplishments} 
-                  max={totalAccomplishments || 1} 
-                  className="h-2" 
+                <Progress
+                  value={verifiedAccomplishments}
+                  max={totalAccomplishments || 1}
+                  className="h-2"
                 />
               </div>
             </div>
@@ -321,7 +326,7 @@ const OfficerDashboard = () => {
                 </>
               ) : notifications.length > 0 ? (
                 notifications.map((notification) => (
-                  <NotificationItem 
+                  <NotificationItem
                     key={notification.id}
                     message={notification.message}
                     time={notification.time}

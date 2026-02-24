@@ -662,6 +662,90 @@ class EvaluationAssignmentViewSet(viewsets.ModelViewSet):
         )
         serializer = EvaluationAssignmentSerializer(assignments, many=True)
         return DRFResponse(serializer.data)
+        
+    @action(detail=False, methods=['get'])
+    def my_performance(self, request):
+        """Get aggregate performance data from received evaluations"""
+        assignments = self.get_queryset().filter(
+            evaluatee_id=request.user,
+            status='Completed'
+        ).select_related('form_id')
+        
+        if not assignments.exists():
+            return DRFResponse({
+                'overallScore': 0,
+                'categoryScores': [],
+                'feedbackComments': [],
+                'evaluationHistory': []
+            })
+            
+        overall_score = assignments.aggregate(avg=models.Avg('total_score'))['avg'] or 0
+        overall_score = round(overall_score, 1)
+        
+        # evaluationHistory: average scores per evaluation form
+        history_map = {}
+        for assignment in assignments:
+            title = assignment.form_id.title
+            if title not in history_map:
+                history_map[title] = {'score_sum': 0, 'count': 0, 'evaluators': set()}
+            if assignment.total_score is not None:
+                history_map[title]['score_sum'] += assignment.total_score
+                history_map[title]['count'] += 1
+                history_map[title]['evaluators'].add(assignment.evaluator_id_id)
+
+        evaluation_history = []
+        for period, data in history_map.items():
+            if data['count'] > 0:
+                evaluation_history.append({
+                    'period': period,
+                    'score': round(data['score_sum'] / data['count'], 1),
+                    'evaluators': len(data['evaluators'])
+                })
+        
+        # Category Scores and Feedback Comments
+        responses = Response.objects.filter(assignment_id__in=assignments).select_related('question_id')
+        
+        category_map = {}
+        feedback_comments = []
+        comment_id = 1
+        
+        for response in responses:
+            question = response.question_id
+            category = question.category
+            if category not in category_map:
+                category_map[category] = {'score_sum': 0, 'weight_sum': 0, 'max_score': 5}
+            
+            if response.score_value is not None and question.weight:
+                category_map[category]['score_sum'] += response.score_value * question.weight
+                category_map[category]['weight_sum'] += question.weight
+                
+            if response.text and response.text.strip():
+                feedback_type = 'positive' if (response.score_value and response.score_value >= 4) else 'constructive'
+                if not response.score_value:
+                    feedback_type = 'info'
+                    
+                feedback_comments.append({
+                    'id': comment_id,
+                    'text': response.text.strip(),
+                    'type': feedback_type
+                })
+                comment_id += 1
+
+        category_scores = []
+        for name, data in category_map.items():
+            if data['weight_sum'] > 0:
+                category_scores.append({
+                    'name': name,
+                    'score': round(data['score_sum'] / data['weight_sum'], 1),
+                    'maxScore': 5
+                })
+
+        return DRFResponse({
+            'overallScore': overall_score,
+            'categoryScores': category_scores,
+            'feedbackComments': feedback_comments[:10],
+            'evaluationHistory': evaluation_history
+        })
     
     @action(detail=True, methods=['get'])
     def responses(self, request, pk=None):

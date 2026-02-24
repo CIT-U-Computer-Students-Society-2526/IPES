@@ -444,6 +444,24 @@ export const useMyCompletedEvaluations = () => {
   });
 };
 
+export type MyPerformanceData = {
+  overallScore: number;
+  categoryScores: { name: string; score: number; maxScore: number }[];
+  feedbackComments: { id: number; text: string; type: string }[];
+  evaluationHistory: { period: string; score: number; evaluators: number }[];
+};
+
+// Fetch aggregated performance data
+export const useMyPerformance = () => {
+  return useQuery({
+    queryKey: ['assignments', 'my_performance'],
+    queryFn: async () => {
+      const response = await api.get('/assignments/my_performance/');
+      return response.json() as Promise<MyPerformanceData>;
+    },
+  });
+};
+
 // Fetch single assignment
 export const useAssignment = (id: number) => {
   return useQuery({
