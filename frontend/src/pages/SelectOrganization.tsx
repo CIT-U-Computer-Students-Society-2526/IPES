@@ -26,6 +26,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { ProfileEditorDialog } from '@/components/ProfileEditorDialog';
 
 const SelectOrganization = () => {
     const navigate = useNavigate();
@@ -128,11 +129,19 @@ const SelectOrganization = () => {
         <div className="min-h-screen bg-muted/30 flex flex-col items-center justify-center p-4">
             <div className="w-full max-w-3xl space-y-8">
 
-                <div className="text-center space-y-2">
-                    <h1 className="text-4xl font-bold tracking-tight">Select Organization</h1>
-                    <p className="text-muted-foreground text-lg">
-                        Welcome back, {user?.first_name}. Choose an organization to enter.
-                    </p>
+                <div className="text-center space-y-4">
+                    <div className="space-y-2">
+                        <h1 className="text-4xl font-bold tracking-tight">Select Organization</h1>
+                        <p className="text-muted-foreground text-lg">
+                            Welcome back, {user?.first_name}. Choose an organization to enter.
+                        </p>
+                    </div>
+                    <ProfileEditorDialog>
+                        <Button variant="outline" size="sm" className="gap-2">
+                            <UserIcon className="w-4 h-4" />
+                            Edit Profile
+                        </Button>
+                    </ProfileEditorDialog>
                 </div>
 
                 <div className="flex justify-center gap-4 mt-4">
