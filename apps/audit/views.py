@@ -21,9 +21,29 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
         """Filter audit logs based on user role and parameters"""
         queryset = AuditLog.objects.all()
         
-        # Only admins can view audit logs
-        if self.request.user.role not in ['admin', 'super_admin']:
-            return AuditLog.objects.none()
+        is_global_admin = self.request.user.is_staff or self.request.user.is_superuser
+        org_id = self.request.query_params.get('organization_id')
+
+        # Organization scoping & Authorization
+        if not is_global_admin:
+            if not org_id:
+                # Regular users MUST supply an organization_id to view logs,
+                # otherwise return nothing to prevent cross-tenant data leakage
+                return AuditLog.objects.none()
+                
+            from apps.organizations.models import Membership
+            is_org_admin = Membership.objects.filter(
+                user_id=self.request.user,
+                unit_id__organization_id=org_id,
+                role='Admin',
+                is_active=True
+            ).exists()
+            
+            if not is_org_admin:
+                return AuditLog.objects.none()
+                
+        if org_id:
+            queryset = queryset.filter(organization_id=org_id)
         
         # Filter by user
         user_id = self.request.query_params.get('user_id')
@@ -49,18 +69,12 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
         if ip_address:
             queryset = queryset.filter(ip_address=ip_address)
         
-        return queryset.select_related('user_id').order_by('-datetime')
+        return queryset.select_related('user_id', 'organization_id').order_by('-datetime')
     
     @action(detail=False, methods=['get'])
     def recent(self, request):
         """Get recent audit logs (last 100)"""
-        if request.user.role not in ['admin', 'super_admin']:
-            return Response(
-                {'error': 'Unauthorized'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
-        logs = AuditLog.objects.all()[:100]
+        logs = self.get_queryset()[:100]
         serializer = AuditLogListSerializer(logs, many=True)
         return Response(serializer.data)
     
@@ -117,16 +131,10 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=False, methods=['get'])
     def today(self, request):
         """Get today's audit logs"""
-        if request.user.role not in ['admin', 'super_admin']:
-            return Response(
-                {'error': 'Unauthorized'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
         today = timezone.now().date()
-        logs = AuditLog.objects.filter(
+        logs = self.get_queryset().filter(
             datetime__date=today
-        ).select_related('user_id').order_by('-datetime')
+        )
         
         serializer = AuditLogListSerializer(logs, many=True)
         return Response(serializer.data)
@@ -134,16 +142,10 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=False, methods=['get'])
     def this_week(self, request):
         """Get this week's audit logs"""
-        if request.user.role not in ['admin', 'super_admin']:
-            return Response(
-                {'error': 'Unauthorized'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
         week_ago = timezone.now() - timedelta(days=7)
-        logs = AuditLog.objects.filter(
+        logs = self.get_queryset().filter(
             datetime__gte=week_ago
-        ).select_related('user_id').order_by('-datetime')
+        )
         
         serializer = AuditLogListSerializer(logs, many=True)
         return Response(serializer.data)
@@ -171,24 +173,20 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=False, methods=['get'])
     def stats(self, request):
         """Get audit log statistics"""
-        if request.user.role not in ['admin', 'super_admin']:
-            return Response(
-                {'error': 'Unauthorized'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
         from django.db.models import Count
         
+        base_qs = self.get_queryset()
+        
         # Total count
-        total = AuditLog.objects.count()
+        total = base_qs.count()
         
         # Today's count
         today = timezone.now().date()
-        today_count = AuditLog.objects.filter(datetime__date=today).count()
+        today_count = base_qs.filter(datetime__date=today).count()
         
         # Count by action type (top 10)
         action_counts = dict(
-            AuditLog.objects.values('action')
+            base_qs.values('action')
             .annotate(count=Count('id'))
             .order_by('-count')[:10]
             .values_list('action', 'count')
@@ -196,7 +194,7 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
         
         # Count by user (top 10)
         user_counts = dict(
-            AuditLog.objects.values('user_id__email')
+            base_qs.values('user_id__email')
             .annotate(count=Count('id'))
             .order_by('-count')[:10]
             .values_list('user_id__email', 'count')

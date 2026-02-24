@@ -28,20 +28,40 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
         return AccomplishmentSerializer
     
     def get_queryset(self):
-        """Filter accomplishments based on user role and parameters"""
+        """Filter accomplishments based on organization, user role, and parameters"""
         queryset = Accomplishment.objects.all()
         user = self.request.user
         
-        # Regular officers can only see their own accomplishments
-        if user.role in ['officer', 'member']:
-            queryset = queryset.filter(user_id=user)
+        is_global_admin = user.is_staff or user.is_superuser
+        org_id = self.request.query_params.get('organization_id')
         
-        # Admin can filter by other users
+        # If no org_id is provided, users can only see their own accomplishments
+        # This prevents cross-tenant data leakage when no org is selected
+        if not org_id and not is_global_admin:
+            return queryset.filter(user_id=user).select_related('user_id', 'verified_by').order_by('-date_completed', '-id')
+
+        # Organization scoping
+        # Needs to check if the user is an admin of the requested organization
+        is_org_admin = False
+        if org_id and not is_global_admin:
+            from apps.organizations.models import Membership
+            is_org_admin = Membership.objects.filter(
+                user_id=user,
+                unit_id__organization_id=org_id,
+                role='Admin',
+                is_active=True
+            ).exists()
+            
+            # Users can only see their own accomplishments within an org if they are not an admin
+            if not is_org_admin:
+                return queryset.filter(user_id=user).select_related('user_id', 'verified_by').order_by('-date_completed', '-id')
+
+        # Admin can filter by other users globally, or within their org
         user_id = self.request.query_params.get('user_id')
         status_param = self.request.query_params.get('status')
         type_param = self.request.query_params.get('type')
         
-        if user_id and user.role == 'admin':
+        if user_id and (is_global_admin or is_org_admin):
             queryset = queryset.filter(user_id=user_id)
         if status_param:
             queryset = queryset.filter(status=status_param)
@@ -71,11 +91,27 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def pending(self, request):
         """Get accomplishments pending verification (Admin only)"""
-        if request.user.role not in ['admin', 'super_admin']:
-            return Response(
-                {'error': 'Unauthorized'},
-                status=status.HTTP_403_FORBIDDEN
-            )
+        user = request.user
+        is_global_admin = user.is_staff or user.is_superuser
+        org_id = request.query_params.get('organization_id')
+        
+        if not is_global_admin:
+            if not org_id:
+                return Response({'error': 'organization_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+                
+            from apps.organizations.models import Membership
+            is_org_admin = Membership.objects.filter(
+                user_id=user,
+                unit_id__organization_id=org_id,
+                role='Admin',
+                is_active=True
+            ).exists()
+            
+            if not is_org_admin:
+                return Response(
+                    {'error': 'Unauthorized'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
         
         accomplishments = Accomplishment.objects.filter(status='Pending')
         serializer = AccomplishmentListSerializer(accomplishments, many=True)
@@ -98,11 +134,27 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def summary(self, request):
         """Get summary statistics for accomplishments"""
-        if request.user.role not in ['admin', 'super_admin']:
-            return Response(
-                {'error': 'Unauthorized'},
-                status=status.HTTP_403_FORBIDDEN
-            )
+        user = request.user
+        is_global_admin = user.is_staff or user.is_superuser
+        org_id = request.query_params.get('organization_id')
+        
+        if not is_global_admin:
+            if not org_id:
+                return Response({'error': 'organization_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+                
+            from apps.organizations.models import Membership
+            is_org_admin = Membership.objects.filter(
+                user_id=user,
+                unit_id__organization_id=org_id,
+                role='Admin',
+                is_active=True
+            ).exists()
+            
+            if not is_org_admin:
+                return Response(
+                    {'error': 'Unauthorized'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
         
         from django.db.models import Count
         
@@ -140,11 +192,27 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
         """Verify or reject an accomplishment (Admin only)"""
         accomplishment = self.get_object()
         
-        if request.user.role not in ['admin', 'super_admin']:
-            return Response(
-                {'error': 'Unauthorized'},
-                status=status.HTTP_403_FORBIDDEN
-            )
+        user = request.user
+        is_global_admin = user.is_staff or user.is_superuser
+        org_id = request.query_params.get('organization_id') or request.data.get('organization_id')
+        
+        if not is_global_admin:
+            if not org_id:
+                return Response({'error': 'organization_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+                
+            from apps.organizations.models import Membership
+            is_org_admin = Membership.objects.filter(
+                user_id=user,
+                unit_id__organization_id=org_id,
+                role='Admin',
+                is_active=True
+            ).exists()
+            
+            if not is_org_admin:
+                return Response(
+                    {'error': 'Unauthorized'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
         
         if accomplishment.status != 'Pending':
             return Response(

@@ -13,6 +13,7 @@ export interface Membership {
   id: number;
   organization_id: number;
   organization_name: string;
+  organization_email?: string;
   unit_id: number;
   unit_name: string;
   position_id: number;
@@ -48,14 +49,17 @@ export interface UserUpdate {
 
 // Fetch all users
 export const useUsers = (params?: { is_active?: boolean; role?: string; organization_id?: number }) => {
-  const queryString = params
+  const { activeOrganizationId } = useOrganizationState();
+  const effectiveParams = { ...params, organization_id: params?.organization_id || activeOrganizationId || undefined };
+
+  const queryString = Object.keys(effectiveParams).length > 0
     ? '?' + new URLSearchParams(
-      Object.entries(params).filter(([, v]) => v !== undefined).reduce((acc, [k, v]) => ({ ...acc, [k]: String(v) }), {})
+      Object.entries(effectiveParams).filter(([, v]) => v !== undefined).reduce((acc, [k, v]) => ({ ...acc, [k]: String(v) }), {})
     ).toString()
     : '';
 
   return useQuery({
-    queryKey: ['users', params],
+    queryKey: ['users', effectiveParams],
     queryFn: async () => {
       const response = await api.get(`/users/${queryString}`);
       const data = await response.json() as { results: User[]; count: number } | User[];
@@ -129,6 +133,22 @@ export const useCurrentUser = () => {
     queryFn: async () => {
       const response = await api.get('/auth/me/');
       return response.json() as Promise<User>;
+    },
+  });
+};
+
+// Update current user profile
+export const useUpdateCurrentUser = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<User, Error, UserUpdate>({
+    mutationFn: async (data: UserUpdate) => {
+      const response = await api.patch('/auth/me/', data);
+      return response.json() as Promise<User>;
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(['users', 'current'], data);
+      queryClient.invalidateQueries({ queryKey: ['users', 'current'] });
     },
   });
 };

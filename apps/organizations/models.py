@@ -7,6 +7,7 @@ class Organization(models.Model):
     code = models.CharField(max_length=50, unique=True)
     display_picture = models.ImageField(upload_to='organizations/pictures/', blank=True, null=True)
     description = models.TextField()
+    email = models.EmailField(blank=True, null=True)
     period_year_start = models.DateField()
     period_year_end = models.DateField(null=True, blank=True)
     is_active = models.BooleanField(default=True)

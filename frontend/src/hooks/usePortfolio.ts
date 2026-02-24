@@ -6,6 +6,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { useOrganizationState } from '@/contexts/OrganizationContext';
 
 // Accomplishment types
 export interface Accomplishment {
@@ -44,8 +45,8 @@ export interface AccomplishmentVerify {
 export const useAccomplishments = (params?: { status?: string; type?: string; user_id?: number }) => {
   const queryString = params
     ? '?' + new URLSearchParams(
-        Object.entries(params).filter(([, v]) => v !== undefined).reduce((acc, [k, v]) => ({ ...acc, [k]: String(v) }), {})
-      ).toString()
+      Object.entries(params).filter(([, v]) => v !== undefined).reduce((acc, [k, v]) => ({ ...acc, [k]: String(v) }), {})
+    ).toString()
     : '';
 
   return useQuery({
@@ -71,11 +72,15 @@ export const useMyAccomplishments = () => {
 };
 
 // Fetch pending accomplishments (admin)
-export const usePendingAccomplishments = () => {
+export const usePendingAccomplishments = (organizationId?: number) => {
+  const { activeOrganizationId } = useOrganizationState();
+  const effectiveOrgId = organizationId || activeOrganizationId;
+  const queryString = effectiveOrgId ? `?organization_id=${effectiveOrgId}` : '';
+
   return useQuery({
-    queryKey: ['accomplishments', 'pending'],
+    queryKey: ['accomplishments', 'pending', effectiveOrgId],
     queryFn: async () => {
-      const response = await api.get('/accomplishments/pending/');
+      const response = await api.get(`/accomplishments/pending/${queryString}`);
       const data = await response.json() as { results: Accomplishment[] } | Accomplishment[];
       return Array.isArray(data) ? data : data.results || [];
     },

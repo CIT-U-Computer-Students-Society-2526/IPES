@@ -12,7 +12,6 @@ import {
   Trophy,
   Settings,
   Shield,
-  Bell,
   LogOut,
   Menu,
   X,
@@ -22,6 +21,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
+
+import { ProfileEditorDialog } from "@/components/ProfileEditorDialog";
 
 const navigation = [
   { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
@@ -85,10 +86,15 @@ const AdminLayout = () => {
           {/* Logo */}
           <div className="h-16 flex items-center justify-between px-4 border-b border-border">
             <Link to="/admin/dashboard" className="flex items-center gap-2.5">
-              <img src="/ipes-logo-colored.svg" alt="IPES Logo" className="w-7 h-7 object-contain" />
-              <div className="flex items-center gap-2">
-                <span className="text-[#293F55] dark:text-white font-bold text-2xl tracking-tight">IPES</span>
-                <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium">Admin</span>
+              <img src="/ipes-logo-colored.svg" alt="IPES Logo" className="w-7 h-7 object-contain shrink-0" />
+              <div className="flex flex-col justify-center">
+                <div className="flex items-center gap-2">
+                  <span className="text-[#293F55] dark:text-white font-bold text-xl tracking-tight">IPES</span>
+                  <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium shrink-0">Admin</span>
+                </div>
+                <span className="text-xs text-muted-foreground truncate max-w-[140px]" title={activeMembership?.organization_name}>
+                  {activeMembership?.organization_name}
+                </span>
               </div>
             </Link>
             <button
@@ -124,17 +130,19 @@ const AdminLayout = () => {
 
           {/* User section */}
           <div className="p-4 border-t border-border">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
-                <Shield className="w-4 h-4 text-primary" />
+            <ProfileEditorDialog>
+              <div className="flex items-center gap-3 mb-3 cursor-pointer hover:bg-muted/50 p-2 rounded-lg transition-colors">
+                <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <Shield className="w-4 h-4 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{fullName}</p>
+                  <p className="text-xs text-muted-foreground truncate">System Administrator</p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">{fullName}</p>
-                <p className="text-xs text-muted-foreground truncate">System Administrator</p>
-              </div>
-            </div>
+            </ProfileEditorDialog>
             <Link to="/login">
-              <Button variant="ghost" size="sm" className="w-full justify-start text-muted-foreground">
+              <Button variant="ghost" size="sm" className="w-full justify-start text-muted-foreground mt-2">
                 <LogOut className="w-4 h-4 mr-2" />
                 Sign out
               </Button>
@@ -156,10 +164,6 @@ const AdminLayout = () => {
 
           <div className="flex items-center gap-3 ml-auto">
             <ThemeToggle />
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-accent rounded-full" />
-            </Button>
           </div>
         </header>
 

@@ -22,6 +22,7 @@ class UserSerializer(serializers.ModelSerializer):
                 'id': m.id,
                 'organization_id': m.unit_id.organization_id.id,
                 'organization_name': m.unit_id.organization_id.name,
+                'organization_email': m.unit_id.organization_id.email,
                 'unit_id': m.unit_id.id,
                 'unit_name': m.unit_id.name,
                 'position_id': m.position_id.id,

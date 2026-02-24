@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { 
-  History, 
-  Search, 
+import { useState, useMemo } from "react";
+import {
+  History,
+  Search,
   Filter,
   LogIn,
   FileEdit,
@@ -9,7 +9,8 @@ import {
   UserPlus,
   Trash2,
   Shield,
-  Download
+  Download,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,99 +30,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-
-const auditLogs = [
-  { 
-    id: 1, 
-    user: "Admin User", 
-    action: "login", 
-    target: "System", 
-    details: "Successful login from 192.168.1.1",
-    timestamp: "2024-01-15 14:32:05",
-    ip: "192.168.1.1"
-  },
-  { 
-    id: 2, 
-    user: "Admin User", 
-    action: "edit", 
-    target: "Evaluation Form: Q4 Self-Evaluation", 
-    details: "Modified question #3",
-    timestamp: "2024-01-15 14:28:12",
-    ip: "192.168.1.1"
-  },
-  { 
-    id: 3, 
-    user: "Maria Santos", 
-    action: "view", 
-    target: "Results: Juan Dela Cruz", 
-    details: "Viewed evaluation results",
-    timestamp: "2024-01-15 13:45:30",
-    ip: "192.168.1.45"
-  },
-  { 
-    id: 4, 
-    user: "Admin User", 
-    action: "create", 
-    target: "User: Pedro Reyes", 
-    details: "Created new officer account",
-    timestamp: "2024-01-15 12:15:00",
-    ip: "192.168.1.1"
-  },
-  { 
-    id: 5, 
-    user: "Juan Dela Cruz", 
-    action: "login", 
-    target: "System", 
-    details: "Successful login from 192.168.1.22",
-    timestamp: "2024-01-15 11:30:45",
-    ip: "192.168.1.22"
-  },
-  { 
-    id: 6, 
-    user: "Admin User", 
-    action: "delete", 
-    target: "Assignment: Draft Peer Eval", 
-    details: "Deleted draft assignment",
-    timestamp: "2024-01-15 10:20:15",
-    ip: "192.168.1.1"
-  },
-  { 
-    id: 7, 
-    user: "Admin User", 
-    action: "permission", 
-    target: "User: Maria Santos", 
-    details: "Changed role from Officer to Admin",
-    timestamp: "2024-01-15 09:45:00",
-    ip: "192.168.1.1"
-  },
-  { 
-    id: 8, 
-    user: "Ana Garcia", 
-    action: "view", 
-    target: "Accomplishments: Research Committee", 
-    details: "Viewed accomplishment submissions",
-    timestamp: "2024-01-15 09:30:20",
-    ip: "192.168.1.33"
-  },
-  { 
-    id: 9, 
-    user: "Admin User", 
-    action: "edit", 
-    target: "Organization: Events Committee", 
-    details: "Updated unit description",
-    timestamp: "2024-01-14 16:45:30",
-    ip: "192.168.1.1"
-  },
-  { 
-    id: 10, 
-    user: "Pedro Reyes", 
-    action: "login", 
-    target: "System", 
-    details: "Failed login attempt (wrong password)",
-    timestamp: "2024-01-14 15:20:10",
-    ip: "192.168.1.50"
-  },
-];
+import { useAuditLogs } from "@/hooks/useAudit";
+import { useOrganizationState } from "@/contexts/OrganizationContext";
 
 const actionIcons: Record<string, typeof LogIn> = {
   login: LogIn,
@@ -142,19 +52,36 @@ const actionColors: Record<string, string> = {
 };
 
 const AuditLog = () => {
+  const { activeOrganizationId } = useOrganizationState();
   const [searchQuery, setSearchQuery] = useState("");
   const [actionFilter, setActionFilter] = useState("all");
 
-  const filteredLogs = auditLogs.filter((log) => {
-    const matchesSearch = 
-      log.user.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      log.target.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      log.details.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesAction = actionFilter === "all" || log.action === actionFilter;
-    
-    return matchesSearch && matchesAction;
+  const { data: serverLogs = [], isLoading } = useAuditLogs({
+    organization_id: activeOrganizationId ?? undefined
   });
+
+  const filteredLogs = useMemo(() => {
+    return serverLogs.filter((log) => {
+      const q = searchQuery.toLowerCase();
+      const matchesSearch =
+        (log.user_email?.toLowerCase().includes(q) || false) ||
+        (log.user_name?.toLowerCase().includes(q) || false) ||
+        log.action.toLowerCase().includes(q) ||
+        (log.ip_address?.toLowerCase().includes(q) || false);
+
+      const categoryMatch = actionFilter === "all" || log.action.includes(actionFilter);
+
+      return matchesSearch && categoryMatch;
+    });
+  }, [serverLogs, searchQuery, actionFilter]);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -176,7 +103,7 @@ const AuditLog = () => {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search by user, target, or details..."
+              placeholder="Search by user, action, or IP address..."
               className="pl-9"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -190,11 +117,9 @@ const AuditLog = () => {
             <SelectContent>
               <SelectItem value="all">All Actions</SelectItem>
               <SelectItem value="login">Login</SelectItem>
-              <SelectItem value="edit">Edit</SelectItem>
-              <SelectItem value="view">View</SelectItem>
-              <SelectItem value="create">Create</SelectItem>
-              <SelectItem value="delete">Delete</SelectItem>
-              <SelectItem value="permission">Permission Change</SelectItem>
+              <SelectItem value="create">Created</SelectItem>
+              <SelectItem value="update">Updated</SelectItem>
+              <SelectItem value="delete">Deleted</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -208,38 +133,31 @@ const AuditLog = () => {
               <TableHead className="font-semibold">Timestamp</TableHead>
               <TableHead className="font-semibold">User</TableHead>
               <TableHead className="font-semibold">Action</TableHead>
-              <TableHead className="font-semibold">Target</TableHead>
-              <TableHead className="font-semibold">Details</TableHead>
               <TableHead className="font-semibold">IP Address</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredLogs.map((log) => {
-              const IconComponent = actionIcons[log.action] || History;
-              const colorClass = actionColors[log.action] || "bg-muted text-muted-foreground";
-              
+              const actionCategory = log.action.split('.')[1] || log.action;
+              const IconComponent = actionIcons[actionCategory] || History;
+              const colorClass = actionColors[actionCategory] || "bg-muted text-muted-foreground";
+
               return (
                 <TableRow key={log.id} className="hover:bg-muted/30">
                   <TableCell className="font-mono text-sm text-muted-foreground whitespace-nowrap">
-                    {log.timestamp}
+                    {new Date(log.datetime).toLocaleString()}
                   </TableCell>
                   <TableCell className="font-medium text-foreground">
-                    {log.user}
+                    {log.user_name || log.user_email || `User #${log.user_id}`}
                   </TableCell>
                   <TableCell>
                     <Badge variant="secondary" className={`${colorClass} gap-1.5`}>
                       <IconComponent className="w-3 h-3" />
-                      {log.action.charAt(0).toUpperCase() + log.action.slice(1)}
+                      {log.action}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-foreground max-w-[200px] truncate">
-                    {log.target}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground max-w-[250px] truncate">
-                    {log.details}
-                  </TableCell>
                   <TableCell className="font-mono text-sm text-muted-foreground">
-                    {log.ip}
+                    {log.ip_address || "N/A"}
                   </TableCell>
                 </TableRow>
               );
@@ -259,19 +177,19 @@ const AuditLog = () => {
       {/* Summary Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-card rounded-lg border border-border p-4 text-center">
-          <p className="text-2xl font-bold text-foreground">{auditLogs.filter(l => l.action === 'login').length}</p>
-          <p className="text-sm text-muted-foreground">Logins Today</p>
+          <p className="text-2xl font-bold text-foreground">{serverLogs.filter(l => l.action.includes('login')).length}</p>
+          <p className="text-sm text-muted-foreground">Logins</p>
         </div>
         <div className="bg-card rounded-lg border border-border p-4 text-center">
-          <p className="text-2xl font-bold text-foreground">{auditLogs.filter(l => l.action === 'edit').length}</p>
+          <p className="text-2xl font-bold text-foreground">{serverLogs.filter(l => l.action.includes('update')).length}</p>
           <p className="text-sm text-muted-foreground">Edits Made</p>
         </div>
         <div className="bg-card rounded-lg border border-border p-4 text-center">
-          <p className="text-2xl font-bold text-foreground">{auditLogs.filter(l => l.action === 'view').length}</p>
-          <p className="text-sm text-muted-foreground">Records Viewed</p>
+          <p className="text-2xl font-bold text-foreground">{serverLogs.filter(l => l.action.includes('create')).length}</p>
+          <p className="text-sm text-muted-foreground">Creations</p>
         </div>
         <div className="bg-card rounded-lg border border-border p-4 text-center">
-          <p className="text-2xl font-bold text-foreground">{new Set(auditLogs.map(l => l.user)).size}</p>
+          <p className="text-2xl font-bold text-foreground">{new Set(serverLogs.map(l => l.user_id)).size}</p>
           <p className="text-sm text-muted-foreground">Active Users</p>
         </div>
       </div>
