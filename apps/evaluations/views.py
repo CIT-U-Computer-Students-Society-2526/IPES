@@ -408,6 +408,8 @@ def _apply_rule(rule, form):
         qs = Membership.objects.filter(
             unit_id__organization_id=org,
             is_active=True,
+        ).exclude(
+            unit_id__type_id__name="System"
         ).select_related('user_id')
         if unit:
             qs = qs.filter(unit_id=unit)
