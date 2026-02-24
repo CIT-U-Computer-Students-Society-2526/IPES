@@ -7,6 +7,6 @@ class Accomplishment(models.Model):
     description = models.TextField()
     type = models.CharField(max_length=50)
     date_completed = models.DateTimeField()
-    proof_link = models.URLField()
+    proof_link = models.URLField(null=True, blank=True)
     status = models.CharField(max_length=50, default='Pending')
     verified_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='verified_accomplishments')
