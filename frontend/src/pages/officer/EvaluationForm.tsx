@@ -25,6 +25,7 @@ import {
   useSaveDraftResponses,
   type Question
 } from "@/hooks/useEvaluations";
+import { useMemberRoutes } from "@/hooks/useMemberRoutes";
 
 // Generate rating label ranges dynamically based on max value
 const getRatingContext = (min: number | undefined, max: number | undefined) => {
@@ -49,6 +50,7 @@ const EvaluationForm = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const { toast } = useToast();
+  const routes = useMemberRoutes();
 
   // API Hooks
   const { data: assignment, isLoading: aLoading, error: aError } = useAssignment(Number(id));
@@ -100,7 +102,7 @@ const EvaluationForm = () => {
         <AlertCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
         <h2 className="text-xl font-bold">Error</h2>
         <p>Could not load this evaluation. It may not exist or you don't have access.</p>
-        <Button onClick={() => navigate("/officer/evaluations")} className="mt-6" variant="outline">
+        <Button onClick={() => navigate(routes.evaluationsList)} className="mt-6" variant="outline">
           Return to My Evaluations
         </Button>
       </div>
@@ -109,7 +111,6 @@ const EvaluationForm = () => {
 
   const isCompleted = assignment.status === 'Completed';
 
-  // Grouping questions for basic UI (Since API doesn't use categories yet, we group all under 'Questions')
   const sections = [
     { name: "Evaluatee Info", questions: [] as Question[] },
     { name: "Evaluation Questions", questions: questions },
@@ -201,7 +202,7 @@ const EvaluationForm = () => {
         description: "Thank you for completing this peer evaluation.",
       });
       setShowSubmitDialog(false);
-      navigate("/officer/evaluations");
+      navigate(routes.evaluationsList);
     } catch (err: any) {
       toast({
         title: "Submission Error",
@@ -317,7 +318,7 @@ const EvaluationForm = () => {
       {/* Header */}
       <div className="mb-6">
         <button
-          onClick={() => navigate("/officer/evaluations")}
+          onClick={() => navigate(routes.evaluationsList)}
           className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4"
         >
           <ArrowLeft className="w-4 h-4" />

@@ -20,6 +20,7 @@ import {
   useMyPerformance,
   type EvaluationAssignment
 } from "@/hooks/useEvaluations";
+import { useMemberRoutes } from "@/hooks/useMemberRoutes";
 import { useMyAccomplishments } from "@/hooks/usePortfolio";
 import { useCurrentUser } from "@/hooks/useUsers";
 import type { Accomplishment } from "@/hooks/usePortfolio";
@@ -86,6 +87,7 @@ const StatCard = ({
 
 // Pending evaluation card
 const PendingEvaluationCard = ({ evaluation }: { evaluation: EvaluationAssignment }) => {
+  const routes = useMemberRoutes();
   const isUrgent = evaluation.due_date && new Date(evaluation.due_date) <= new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
 
   const formatDate = (dateString: string) => {
@@ -114,7 +116,7 @@ const PendingEvaluationCard = ({ evaluation }: { evaluation: EvaluationAssignmen
           )}
         </div>
       </div>
-      <Link to={`/officer/evaluations/${evaluation.id}`}>
+      <Link to={routes.evaluationForm(evaluation.id)}>
         <Button size="sm">Start</Button>
       </Link>
     </div>
@@ -133,8 +135,8 @@ const NotificationItem = ({
 }) => (
   <div className="flex gap-3">
     <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${type === 'success' ? 'bg-success' :
-        type === 'warning' ? 'bg-warning' :
-          'bg-primary'
+      type === 'warning' ? 'bg-warning' :
+        'bg-primary'
       }`} />
     <div>
       <p className="text-sm text-foreground">{message}</p>
@@ -159,6 +161,7 @@ const OfficerDashboard = () => {
   const { data: completedEvaluations, isLoading: completedLoading } = useMyCompletedEvaluations();
   const { data: accomplishments, isLoading: accomplishmentsLoading } = useMyAccomplishments();
   const { data: performanceData, isLoading: performanceLoading } = useMyPerformance();
+  const routes = useMemberRoutes();
 
   // Calculate stats
   const pendingCount = pendingEvaluations?.length || 0;
@@ -207,7 +210,7 @@ const OfficerDashboard = () => {
           </h1>
           <p className="text-muted-foreground mt-1">Here's an overview of your evaluation tasks.</p>
         </div>
-        <Link to="/officer/evaluations">
+        <Link to={routes.evaluationsList}>
           <Button>
             Start Evaluating
             <ArrowRight className="w-4 h-4 ml-2" />
@@ -254,7 +257,7 @@ const OfficerDashboard = () => {
         <div className="lg:col-span-2 bg-card rounded-xl border border-border p-6">
           <div className="flex items-center justify-between mb-5">
             <h2 className="font-semibold text-foreground">Pending Evaluations</h2>
-            <Link to="/officer/evaluations" className="text-sm text-primary hover:underline">
+            <Link to={routes.evaluationsList} className="text-sm text-primary hover:underline">
               View all
             </Link>
           </div>
