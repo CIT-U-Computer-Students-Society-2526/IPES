@@ -110,8 +110,14 @@ const OfficerAccomplishments = () => {
   };
 
   const handleEdit = (accomplishment: Accomplishment) => {
-    setEditingAccomplishment(accomplishment);
-    setOriginalAccomplishment(accomplishment);
+    // Format the date to YYYY-MM-DD for the date input
+    const formattedDate = accomplishment.date_completed 
+      ? new Date(accomplishment.date_completed).toISOString().split('T')[0]
+      : new Date().toISOString().split('T')[0];
+    
+    const editData = { ...accomplishment, date_completed: formattedDate };
+    setEditingAccomplishment(editData);
+    setOriginalAccomplishment(editData);
     setIsEditDialogOpen(true);
   };
 

@@ -709,11 +709,20 @@ const AdminFormBuilder = () => {
                 <CardTitle className="text-base">Add Question Types</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
+                {selectedForm?.is_active && (
+                  <div className="bg-amber-50 text-amber-800 text-xs p-2.5 rounded border border-amber-200 mb-3">
+                    Form is active. Deactivate to edit questions.
+                  </div>
+                )}
                 {questionTypes.map((type) => (
                   <div
                     key={type.id}
-                    onClick={() => handleAddQuestion(type.id)}
-                    className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted cursor-pointer transition-colors"
+                    onClick={() => !selectedForm?.is_active && handleAddQuestion(type.id)}
+                    className={`flex items-center gap-3 p-3 rounded-lg border border-border transition-colors ${
+                      selectedForm?.is_active
+                        ? "opacity-50 cursor-not-allowed"
+                        : "hover:bg-muted cursor-pointer"
+                    }`}
                   >
                     <type.icon className="w-5 h-5 text-primary" />
                     <div>
@@ -876,7 +885,7 @@ const AdminFormBuilder = () => {
                       key={idx}
                       className="flex items-start gap-3 p-4 rounded-lg border border-border bg-card hover:shadow-sm transition-shadow relative group"
                     >
-                      <div className="cursor-move text-muted-foreground hover:text-foreground mt-2">
+                      <div className={`mt-2 ${selectedForm?.is_active ? "text-muted-foreground/30" : "cursor-move text-muted-foreground hover:text-foreground"}`}>
                         <GripVertical className="w-5 h-5" />
                       </div>
                       <div className="flex-1 space-y-3">

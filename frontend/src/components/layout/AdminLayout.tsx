@@ -3,6 +3,7 @@ import { Link, useLocation, Outlet, Navigate } from "react-router-dom";
 import { useCurrentUser } from "@/hooks/useUsers";
 import { useOrganizationState } from "@/contexts/OrganizationContext";
 import { usePendingJoinRequests } from "@/hooks/useOrganizations";
+import { usePendingAccomplishments } from "@/hooks/usePortfolio";
 import {
   LayoutDashboard,
   Users,
@@ -45,8 +46,10 @@ const AdminLayout = () => {
   const { data: user, isLoading, isError } = useCurrentUser();
   const { activeOrganizationId } = useOrganizationState();
   const { data: pendingRequests } = usePendingJoinRequests();
+  const { data: pendingAccomplishments } = usePendingAccomplishments();
   
-  const pendingCount = pendingRequests?.length || 0;
+  const pendingJoinCount = pendingRequests?.length || 0;
+  const pendingAccomplishmentCount = pendingAccomplishments?.length || 0;
 
   if (isLoading) {
     return (
@@ -120,7 +123,9 @@ const AdminLayout = () => {
           <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
             {navigation.map((item) => {
               const isActive = location.pathname === item.href;
-              const showBadge = item.name === "Organization" && pendingCount > 0;
+              const badgeCount = 
+                item.name === "Organization" ? pendingJoinCount :
+                item.name === "Accomplishments" ? pendingAccomplishmentCount : 0;
               return (
                 <Link
                   key={item.name}
@@ -135,9 +140,9 @@ const AdminLayout = () => {
                 >
                   <item.icon className="w-5 h-5" />
                   <span className="flex-1">{item.name}</span>
-                  {showBadge && (
+                  {badgeCount > 0 && (
                     <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-semibold bg-destructive text-destructive-foreground rounded-full">
-                      {pendingCount > 99 ? "99+" : pendingCount}
+                      {badgeCount > 99 ? "99+" : badgeCount}
                     </span>
                   )}
                 </Link>
