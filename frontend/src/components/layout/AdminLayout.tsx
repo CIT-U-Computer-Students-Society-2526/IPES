@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useLocation, Outlet, Navigate } from "react-router-dom";
 import { useCurrentUser } from "@/hooks/useUsers";
 import { useOrganizationState } from "@/contexts/OrganizationContext";
+import { usePendingJoinRequests } from "@/hooks/useOrganizations";
 import {
   LayoutDashboard,
   Users,
@@ -43,6 +44,9 @@ const AdminLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { data: user, isLoading, isError } = useCurrentUser();
   const { activeOrganizationId } = useOrganizationState();
+  const { data: pendingRequests } = usePendingJoinRequests();
+  
+  const pendingCount = pendingRequests?.length || 0;
 
   if (isLoading) {
     return (
@@ -116,6 +120,7 @@ const AdminLayout = () => {
           <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
             {navigation.map((item) => {
               const isActive = location.pathname === item.href;
+              const showBadge = item.name === "Organization" && pendingCount > 0;
               return (
                 <Link
                   key={item.name}
@@ -129,7 +134,12 @@ const AdminLayout = () => {
                   )}
                 >
                   <item.icon className="w-5 h-5" />
-                  {item.name}
+                  <span className="flex-1">{item.name}</span>
+                  {showBadge && (
+                    <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-semibold bg-destructive text-destructive-foreground rounded-full">
+                      {pendingCount > 99 ? "99+" : pendingCount}
+                    </span>
+                  )}
                 </Link>
               );
             })}

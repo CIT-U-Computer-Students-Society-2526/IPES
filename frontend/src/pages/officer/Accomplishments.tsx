@@ -17,6 +17,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMyAccomplishments, useCreateAccomplishment, useUpdateAccomplishment, AccomplishmentCreate, Accomplishment } from "@/hooks/usePortfolio";
 import { useToast } from "@/hooks/use-toast";
+import { formatApiError } from "@/lib/api";
 
 const getStatusBadge = (status: string) => {
   switch (status) {
@@ -102,7 +103,7 @@ const OfficerAccomplishments = () => {
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to submit accomplishment.",
+        description: formatApiError(error),
         variant: "destructive",
       });
     }
@@ -136,7 +137,7 @@ const OfficerAccomplishments = () => {
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to update accomplishment.",
+        description: formatApiError(error),
         variant: "destructive",
       });
     }
