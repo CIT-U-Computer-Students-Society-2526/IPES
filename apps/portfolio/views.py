@@ -11,6 +11,7 @@ from .serializers import (
     AccomplishmentSerializer,
     AccomplishmentCreateSerializer,
     AccomplishmentListSerializer,
+    AccomplishmentUpdateSerializer,
     AccomplishmentVerifySerializer
 )
 
@@ -23,6 +24,8 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == 'create':
             return AccomplishmentCreateSerializer
+        elif self.action in ['update', 'partial_update']:
+            return AccomplishmentUpdateSerializer
         elif self.action == 'list':
             return AccomplishmentListSerializer
         return AccomplishmentSerializer
@@ -80,6 +83,38 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
             accomplishment_id=str(accomplishment.id),
             title=accomplishment.title
         )
+    
+    def perform_update(self, serializer):
+        """Update accomplishment and log the change"""
+        accomplishment = serializer.save()
+        log_action(
+            self.request.user,
+            AuditActions.ACCOMPLISHMENT_UPDATED,
+            self.request,
+            accomplishment_id=str(accomplishment.id),
+            title=accomplishment.title,
+            status=accomplishment.status
+        )
+    
+    def update(self, request, *args, **kwargs):
+        """Override update to allow only owners to edit pending/rejected accomplishments"""
+        accomplishment = self.get_object()
+        
+        # Only allow editing if user is the owner
+        if accomplishment.user_id != request.user:
+            return Response(
+                {'error': 'You can only edit your own accomplishments'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Only allow editing if status is Pending or Rejected
+        if accomplishment.status not in ['Pending', 'Rejected']:
+            return Response(
+                {'error': 'You can only edit pending or rejected accomplishments'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        return super().update(request, *args, **kwargs)
     
     @action(detail=False, methods=['get'])
     def my(self, request):
@@ -225,6 +260,11 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
         
         accomplishment.status = serializer.validated_data['status']
         accomplishment.verified_by = request.user
+        
+        # Store comments if rejecting
+        if accomplishment.status == 'Rejected' and 'comments' in serializer.validated_data:
+            accomplishment.comments = serializer.validated_data['comments']
+        
         accomplishment.save()
         
         # Log verification

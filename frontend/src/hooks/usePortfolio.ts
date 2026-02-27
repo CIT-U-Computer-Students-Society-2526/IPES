@@ -23,7 +23,8 @@ export interface Accomplishment {
   verified_by_name?: string;
   verified_at?: string;
   comments?: string;
-  created_at: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface AccomplishmentCreate {
@@ -141,6 +142,7 @@ export const useUpdateAccomplishment = () => {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['accomplishments'] });
+      queryClient.invalidateQueries({ queryKey: ['accomplishments', 'my'] });
       queryClient.invalidateQueries({ queryKey: ['accomplishments', variables.id] });
     },
   });

@@ -14,9 +14,10 @@ class AccomplishmentSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'user_id', 'user_email', 'user_name', 'title',
             'description', 'type', 'date_completed', 'proof_link',
-            'status', 'verified_by', 'verified_by_email'
+            'status', 'verified_by', 'verified_by_email', 'comments',
+            'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'user_id', 'status', 'verified_by']
+        read_only_fields = ['id', 'user_id', 'status', 'verified_by', 'created_at', 'updated_at']
 
 
 class AccomplishmentCreateSerializer(serializers.ModelSerializer):
@@ -80,8 +81,56 @@ class AccomplishmentListSerializer(serializers.ModelSerializer):
         model = Accomplishment
         fields = [
             'id', 'user_id', 'user_email', 'user_name', 'title',
-            'description', 'type', 'date_completed', 'proof_link', 'status'
+            'description', 'type', 'date_completed', 'proof_link', 'status',
+            'comments', 'created_at', 'updated_at'
         ]
+
+
+class AccomplishmentUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for members to update their pending/rejected accomplishments"""
+    
+    class Meta:
+        model = Accomplishment
+        fields = [
+            'title', 'description', 'type',
+            'date_completed', 'proof_link'
+        ]
+        extra_kwargs = {
+            'proof_link': {'required': False, 'allow_blank': True, 'allow_null': True}
+        }
+    
+    def validate_proof_link(self, value):
+        """Validate proof link is a valid URL if provided"""
+        if not value:
+            return None
+            
+        from django.core.validators import URLValidator
+        from django.core.exceptions import ValidationError
+        
+        validator = URLValidator()
+        try:
+            validator(value)
+        except ValidationError:
+            raise serializers.ValidationError('Invalid URL format for proof_link')
+        return value
+    
+    def validate_date_completed(self, value):
+        """Validate date is not in the future"""
+        if value > timezone.now():
+            raise serializers.ValidationError('Date completed cannot be in the future')
+        return value
+    
+    def validate_type(self, value):
+        """Validate accomplishment type"""
+        allowed_types = [
+            'Project', 'Attendance', 'General', 'Event', 'Leadership', 'Other',
+            'award', 'certification', 'project', 'training', 'presentation', 'publication', 'other'
+        ]
+        if value not in allowed_types:
+            raise serializers.ValidationError(
+                f"Type must be one of: {', '.join(allowed_types)}"
+            )
+        return value
 
 
 class AccomplishmentVerifySerializer(serializers.Serializer):
