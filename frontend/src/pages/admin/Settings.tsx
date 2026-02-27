@@ -101,7 +101,7 @@ const AdminSettings = () => {
     });
   };
 
-  const isHeadAdmin = currentMembership?.position_rank === 1;
+  const isAdmin = currentMembership?.role === 'Admin';
 
   const handleDeleteOrganization = () => {
     if (!activeOrganizationId) return;
@@ -200,16 +200,16 @@ const AdminSettings = () => {
                   <p className="text-sm text-muted-foreground">
                     Permanently close this organization and deactivate all associated accounts, units, and structural models. <strong>This action cannot be undone.</strong>
                   </p>
-                  {!isHeadAdmin && (
+                  {!isAdmin && (
                     <p className="text-xs font-semibold text-destructive mt-2">
-                      You must be the Head Administrator (Rank 1) to perform this action.
+                      You must be an Administrator to perform this action.
                     </p>
                   )}
                 </div>
 
                 <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
                   <AlertDialogTrigger asChild>
-                    <Button variant="destructive" disabled={!isHeadAdmin}>
+                    <Button variant="destructive" disabled={!isAdmin}>
                       Delete Organization
                     </Button>
                   </AlertDialogTrigger>

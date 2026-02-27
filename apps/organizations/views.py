@@ -206,17 +206,17 @@ class OrganizationViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # 3. Verify the requesting user is a Head Admin (rank = 1) for this specific Org
-        is_head_admin = Membership.objects.filter(
-            user_id=request.user,
-            unit_id__organization_id=org,
-            position_id__rank=1,
+        # 3. Verify the requesting user is an Admin for this specific Org
+        is_admin = OrganizationRole.objects.filter(
+            user=request.user,
+            organization=org,
+            role='Admin',
             is_active=True
         ).exists()
 
-        if not is_head_admin:
+        if not is_admin:
             return Response(
-                {'error': 'Only the Head Administrator can delete this organization.'},
+                {'error': 'Only Administrators can delete this organization.'},
                 status=status.HTTP_403_FORBIDDEN
             )
 

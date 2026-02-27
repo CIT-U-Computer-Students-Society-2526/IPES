@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Organization, UnitType, OrganizationUnit, PositionType, Membership, JoinRequest, OrganizationRole
+from .models import Organization, UnitType, OrganizationUnit, PositionType, Membership, JoinRequest
 
 
 class OrganizationSerializer(serializers.ModelSerializer):
@@ -54,23 +54,16 @@ class MembershipSerializer(serializers.ModelSerializer):
     user_email = serializers.CharField(source='user_id.email', read_only=True)
     unit_name = serializers.CharField(source='unit_id.name', read_only=True)
     position_name = serializers.CharField(source='position_id.name', read_only=True)
-    role = serializers.SerializerMethodField()
+    position_rank = serializers.IntegerField(source='position_id.rank', read_only=True)
     
     class Meta:
         model = Membership
         fields = [
             'id', 'user_id', 'user_email', 'unit_id', 'unit_name',
-            'position_id', 'position_name', 'role', 'date_start', 
+            'position_id', 'position_name', 'position_rank', 'date_start', 
             'date_end', 'is_active'
         ]
         read_only_fields = ['id', 'date_start', 'date_end']
-
-    def get_role(self, obj):
-        role_obj = OrganizationRole.objects.filter(
-            user_id=obj.user_id_id,
-            organization_id=obj.unit_id.organization_id_id
-        ).first()
-        return role_obj.role if role_obj else 'Member'
 
 class JoinRequestSerializer(serializers.ModelSerializer):
     """Serializer for JoinRequest model"""
