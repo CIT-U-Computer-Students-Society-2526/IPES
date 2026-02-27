@@ -3,6 +3,7 @@ from django.conf import settings
 
 class Accomplishment(models.Model):
     user_id = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='accomplishments')
+    organization_id = models.ForeignKey('organizations.Organization', on_delete=models.CASCADE, related_name='accomplishments')
     title = models.CharField(max_length=255)
     description = models.TextField()
     type = models.CharField(max_length=50)
