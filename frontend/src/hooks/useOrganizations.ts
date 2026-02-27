@@ -72,7 +72,7 @@ export const useAnalyticsSummary = (organizationId?: number) => {
 export const useCreateOrganization = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<any, Error, { name: string; code: string; description: string; period_year_start: string; period_year_end?: string }>({
+  return useMutation<Response, Error, { name: string; code: string; description: string; period_year_start: string; period_year_end?: string }>({
     mutationFn: async (data) => {
       const result = await api.post('/organizations/', data);
       return result;
@@ -89,7 +89,7 @@ export const useCreateOrganization = () => {
 export const useUpdateOrganization = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<any, Error, { id: number; data: Partial<{ name: string; code: string; description: string; email: string }> }>({
+  return useMutation<{ id: number; name: string }, Error, { id: number; data: Partial<{ name: string; code: string; description: string; email: string }> }>({
     mutationFn: async ({ id, data }) => {
       const response = await api.patch(`/organizations/${id}/`, data);
       return response.json();
@@ -212,7 +212,7 @@ export const useCreateOrganizationUnit = () => {
   const queryClient = useQueryClient();
   const { activeOrganizationId } = useOrganizationState();
 
-  return useMutation<any, Error, { name: string; description?: string; type_id: number }>({
+  return useMutation<{ id: number; name: string }, Error, { name: string; description?: string; type_id: number }>({
     mutationFn: async (data) => {
       const payload = { ...data, organization_id: activeOrganizationId };
       const response = await api.post('/units/', payload);
@@ -229,7 +229,7 @@ export const useDeleteOrganizationUnit = () => {
   const queryClient = useQueryClient();
   const { activeOrganizationId } = useOrganizationState();
 
-  return useMutation<any, Error, number>({
+  return useMutation<Response, Error, number>({
     mutationFn: async (id) => {
       const response = await api.delete(`/units/${id}/`);
       return response;
@@ -245,7 +245,7 @@ export const useUpdateOrganizationUnit = () => {
   const queryClient = useQueryClient();
   const { activeOrganizationId } = useOrganizationState();
 
-  return useMutation<any, Error, { id: number; data: { name?: string; description?: string; type_id?: number } }>({
+  return useMutation<{ id: number; name: string }, Error, { id: number; data: { name?: string; description?: string; type_id?: number } }>({
     mutationFn: async ({ id, data }) => {
       const response = await api.patch(`/units/${id}/`, data);
       return response.json();
@@ -284,7 +284,7 @@ export const useCreateUnitType = () => {
   const queryClient = useQueryClient();
   const { activeOrganizationId } = useOrganizationState();
 
-  return useMutation<any, Error, { name: string }>({
+  return useMutation<{ id: number; name: string }, Error, { name: string }>({
     mutationFn: async (data) => {
       const payload = { ...data, organization_id: activeOrganizationId };
       const response = await api.post('/unit-types/', payload);
@@ -300,7 +300,7 @@ export const useDeleteUnitType = () => {
   const queryClient = useQueryClient();
   const { activeOrganizationId } = useOrganizationState();
 
-  return useMutation<any, Error, number>({
+  return useMutation<Response, Error, number>({
     mutationFn: async (id) => {
       const response = await api.delete(`/unit-types/${id}/`);
       return response;
@@ -315,7 +315,7 @@ export const useUpdateUnitType = () => {
   const queryClient = useQueryClient();
   const { activeOrganizationId } = useOrganizationState();
 
-  return useMutation<any, Error, { id: number; data: { name?: string } }>({
+  return useMutation<{ id: number; name: string }, Error, { id: number; data: { name?: string } }>({
     mutationFn: async ({ id, data }) => {
       const response = await api.patch(`/unit-types/${id}/`, data);
       return response.json();
@@ -356,7 +356,7 @@ export const useCreatePositionType = () => {
   const queryClient = useQueryClient();
   const { activeOrganizationId } = useOrganizationState();
 
-  return useMutation<any, Error, { name: string; rank: number }>({
+  return useMutation<{ id: number; name: string }, Error, { name: string; rank: number }>({
     mutationFn: async (data) => {
       const payload = { ...data, organization_id: activeOrganizationId };
       const response = await api.post('/positions/', payload);
@@ -372,7 +372,7 @@ export const useDeletePositionType = () => {
   const queryClient = useQueryClient();
   const { activeOrganizationId } = useOrganizationState();
 
-  return useMutation<any, Error, number>({
+  return useMutation<Response, Error, number>({
     mutationFn: async (id) => {
       const response = await api.delete(`/positions/${id}/`);
       return response;
@@ -387,7 +387,7 @@ export const useUpdatePositionType = () => {
   const queryClient = useQueryClient();
   const { activeOrganizationId } = useOrganizationState();
 
-  return useMutation<any, Error, { id: number; data: { name?: string; rank?: number } }>({
+  return useMutation<{ id: number; name: string }, Error, { id: number; data: { name?: string; rank?: number } }>({
     mutationFn: async ({ id, data }) => {
       const response = await api.patch(`/positions/${id}/`, data);
       return response.json();
@@ -450,7 +450,7 @@ export const useRejectJoinRequest = () => {
 export const useUpdateMembership = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{ message: string }, Error, { id: number; data: Partial<any> }>({
+  return useMutation<{ message: string }, Error, { id: number; data: Partial<{ unit_id?: number; position_id?: number; role?: string; is_active?: boolean }> }>({
     mutationFn: async ({ id, data }) => {
       const response = await api.patch(`/memberships/${id}/`, data);
       return response.json();

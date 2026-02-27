@@ -81,7 +81,7 @@ const AdminOrganization = () => {
   const { data: realUnitTypes } = useUnitTypes(activeOrganizationId);
 
   // Dynamic Total Members Calculation
-  const totalMembers = realUnits?.reduce((sum: number, unit: any) => sum + (unit.members_count || 0), 0) || 0;
+  const totalMembers = realUnits?.reduce((sum: number, unit: { members_count?: number }) => sum + (unit.members_count || 0), 0) || 0;
 
   // --- Mutations ---
   const createPositionMutation = useCreatePositionType();
@@ -150,8 +150,9 @@ const AdminOrganization = () => {
         setNewPositionWeight("5");
         toast({ title: "Success", description: "Position Type created successfully." });
       },
-      onError: (err: any) => {
-        const errorMessage = err.data?.rank?.[0] || err.data?.error || err.message || "Failed to create position type.";
+      onError: (err: unknown) => {
+        const apiErr = err as { data?: { rank?: string[]; error?: string }; message?: string };
+        const errorMessage = apiErr.data?.rank?.[0] || apiErr.data?.error || apiErr.message || "Failed to create position type.";
         toast({ title: "Error", description: errorMessage, variant: "destructive" });
       }
     });
@@ -167,7 +168,10 @@ const AdminOrganization = () => {
         setNewUnitTypeName("");
         toast({ title: "Success", description: "Unit Type defined successfully." });
       },
-      onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
+      onError: (err: unknown) => {
+        const apiErr = err as { message?: string };
+        toast({ title: "Error", description: apiErr.message || "An error occurred.", variant: "destructive" });
+      }
     });
   };
 
@@ -185,12 +189,15 @@ const AdminOrganization = () => {
         setNewUnitTypeId("");
         toast({ title: "Success", description: "Organization Unit created successfully." });
       },
-      onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
+      onError: (err: unknown) => {
+        const apiErr = err as { message?: string };
+        toast({ title: "Error", description: apiErr.message || "An error occurred.", variant: "destructive" });
+      }
     });
   };
 
   // --- Handlers: Edit ---
-  const openEditUnit = (unit: any) => {
+  const openEditUnit = (unit: { id: number; name: string; description?: string; type_id?: number }) => {
     setEditUnitId(unit.id);
     setEditUnitName(unit.name);
     setEditUnitDescription(unit.description || "");
@@ -211,11 +218,14 @@ const AdminOrganization = () => {
         setEditUnitId(null);
         toast({ title: "Success", description: "Unit updated successfully." });
       },
-      onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
+      onError: (err: unknown) => {
+        const apiErr = err as { message?: string };
+        toast({ title: "Error", description: apiErr.message || "Failed to update unit.", variant: "destructive" });
+      }
     });
   };
 
-  const openEditUnitType = (unitType: any) => {
+  const openEditUnitType = (unitType: { id: number; name: string }) => {
     setEditUnitTypeIdState(unitType.id);
     setEditUnitTypeName(unitType.name);
   };
@@ -230,11 +240,14 @@ const AdminOrganization = () => {
         setEditUnitTypeIdState(null);
         toast({ title: "Success", description: "Unit Type updated successfully." });
       },
-      onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
+      onError: (err: unknown) => {
+        const apiErr = err as { message?: string };
+        toast({ title: "Error", description: apiErr.message || "Failed to update unit type.", variant: "destructive" });
+      }
     });
   };
 
-  const openEditPosition = (pos: any) => {
+  const openEditPosition = (pos: { id: number; name: string; rank: number }) => {
     setEditPositionId(pos.id);
     setEditPositionName(pos.name);
     setEditPositionWeight(pos.rank.toString());
@@ -250,8 +263,9 @@ const AdminOrganization = () => {
         setEditPositionId(null);
         toast({ title: "Success", description: "Position updated successfully." });
       },
-      onError: (err: any) => {
-        const errorMessage = err.data?.rank?.[0] || err.data?.error || err.message || "Failed to update position type.";
+      onError: (err: unknown) => {
+        const apiErr = err as { data?: { rank?: string[]; error?: string }; message?: string };
+        const errorMessage = apiErr.data?.rank?.[0] || apiErr.data?.error || apiErr.message || "Failed to update position type.";
         toast({ title: "Error", description: errorMessage, variant: "destructive" });
       }
     });
@@ -265,8 +279,9 @@ const AdminOrganization = () => {
         setDeleteUnitId(null);
         toast({ title: "Unit Deleted", description: "The unit has been removed." });
       },
-      onError: (err: any) => {
-        const errorMessage = err.data?.error || err.message || "Failed to delete unit.";
+      onError: (err: unknown) => {
+        const apiErr = err as { data?: { error?: string }; message?: string };
+        const errorMessage = apiErr.data?.error || apiErr.message || "Failed to delete unit.";
         toast({ title: "Error", description: errorMessage, variant: "destructive" });
       }
     });
@@ -279,8 +294,9 @@ const AdminOrganization = () => {
         setDeleteUnitTypeIdState(null);
         toast({ title: "Type Deleted", description: "The unit type has been removed." });
       },
-      onError: (err: any) => {
-        const errorMessage = err.data?.error || err.message || "Failed to delete unit type.";
+      onError: (err: unknown) => {
+        const apiErr = err as { data?: { error?: string }; message?: string };
+        const errorMessage = apiErr.data?.error || apiErr.message || "Failed to delete unit type.";
         toast({ title: "Error", description: errorMessage, variant: "destructive" });
       }
     });
@@ -293,8 +309,9 @@ const AdminOrganization = () => {
         setDeletePositionId(null);
         toast({ title: "Position Deleted", description: "The position type has been removed." });
       },
-      onError: (err: any) => {
-        const errorMessage = err.data?.error || err.message || "Failed to delete position type.";
+      onError: (err: unknown) => {
+        const apiErr = err as { data?: { error?: string }; message?: string };
+        const errorMessage = apiErr.data?.error || apiErr.message || "Failed to delete position type.";
         toast({ title: "Error", description: errorMessage, variant: "destructive" });
       }
     });
@@ -321,10 +338,11 @@ const AdminOrganization = () => {
           description: "Member has been successfully added to the organization.",
         });
       },
-      onError: (err: any) => {
+      onError: (err: unknown) => {
+        const apiErr = err as { message?: string };
         toast({
           title: "Approval Failed",
-          description: err.message || "An error occurred while approving the request.",
+          description: apiErr.message || "An error occurred while approving the request.",
           variant: "destructive",
         });
       }
@@ -339,17 +357,18 @@ const AdminOrganization = () => {
           description: "The join request was successfully rejected.",
         });
       },
-      onError: (err: any) => {
+      onError: (err: unknown) => {
+        const apiErr = err as { message?: string };
         toast({
           title: "Rejection Failed",
-          description: err.message || "An error occurred while rejecting the request.",
+          description: apiErr.message || "An error occurred while rejecting the request.",
           variant: "destructive",
         });
       }
     });
   };
 
-  const filteredUnits = realUnits?.filter((unit: any) =>
+  const filteredUnits = realUnits?.filter((unit: { name: string }) =>
     unit.name.toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
 
@@ -484,7 +503,7 @@ const AdminOrganization = () => {
                       {realUnitTypes?.length === 0 && (
                         <SelectItem value="none" disabled>No Unit Types defined yet.</SelectItem>
                       )}
-                      {realUnitTypes?.map((ut: any) => (
+                      {realUnitTypes?.map((ut) => (
                         <SelectItem key={ut.id} value={ut.id.toString()}>{ut.name}</SelectItem>
                       ))}
                     </SelectContent>
@@ -564,8 +583,8 @@ const AdminOrganization = () => {
                 {filteredUnits.length === 0 ? (
                   <p className="text-muted-foreground text-center py-4">No units found.</p>
                 ) : (
-                  filteredUnits.map((unit: any) => {
-                    const typeName = realUnitTypes?.find((ut: any) => ut.id === unit.type_id)?.name || 'Unknown Type';
+                  filteredUnits.map((unit: { id: number; name: string; description?: string; type_id?: number; members_count?: number }) => {
+                    const typeName = realUnitTypes?.find((ut) => ut.id === unit.type_id)?.name || 'Unknown Type';
                     return (
                       <Card key={unit.id} className="transition-all hover:shadow-md">
                         <CardContent className="p-4">
@@ -637,7 +656,7 @@ const AdminOrganization = () => {
                     {realUnitTypes?.length === 0 ? (
                       <p className="text-muted-foreground text-center py-4">No Unit Types defined.</p>
                     ) : (
-                      realUnitTypes?.map((ut: any) => (
+                      realUnitTypes?.map((ut) => (
                         <div key={ut.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
                           <div>
                             <p className="font-medium text-foreground">{ut.name}</p>
@@ -677,7 +696,7 @@ const AdminOrganization = () => {
                     {realPositions?.length === 0 ? (
                       <p className="text-muted-foreground text-center py-4">No Position Types defined.</p>
                     ) : (
-                      realPositions?.sort((a: any, b: any) => b.rank - a.rank).map((pos: any) => (
+                      realPositions?.slice().sort((a, b) => b.rank - a.rank).map((pos) => (
                         <div key={pos.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
                           <div>
                             <p className="font-medium text-foreground">{pos.name}</p>
@@ -724,7 +743,7 @@ const AdminOrganization = () => {
                 <p className="text-muted-foreground text-center py-8">No pending requests at this time.</p>
               ) : (
                 <div className="space-y-4">
-                  {pendingRequests?.map((req: any) => (
+                  {pendingRequests?.map((req) => (
                     <div key={req.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg gap-4">
                       <div>
                         <p className="font-semibold text-foreground">{req.user_first_name} {req.user_last_name}</p>
@@ -778,7 +797,7 @@ const AdminOrganization = () => {
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
                 <SelectContent>
-                  {realUnitTypes?.map((ut: any) => (
+                  {realUnitTypes?.map((ut) => (
                     <SelectItem key={ut.id} value={ut.id.toString()}>{ut.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -936,7 +955,7 @@ const AdminOrganization = () => {
                   <SelectValue placeholder="Select a unit" />
                 </SelectTrigger>
                 <SelectContent>
-                  {realUnits?.map((unit: any) => (
+                  {realUnits?.map((unit) => (
                     <SelectItem key={unit.id} value={unit.id.toString()}>{unit.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -950,7 +969,7 @@ const AdminOrganization = () => {
                   <SelectValue placeholder="Select a position" />
                 </SelectTrigger>
                 <SelectContent>
-                  {realPositions?.map((pos: any) => (
+                  {realPositions?.map((pos) => (
                     <SelectItem key={pos.id} value={pos.id.toString()}>{pos.name}</SelectItem>
                   ))}
                 </SelectContent>

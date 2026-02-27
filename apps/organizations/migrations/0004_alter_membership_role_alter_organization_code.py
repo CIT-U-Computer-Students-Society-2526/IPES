@@ -13,7 +13,8 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='membership',
             name='role',
-            field=models.CharField(choices=[('Admin', 'Admin'), ('Member', 'Member')], default='Member', max_length=50),
+            field=models.CharField(choices=[(
+                'Admin', 'Admin'), ('Member', 'Member')], default='Member', max_length=50),
         ),
         migrations.AlterField(
             model_name='organization',

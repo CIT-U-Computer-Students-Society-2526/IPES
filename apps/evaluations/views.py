@@ -1,3 +1,12 @@
+from .serializers import (
+    EvaluationFormSerializer,
+    EvaluationFormCreateSerializer,
+    QuestionSerializer,
+    AssignmentRuleSerializer,
+    EvaluationAssignmentSerializer,
+    ResponseSerializer
+)
+from .models import EvaluationForm, Question, EvaluationAssignment, AssignmentRule, Response
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response as DRFResponse
@@ -10,37 +19,24 @@ from apps.audit.utils import log_action, AuditActions
 
 User = get_user_model()
 
-from .models import EvaluationForm, Question, EvaluationAssignment, AssignmentRule, Response
-from .serializers import (
-    EvaluationFormSerializer,
-    EvaluationFormCreateSerializer,
-    QuestionSerializer,
-    QuestionCreateSerializer,
-    AssignmentRuleSerializer,
-    EvaluationAssignmentSerializer,
-    ResponseSerializer,
-    EvaluationSubmitSerializer
-)
-
 
 class EvaluationFormViewSet(viewsets.ModelViewSet):
     """ViewSet for EvaluationForm CRUD operations"""
     queryset = EvaluationForm.objects.all()
     permission_classes = [permissions.IsAuthenticated]
-    
+
     def get_serializer_class(self):
         if self.action == 'create':
             return EvaluationFormCreateSerializer
         return EvaluationFormSerializer
-    
+
     def get_queryset(self):
         """Filter forms based on organization"""
         queryset = EvaluationForm.objects.all()
         org_id = self.request.query_params.get('organization_id')
         is_active = self.request.query_params.get('is_active')
         results_released = self.request.query_params.get('results_released')
-        
-        
+
         # Exclude softly deleted forms
         queryset = queryset.filter(is_deleted=False)
 
@@ -49,10 +45,11 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
         if is_active is not None:
             queryset = queryset.filter(is_active=is_active.lower() == 'true')
         if results_released is not None:
-            queryset = queryset.filter(results_released=results_released.lower() == 'true')
-        
+            queryset = queryset.filter(
+                results_released=results_released.lower() == 'true')
+
         return queryset.order_by('-id')
-    
+
     def perform_create(self, serializer):
         """Set created_by to current user and log creation"""
         form = serializer.save(created_by=self.request.user)
@@ -63,27 +60,27 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
             form_title=form.title,
             form_id=str(form.id)
         )
-    
+
     @action(detail=True, methods=['post'])
     def activate(self, request, pk=None):
         """Activate a form"""
         form = self.get_object()
-        
+
         if form.is_active:
             return DRFResponse(
                 {'error': 'Form is already active'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-            
+
         if not form.questions.exists():
             return DRFResponse(
                 {'error': 'Form must have at least one question before it can be activated.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         form.is_active = True
         form.save()
-        
+
         # Log form activation
         log_action(
             request.user,
@@ -92,26 +89,26 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
             form_title=form.title,
             form_id=str(form.id)
         )
-        
+
         return DRFResponse({
             'message': 'Form activated successfully',
             'is_active': form.is_active
         })
-    
+
     @action(detail=True, methods=['post'])
     def deactivate(self, request, pk=None):
         """Deactivate a form"""
         form = self.get_object()
-        
+
         if not form.is_active:
             return DRFResponse(
                 {'error': 'Form is already inactive'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         form.is_active = False
         form.save()
-        
+
         # Log form deactivation
         log_action(
             request.user,
@@ -120,33 +117,33 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
             form_title=form.title,
             form_id=str(form.id)
         )
-        
+
         return DRFResponse({
             'message': 'Form deactivated successfully',
             'is_active': form.is_active
         })
-    
+
     @action(detail=True, methods=['post'])
     def release_results(self, request, pk=None):
         """Release results for a form"""
         form = self.get_object()
-        
+
         if form.results_released:
             return DRFResponse(
                 {'error': 'Results are already released'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-            
+
         if not form.questions.exists():
             return DRFResponse(
                 {'error': 'Form must have at least one question before results can be released.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         form.results_released = True
         form.is_active = False
         form.save()
-        
+
         # Log results release
         log_action(
             request.user,
@@ -155,7 +152,7 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
             form_title=form.title,
             form_id=str(form.id)
         )
-        
+
         return DRFResponse({
             'message': 'Results released successfully',
             'results_released': form.results_released
@@ -165,9 +162,9 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
         """Soft delete a form"""
         form = self.get_object()
         form.is_deleted = True
-        form.is_active = False # Deactivate as well just in case
+        form.is_active = False  # Deactivate as well just in case
         form.save()
-        
+
         # Log soft delete
         log_action(
             request.user,
@@ -176,9 +173,9 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
             form_title=form.title,
             form_id=str(form.id)
         )
-        
+
         return DRFResponse({'message': 'Form deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
-    
+
     @action(detail=True, methods=['get'])
     def questions(self, request, pk=None):
         """Get all questions for a form"""
@@ -186,12 +183,12 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
         questions = form.questions.all().order_by('order')
         serializer = QuestionSerializer(questions, many=True)
         return DRFResponse(serializer.data)
-    
+
     @action(detail=True, methods=['post'])
     def duplicate(self, request, pk=None):
         """Duplicate a form with its questions"""
         form = self.get_object()
-        
+
         # Create new form
         new_form = EvaluationForm.objects.create(
             organization_id=form.organization_id,
@@ -204,7 +201,7 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
             is_active=False,
             results_released=False
         )
-        
+
         # Duplicate questions
         for question in form.questions.all():
             Question.objects.create(
@@ -217,9 +214,9 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
                 min_value=question.min_value,
                 max_value=question.max_value,
             )
-        
+
         serializer = EvaluationFormSerializer(new_form)
-        
+
         # Log form duplication
         log_action(
             request.user,
@@ -228,7 +225,7 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
             original_form_id=str(form.id),
             new_form_id=str(new_form.id)
         )
-        
+
         return DRFResponse(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['get'])
@@ -236,27 +233,28 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
         """Get comprehensive analytics for a specific evaluation form"""
         form = self.get_object()
         from django.db.models import Avg, Count, Q
-        
+
         # 1. Basic Stats
         assignments = EvaluationAssignment.objects.filter(form_id=form)
         total_evaluations = assignments.count()
         completed = assignments.filter(status='Completed')
         completed_count = completed.count()
-        
-        participation_rate = round((completed_count / total_evaluations * 100), 1) if total_evaluations > 0 else 0
+
+        participation_rate = round(
+            (completed_count / total_evaluations * 100), 1) if total_evaluations > 0 else 0
         overall_score = completed.aggregate(avg=Avg('total_score'))['avg']
         overall_score = round(overall_score, 2) if overall_score else 0.0
-        
+
         # 2. Category Data (Questions - taking top 6 highest scoring questions)
         from .models import Response
         question_stats = Response.objects.filter(
-            assignment_id__form_id=form, 
+            assignment_id__form_id=form,
             assignment_id__status='Completed',
             score_value__isnull=False
         ).values('question_id__text').annotate(
             avg_score=Avg('score_value')
         ).order_by('-avg_score')[:6]
-        
+
         category_data = []
         for qs in question_stats:
             text = qs['question_id__text']
@@ -266,37 +264,38 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
                 'name': short_name,
                 'score': round(qs['avg_score'], 1)
             })
-            
+
         # 4. Top Performers and Unit Breakdown
         from apps.organizations.models import Membership
-        
+
         # Get active memberships in the org
         memberships = Membership.objects.filter(
             unit_id__organization_id=form.organization_id,
             is_active=True
         ).select_related('user_id', 'unit_id')
-        
+
         # Map users to their units
         user_units = {}
         for m in memberships:
             user_units[m.user_id_id] = m.unit_id.name if m.unit_id else 'Unknown'
-            
+
         # Evaluatee stats
         evaluatee_stats = assignments.values('evaluatee_id', 'evaluatee_id__first_name', 'evaluatee_id__last_name').annotate(
             total=Count('id'),
             completed=Count('id', filter=Q(status='Completed')),
             avg_score=Avg('total_score', filter=Q(status='Completed'))
         ).order_by('-avg_score')
-        
+
         top_performers = []
         rank = 1
         unit_stats_map = {}
-        
+
         for es in evaluatee_stats:
             uid = es['evaluatee_id']
             unit_name = user_units.get(uid, 'Unknown')
-            name = f"{es['evaluatee_id__first_name']} {es['evaluatee_id__last_name'][0]}." if es['evaluatee_id__last_name'] else es['evaluatee_id__first_name']
-            
+            name = f"{es['evaluatee_id__first_name']} {es['evaluatee_id__last_name'][0]}." if es[
+                'evaluatee_id__last_name'] else es['evaluatee_id__first_name']
+
             # Add to top performers if they have a score
             if es['avg_score'] is not None and rank <= 5:
                 top_performers.append({
@@ -304,10 +303,10 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
                     'name': name,
                     'unit': unit_name,
                     'score': round(es['avg_score'], 1),
-                    'trend': 'same' # Without historical, just hardcode format for now
+                    'trend': 'same'  # Without historical, just hardcode format for now
                 })
                 rank += 1
-                
+
             # Add to unit stats map
             if unit_name not in unit_stats_map:
                 unit_stats_map[unit_name] = {
@@ -317,7 +316,7 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
                     'sum_score': 0,
                     'scored_count': 0
                 }
-            
+
             usm = unit_stats_map[unit_name]
             usm['members'].add(uid)
             usm['total_assignments'] += es['total']
@@ -325,23 +324,26 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
             if es['avg_score'] is not None:
                 usm['sum_score'] += es['avg_score']
                 usm['scored_count'] += 1
-                
+
         unit_breakdown = []
-        unit_data = [] # For pie chart
-        colors = ['#4f46e5', '#06b6d4', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#ef4444', '#14b8a6', '#f97316', '#6366f1']
-        
+        unit_data = []  # For pie chart
+        colors = ['#4f46e5', '#06b6d4', '#10b981', '#f59e0b', '#ec4899',
+                  '#8b5cf6', '#ef4444', '#14b8a6', '#f97316', '#6366f1']
+
         c_idx = 0
         for unit_name, metrics in unit_stats_map.items():
-            avg = (metrics['sum_score'] / metrics['scored_count']) if metrics['scored_count'] > 0 else 0
-            comp = (metrics['completed_assignments'] / metrics['total_assignments'] * 100) if metrics['total_assignments'] > 0 else 0
-            
+            avg = (metrics['sum_score'] / metrics['scored_count']
+                   ) if metrics['scored_count'] > 0 else 0
+            comp = (metrics['completed_assignments'] / metrics['total_assignments']
+                    * 100) if metrics['total_assignments'] > 0 else 0
+
             unit_breakdown.append({
                 'unit': unit_name,
                 'members': len(metrics['members']),
                 'avgScore': round(avg, 1),
                 'completion': round(comp, 0)
             })
-            
+
             if avg > 0:
                 unit_data.append({
                     'name': unit_name,
@@ -349,9 +351,9 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
                     'color': colors[c_idx % len(colors)]
                 })
                 c_idx += 1
-                
+
         unit_breakdown.sort(key=lambda x: x['avgScore'], reverse=True)
-            
+
         # 5. Raw Data (for export)
         from .models import Response
         raw_responses = Response.objects.filter(
@@ -363,7 +365,7 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
             'assignment_id__evaluatee_id',
             'question_id'
         )
-        
+
         raw_data = []
         for r in raw_responses:
             evaluator = r.assignment_id.evaluator_id
@@ -390,7 +392,7 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
             'total_evaluations': total_evaluations,
             'participation_rate': participation_rate,
             'category_data': category_data,
-            'top_performers': top_performers[:5], # Keep only top 5
+            'top_performers': top_performers[:5],  # Keep only top 5
             'unit_breakdown': unit_breakdown,
             'unit_data': unit_data,
             'raw_data': raw_data
@@ -443,7 +445,8 @@ class AssignmentRuleViewSet(viewsets.ModelViewSet):
     queryset = AssignmentRule.objects.all()
     serializer_class = AssignmentRuleSerializer
     permission_classes = [permissions.IsAuthenticated]
-    http_method_names = ['get', 'post', 'delete', 'head', 'options']  # no PUT/PATCH
+    http_method_names = ['get', 'post', 'delete',
+                         'head', 'options']  # no PUT/PATCH
 
     def get_queryset(self):
         user = self.request.user
@@ -452,7 +455,7 @@ class AssignmentRuleViewSet(viewsets.ModelViewSet):
             'evaluatee_unit', 'evaluatee_position',
             'form_id',
         )
-        
+
         # Filter by form_id if provided
         form_id = self.request.query_params.get('form_id')
         if form_id:
@@ -464,19 +467,19 @@ class AssignmentRuleViewSet(viewsets.ModelViewSet):
 
         # Regular users only see rules for organizations where they have an active role or membership
         from apps.organizations.models import Membership, OrganizationRole
-        
+
         # Orgs from direct unit memberships
         membership_org_ids = Membership.objects.filter(
             user_id=user, is_active=True
         ).values_list('unit_id__organization_id', flat=True)
-        
+
         # Orgs from organization roles (e.g. Admins who aren't in a specific unit)
         role_org_ids = OrganizationRole.objects.filter(
             user=user, is_active=True
         ).values_list('organization_id', flat=True)
-        
+
         user_org_ids = set(membership_org_ids) | set(role_org_ids)
-        
+
         return qs.filter(form_id__organization_id__in=user_org_ids)
 
     @action(detail=False, methods=['post'])
@@ -498,7 +501,7 @@ class AssignmentRuleViewSet(viewsets.ModelViewSet):
                 {'error': 'Assignments can only be generated for active forms.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-            
+
         if not form.questions.exists():
             return DRFResponse(
                 {'error': 'Form must have at least one question before assignments can be generated.'},
@@ -525,7 +528,8 @@ class AssignmentRuleViewSet(viewsets.ModelViewSet):
         )
 
         return DRFResponse(
-            {'message': f'{total_created} assignment(s) created.', 'created': total_created},
+            {'message': f'{total_created} assignment(s) created.',
+             'created': total_created},
             status=status.HTTP_201_CREATED
         )
 
@@ -534,32 +538,32 @@ class QuestionViewSet(viewsets.ModelViewSet):
     """ViewSet for Question CRUD operations"""
     queryset = Question.objects.all()
     permission_classes = [permissions.IsAuthenticated]
-    
+
     def get_serializer_class(self):
         return QuestionSerializer
-    
+
     def get_queryset(self):
         """Filter questions based on form"""
         queryset = Question.objects.all()
         form_id = self.request.query_params.get('form_id')
-        
+
         if form_id:
             queryset = queryset.filter(form_id=form_id)
-        
+
         return queryset.order_by('order')
-    
+
     @action(detail=False, methods=['post'])
     def bulk_create(self, request):
         """Bulk create questions for a form"""
         form_id = request.data.get('form_id')
         questions_data = request.data.get('questions', [])
-        
+
         if not form_id:
             return DRFResponse(
                 {'error': 'form_id is required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         try:
             form = EvaluationForm.objects.get(id=form_id)
         except EvaluationForm.DoesNotExist:
@@ -567,33 +571,33 @@ class QuestionViewSet(viewsets.ModelViewSet):
                 {'error': 'Form not found'},
                 status=status.HTTP_404_NOT_FOUND
             )
-        
+
         created_questions = []
         for question_data in questions_data:
             question = Question.objects.create(form_id=form, **question_data)
             created_questions.append(question)
-        
+
         serializer = QuestionSerializer(created_questions, many=True)
         return DRFResponse(serializer.data, status=status.HTTP_201_CREATED)
-    
+
     @action(detail=True, methods=['post'])
     def reorder(self, request, pk=None):
         """Update question order"""
         question = self.get_object()
         new_order = request.data.get('order')
-        
+
         if new_order is None:
             return DRFResponse(
                 {'error': 'order is required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         old_order = question.order
-        
+
         # Update this question
         question.order = new_order
         question.save()
-        
+
         # Shift other questions if needed
         if new_order > old_order:
             # Moving down - shift questions in between up
@@ -609,7 +613,7 @@ class QuestionViewSet(viewsets.ModelViewSet):
                 order__gte=new_order,
                 order__lt=old_order
             ).exclude(pk=question.pk).update(order=models.F('order') + 1)
-        
+
         serializer = QuestionSerializer(question)
         return DRFResponse(serializer.data)
 
@@ -619,17 +623,17 @@ class EvaluationAssignmentViewSet(viewsets.ModelViewSet):
     queryset = EvaluationAssignment.objects.all()
     serializer_class = EvaluationAssignmentSerializer
     permission_classes = [permissions.IsAuthenticated]
-    
+
     def get_queryset(self):
         """Filter assignments based on user role"""
         queryset = EvaluationAssignment.objects.all()
         user = self.request.user
-        
+
         org_id = self.request.query_params.get('organization_id')
         form_id = self.request.query_params.get('form_id')
         evaluator_id = self.request.query_params.get('evaluator_id')
         status_param = self.request.query_params.get('status')
-        
+
         is_admin = user.is_superuser
         if not is_admin and org_id:
             from apps.organizations.models import OrganizationRole
@@ -639,29 +643,30 @@ class EvaluationAssignmentViewSet(viewsets.ModelViewSet):
                 role='Admin',
                 is_active=True
             ).exists()
-            
+
         if org_id:
             queryset = queryset.filter(form_id__organization_id=org_id)
-            
+
         # Regular members can only see their own assignments
         if not is_admin:
             from django.db.models import Q
-            queryset = queryset.filter(Q(evaluatee_id=user) | Q(evaluator_id=user))
+            queryset = queryset.filter(
+                Q(evaluatee_id=user) | Q(evaluator_id=user))
             # Also ensure members are restricted to the org if specified
             if org_id:
                 queryset = queryset.filter(form_id__organization_id=org_id)
-        
+
         if form_id:
             queryset = queryset.filter(form_id=form_id)
         if evaluator_id:
             queryset = queryset.filter(evaluator_id=evaluator_id)
         if status_param:
             queryset = queryset.filter(status=status_param)
-        
+
         return queryset.select_related(
             'evaluator_id', 'evaluatee_id', 'form_id'
         ).order_by('-id')
-    
+
     @action(detail=False, methods=['get'])
     def my_pending(self, request):
         """Get pending and in-progress evaluations for current user"""
@@ -672,7 +677,6 @@ class EvaluationAssignmentViewSet(viewsets.ModelViewSet):
         serializer = EvaluationAssignmentSerializer(assignments, many=True)
         return DRFResponse(serializer.data)
 
-    
     @action(detail=False, methods=['get'])
     def my_completed(self, request):
         """Get completed evaluations for current user"""
@@ -682,7 +686,7 @@ class EvaluationAssignmentViewSet(viewsets.ModelViewSet):
         )
         serializer = EvaluationAssignmentSerializer(assignments, many=True)
         return DRFResponse(serializer.data)
-        
+
     @action(detail=False, methods=['get'])
     def my_performance(self, request):
         """Get aggregate performance data from received evaluations for a specific form or latest released form"""
@@ -697,7 +701,8 @@ class EvaluationAssignmentViewSet(viewsets.ModelViewSet):
         ).select_related('form_id')
 
         if org_id:
-            all_evaluatee_assignments = all_evaluatee_assignments.filter(form_id__organization_id=org_id)
+            all_evaluatee_assignments = all_evaluatee_assignments.filter(
+                form_id__organization_id=org_id)
 
         # Find forms that have released results and the user has evaluations for
         released_form_ids = EvaluationForm.objects.filter(
@@ -717,7 +722,8 @@ class EvaluationAssignmentViewSet(viewsets.ModelViewSet):
             })
 
         # Available forms for the selector
-        available_forms = EvaluationForm.objects.filter(id__in=released_form_ids).values('id', 'title').order_by('-end_date', '-id')
+        available_forms = EvaluationForm.objects.filter(
+            id__in=released_form_ids).values('id', 'title').order_by('-end_date', '-id')
 
         # Determine selected form
         selected_form_id = None
@@ -732,9 +738,11 @@ class EvaluationAssignmentViewSet(viewsets.ModelViewSet):
             selected_form_id = released_form_ids[0]
 
         # Filter assignments for the selected form
-        assignments = all_evaluatee_assignments.filter(form_id_id=selected_form_id)
-        
-        overall_score = assignments.aggregate(avg=models.Avg('total_score'))['avg'] or 0
+        assignments = all_evaluatee_assignments.filter(
+            form_id_id=selected_form_id)
+
+        overall_score = assignments.aggregate(
+            avg=models.Avg('total_score'))['avg'] or 0
         overall_score = round(overall_score, 1)
         evaluator_count = assignments.count()
 
@@ -745,11 +753,13 @@ class EvaluationAssignmentViewSet(viewsets.ModelViewSet):
             if assignment.form_id.results_released:
                 title = assignment.form_id.title
                 if title not in history_map:
-                    history_map[title] = {'score_sum': 0, 'count': 0, 'evaluators': set()}
+                    history_map[title] = {'score_sum': 0,
+                                          'count': 0, 'evaluators': set()}
                 if assignment.total_score is not None:
                     history_map[title]['score_sum'] += assignment.total_score
                     history_map[title]['count'] += 1
-                    history_map[title]['evaluators'].add(assignment.evaluator_id_id)
+                    history_map[title]['evaluators'].add(
+                        assignment.evaluator_id_id)
 
         evaluation_history = []
         for period, data in history_map.items():
@@ -759,31 +769,36 @@ class EvaluationAssignmentViewSet(viewsets.ModelViewSet):
                     'score': round(data['score_sum'] / data['count'], 1),
                     'evaluators': len(data['evaluators'])
                 })
-        
+
         # Category Scores and Feedback Comments for SELECTED FORM ONLY
-        responses = Response.objects.filter(assignment_id__in=assignments).select_related('question_id')
-        
+        responses = Response.objects.filter(
+            assignment_id__in=assignments).select_related('question_id')
+
         category_map = {}
         feedback_comments = []
         comment_id = 1
-        
+
         for response in responses:
             question = response.question_id
             # Use question text as category since category field is missing in model
-            category = (question.text[:30] + '...') if len(question.text) > 30 else question.text
-            
+            category = (
+                question.text[:30] + '...') if len(question.text) > 30 else question.text
+
             if category not in category_map:
-                category_map[category] = {'score_sum': 0, 'weight_sum': 0, 'max_score': 5}
-            
+                category_map[category] = {
+                    'score_sum': 0, 'weight_sum': 0, 'max_score': 5}
+
             if response.score_value is not None and question.weight:
-                category_map[category]['score_sum'] += response.score_value * question.weight
+                category_map[category]['score_sum'] += response.score_value * \
+                    question.weight
                 category_map[category]['weight_sum'] += question.weight
-                
+
             if response.text and response.text.strip():
-                feedback_type = 'positive' if (response.score_value and response.score_value >= 4) else 'constructive'
+                feedback_type = 'positive' if (
+                    response.score_value and response.score_value >= 4) else 'constructive'
                 if not response.score_value:
                     feedback_type = 'info'
-                    
+
                 feedback_comments.append({
                     'id': comment_id,
                     'text': response.text.strip(),
@@ -809,7 +824,7 @@ class EvaluationAssignmentViewSet(viewsets.ModelViewSet):
             'evaluatorCount': evaluator_count,
             'selectedFormId': selected_form_id
         })
-    
+
     @action(detail=True, methods=['get'])
     def responses(self, request, pk=None):
         """Get all responses for an assignment"""
@@ -817,37 +832,37 @@ class EvaluationAssignmentViewSet(viewsets.ModelViewSet):
         responses = Response.objects.filter(assignment_id=assignment)
         serializer = ResponseSerializer(responses, many=True)
         return DRFResponse(serializer.data)
-    
+
     @action(detail=True, methods=['post'])
     def submit(self, request, pk=None):
         """Submit an evaluation with responses"""
         assignment = self.get_object()
-        
+
         if assignment.status == 'Completed':
             return DRFResponse(
                 {'error': 'Evaluation has already been submitted'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         # Validate user is the evaluator
         if assignment.evaluator_id != request.user:
             return DRFResponse(
                 {'error': 'You are not authorized to submit this evaluation'},
                 status=status.HTTP_403_FORBIDDEN
             )
-        
+
         responses_data = request.data.get('responses', [])
-        
+
         if not responses_data:
             return DRFResponse(
                 {'error': 'At least one response is required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         # Calculate total score
         total_score = 0
         total_weight = 0
-        
+
         created_responses = []
         for response_data in responses_data:
             question_id = response_data.get('question_id')
@@ -870,19 +885,19 @@ class EvaluationAssignmentViewSet(viewsets.ModelViewSet):
                     total_weight += question.weight
             except Question.DoesNotExist:
                 pass
-        
+
         # Update assignment
         assignment.status = 'Completed'
         assignment.submitted_at = timezone.now()
-        
+
         # Calculate weighted average if applicable
         if total_weight > 0:
             assignment.total_score = total_score / total_weight
         else:
             assignment.total_score = None
-        
+
         assignment.save()
-        
+
         # Log evaluation submission
         log_action(
             request.user,
@@ -892,7 +907,7 @@ class EvaluationAssignmentViewSet(viewsets.ModelViewSet):
             evaluatee_id=str(assignment.evaluatee_id.id),
             score=str(assignment.total_score)
         )
-        
+
         serializer = EvaluationAssignmentSerializer(assignment)
         return DRFResponse({
             'message': 'Evaluation submitted successfully',
@@ -906,32 +921,32 @@ class ResponseViewSet(viewsets.ModelViewSet):
     queryset = Response.objects.all()
     serializer_class = ResponseSerializer
     permission_classes = [permissions.IsAuthenticated]
-    
+
     def get_queryset(self):
         """Filter responses based on assignment"""
         queryset = Response.objects.all()
         assignment_id = self.request.query_params.get('assignment_id')
         question_id = self.request.query_params.get('question_id')
-        
+
         if assignment_id:
             queryset = queryset.filter(assignment_id=assignment_id)
         if question_id:
             queryset = queryset.filter(question_id=question_id)
-        
+
         return queryset.select_related('assignment_id', 'question_id')
-    
+
     @action(detail=False, methods=['post'])
     def bulk_create(self, request):
         """Bulk create responses for an assignment"""
         assignment_id = request.data.get('assignment_id')
         responses_data = request.data.get('responses', [])
-        
+
         if not assignment_id:
             return DRFResponse(
                 {'error': 'assignment_id is required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         try:
             assignment = EvaluationAssignment.objects.get(id=assignment_id)
         except EvaluationAssignment.DoesNotExist:
@@ -939,15 +954,17 @@ class ResponseViewSet(viewsets.ModelViewSet):
                 {'error': 'Assignment not found'},
                 status=status.HTTP_404_NOT_FOUND
             )
-        
+
         created_responses = []
         for response_data in responses_data:
             # Check if updating an existing response rather than duplicating
             question_id = response_data.get('question_id')
-            existing_response = Response.objects.filter(assignment_id=assignment, question_id_id=question_id).first()
+            existing_response = Response.objects.filter(
+                assignment_id=assignment, question_id_id=question_id).first()
 
             if existing_response:
-                existing_response.score_value = response_data.get('score_value')
+                existing_response.score_value = response_data.get(
+                    'score_value')
                 existing_response.text = response_data.get('text', '')
                 existing_response.save()
                 created_responses.append(existing_response)

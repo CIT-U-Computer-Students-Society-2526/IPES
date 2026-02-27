@@ -5,9 +5,11 @@ from .views import EvaluationFormViewSet, QuestionViewSet, EvaluationAssignmentV
 router = DefaultRouter()
 router.register(r'forms', EvaluationFormViewSet, basename='forms')
 router.register(r'questions', QuestionViewSet, basename='questions')
-router.register(r'assignments', EvaluationAssignmentViewSet, basename='assignments')
+router.register(r'assignments', EvaluationAssignmentViewSet,
+                basename='assignments')
 router.register(r'responses', ResponseViewSet, basename='responses')
-router.register(r'assignment-rules', AssignmentRuleViewSet, basename='assignment-rules')
+router.register(r'assignment-rules', AssignmentRuleViewSet,
+                basename='assignment-rules')
 
 urlpatterns = [
     path('', include(router.urls)),

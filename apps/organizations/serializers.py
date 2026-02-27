@@ -4,7 +4,7 @@ from .models import Organization, UnitType, OrganizationUnit, PositionType, Memb
 
 class OrganizationSerializer(serializers.ModelSerializer):
     """Serializer for Organization model"""
-    
+
     class Meta:
         model = Organization
         fields = [
@@ -16,8 +16,9 @@ class OrganizationSerializer(serializers.ModelSerializer):
 
 class UnitTypeSerializer(serializers.ModelSerializer):
     """Serializer for UnitType model"""
-    organization_name = serializers.CharField(source='organization_id.name', read_only=True)
-    
+    organization_name = serializers.CharField(
+        source='organization_id.name', read_only=True)
+
     class Meta:
         model = UnitType
         fields = ['id', 'organization_id', 'organization_name', 'name']
@@ -26,14 +27,15 @@ class UnitTypeSerializer(serializers.ModelSerializer):
 
 class OrganizationUnitSerializer(serializers.ModelSerializer):
     """Serializer for OrganizationUnit model"""
-    organization_name = serializers.CharField(source='organization_id.name', read_only=True)
+    organization_name = serializers.CharField(
+        source='organization_id.name', read_only=True)
     type_name = serializers.CharField(source='type_id.name', read_only=True)
     members_count = serializers.IntegerField(read_only=True, default=0)
-    
+
     class Meta:
         model = OrganizationUnit
         fields = [
-            'id', 'organization_id', 'organization_name', 
+            'id', 'organization_id', 'organization_name',
             'type_id', 'type_name', 'name', 'description', 'members_count'
         ]
         read_only_fields = ['id']
@@ -41,8 +43,9 @@ class OrganizationUnitSerializer(serializers.ModelSerializer):
 
 class PositionTypeSerializer(serializers.ModelSerializer):
     """Serializer for PositionType model"""
-    organization_name = serializers.CharField(source='organization_id.name', read_only=True)
-    
+    organization_name = serializers.CharField(
+        source='organization_id.name', read_only=True)
+
     class Meta:
         model = PositionType
         fields = ['id', 'organization_id', 'organization_name', 'name', 'rank']
@@ -53,25 +56,31 @@ class MembershipSerializer(serializers.ModelSerializer):
     """Serializer for Membership model"""
     user_email = serializers.CharField(source='user_id.email', read_only=True)
     unit_name = serializers.CharField(source='unit_id.name', read_only=True)
-    position_name = serializers.CharField(source='position_id.name', read_only=True)
-    position_rank = serializers.IntegerField(source='position_id.rank', read_only=True)
-    
+    position_name = serializers.CharField(
+        source='position_id.name', read_only=True)
+    position_rank = serializers.IntegerField(
+        source='position_id.rank', read_only=True)
+
     class Meta:
         model = Membership
         fields = [
             'id', 'user_id', 'user_email', 'unit_id', 'unit_name',
-            'position_id', 'position_name', 'position_rank', 'date_start', 
+            'position_id', 'position_name', 'position_rank', 'date_start',
             'date_end', 'is_active'
         ]
         read_only_fields = ['id', 'date_start', 'date_end']
 
+
 class JoinRequestSerializer(serializers.ModelSerializer):
     """Serializer for JoinRequest model"""
     user_email = serializers.CharField(source='user.email', read_only=True)
-    user_first_name = serializers.CharField(source='user.first_name', read_only=True)
-    user_last_name = serializers.CharField(source='user.last_name', read_only=True)
-    organization_name = serializers.CharField(source='organization.name', read_only=True)
-    
+    user_first_name = serializers.CharField(
+        source='user.first_name', read_only=True)
+    user_last_name = serializers.CharField(
+        source='user.last_name', read_only=True)
+    organization_name = serializers.CharField(
+        source='organization.name', read_only=True)
+
     class Meta:
         model = JoinRequest
         fields = [

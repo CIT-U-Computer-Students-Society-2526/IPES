@@ -1,13 +1,15 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from django.db.models import Count, Avg, Q
+from django.db.models import Count, Q
 from django.utils import timezone
-from django.shortcuts import get_object_or_404
 
 from apps.audit.utils import log_action, AuditActions
 
-from .models import Organization, UnitType, OrganizationUnit, PositionType, Membership, JoinRequest, OrganizationRole
+from .models import (
+    Organization, UnitType, OrganizationUnit, PositionType,
+    Membership, JoinRequest, OrganizationRole
+)
 from .serializers import (
     OrganizationSerializer,
     UnitTypeSerializer,
@@ -23,7 +25,7 @@ class OrganizationViewSet(viewsets.ModelViewSet):
     queryset = Organization.objects.filter(is_active=True)
     serializer_class = OrganizationSerializer
     permission_classes = [permissions.IsAuthenticated]
-    
+
     def create(self, request, *args, **kwargs):
         """Override create to provide specific validation errors for duplicate codes."""
         code = request.data.get('code')
@@ -32,15 +34,19 @@ class OrganizationViewSet(viewsets.ModelViewSet):
             if existing_org:
                 if existing_org.is_active:
                     return Response(
-                        {'error': f'The code "{code}" is currently in use by another active organization.'},
+                        {
+                            'error': f'The code "{code}" is currently in use by another active organization.'
+                        },
                         status=status.HTTP_400_BAD_REQUEST
                     )
                 else:
                     return Response(
-                        {'error': f'The code "{code}" belonged to a deleted organization and is permanently retired.'},
+                        {
+                            'error': f'The code "{code}" belonged to a deleted organization and is permanently retired.'
+                        },
                         status=status.HTTP_400_BAD_REQUEST
                     )
-            
+
         return super().create(request, *args, **kwargs)
 
     def perform_create(self, serializer):
@@ -60,23 +66,27 @@ class OrganizationViewSet(viewsets.ModelViewSet):
             org_name=org.name,
             org_id=str(org.id)
         )
-        
+
     @action(detail=False, methods=['post'])
     def join_by_code(self, request):
         """Allows users to submit a join request using a unique organization code"""
         code = request.data.get('code')
         if not code:
             return Response({'error': 'Code is required'}, status=status.HTTP_400_BAD_REQUEST)
-            
+
         try:
             org = Organization.objects.get(code=code, is_active=True)
         except Organization.DoesNotExist:
             return Response({'error': 'Invalid organization code'}, status=status.HTTP_404_NOT_FOUND)
-            
+
         # Check if already an active member
-        if Membership.objects.filter(user_id=request.user, unit_id__organization_id=org, is_active=True).exists():
+        if Membership.objects.filter(
+            user_id=request.user,
+            unit_id__organization_id=org,
+            is_active=True
+        ).exists():
             return Response({'error': 'You are already a member of this organization'}, status=status.HTTP_400_BAD_REQUEST)
-            
+
         # Check explicitly for an already-pending request first.
         if JoinRequest.objects.filter(user=request.user, organization=org, status='Pending').exists():
             return Response({'error': 'You already have a pending join request'}, status=status.HTTP_400_BAD_REQUEST)
@@ -89,16 +99,16 @@ class OrganizationViewSet(viewsets.ModelViewSet):
             organization=org,
             defaults={'status': 'Pending'}
         )
-        
+
         log_action(
             request.user,
             AuditActions.ORG_JOIN_REQUESTED,
             request,
             org_name=org.name
         )
-        
+
         return Response({'message': 'Join request submitted successfully'}, status=status.HTTP_201_CREATED)
-        
+
     @action(detail=True, methods=['post'], url_path='remove-member')
     def remove_member(self, request, pk=None):
         """
@@ -107,24 +117,25 @@ class OrganizationViewSet(viewsets.ModelViewSet):
         """
         org = self.get_object()
         user_id = request.data.get('user_id')
-        
+
         if not user_id:
             return Response({'error': 'user_id is required'}, status=status.HTTP_400_BAD_REQUEST)
-            
+
         # Verify caller is an Admin in this org
         if not OrganizationRole.objects.filter(user=request.user, organization=org, role='Admin', is_active=True).exists():
             return Response({'error': 'Not authorized to remove members from this organization'}, status=status.HTTP_403_FORBIDDEN)
-            
+
         # Prevent self-removal
         if str(user_id) == str(request.user.id):
             return Response({'error': 'You cannot remove yourself from the organization.'}, status=status.HTTP_403_FORBIDDEN)
-            
+
         # 1. Deactivate the OrganizationRole
-        role = OrganizationRole.objects.filter(user_id=user_id, organization=org).first()
+        role = OrganizationRole.objects.filter(
+            user_id=user_id, organization=org).first()
         if role:
             role.is_active = False
             role.save()
-            
+
         # 2. Deactivate all active memberships for this user in this org
         current_date = timezone.now().date()
         Membership.objects.filter(
@@ -132,18 +143,18 @@ class OrganizationViewSet(viewsets.ModelViewSet):
             unit_id__organization_id=org,
             is_active=True
         ).update(is_active=False, date_end=current_date)
-        
+
         # 3. Log action
         from apps.users.models import User
         target_user = User.objects.filter(id=user_id).first()
         log_action(
             request.user,
-            AuditActions.USER_DEACTIVATED, # Reusing this for member removal
+            AuditActions.USER_DEACTIVATED,  # Reusing this for member removal
             request,
             org_name=org.name,
             target_user_email=target_user.email if target_user else f"User ID: {user_id}"
         )
-        
+
         return Response({'message': 'Member removed from organization successfully'})
 
     @action(detail=True, methods=['post'], url_path='set-member-role')
@@ -173,7 +184,8 @@ class OrganizationViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        org_role = OrganizationRole.objects.filter(user_id=user_id, organization=org).first()
+        org_role = OrganizationRole.objects.filter(
+            user_id=user_id, organization=org).first()
         if not org_role:
             return Response({'error': 'User does not have an OrganizationRole in this org'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -191,7 +203,7 @@ class OrganizationViewSet(viewsets.ModelViewSet):
         )
 
         return Response({'message': f'Role updated to {new_role} successfully'})
-        
+
     @action(detail=True, methods=['post'], url_path='delete-organization')
     def delete_organization(self, request, pk=None):
         """
@@ -204,21 +216,21 @@ class OrganizationViewSet(viewsets.ModelViewSet):
 
         if not code or not password:
             return Response(
-                {'error': 'Both organization code and your admin password are required.'}, 
+                {'error': 'Both organization code and your admin password are required.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         # 1. Verify Organization Code matches
         if code != org.code:
             return Response(
-                {'error': 'The provided organization code does not match.'}, 
+                {'error': 'The provided organization code does not match.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         # 2. Verify User Password matches
         if not request.user.check_password(password):
             return Response(
-                {'error': 'Incorrect password.'}, 
+                {'error': 'Incorrect password.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -238,28 +250,28 @@ class OrganizationViewSet(viewsets.ModelViewSet):
 
         # 4. Execute Cascading Soft Deletes
         current_date = timezone.now().date()
-        
+
         # Deactivate Memberships
         Membership.objects.filter(
-            unit_id__organization_id=org, 
+            unit_id__organization_id=org,
             is_active=True
         ).update(is_active=False, date_end=current_date)
-        
+
         # Deactivate Position Types
         PositionType.objects.filter(
-            organization_id=org, 
+            organization_id=org,
             is_active=True
         ).update(is_active=False)
-        
+
         # Deactivate Units
         OrganizationUnit.objects.filter(
-            organization_id=org, 
+            organization_id=org,
             is_active=True
         ).update(is_active=False)
-        
+
         # Deactivate Unit Types
         UnitType.objects.filter(
-            organization_id=org, 
+            organization_id=org,
             is_active=True
         ).update(is_active=False)
 
@@ -284,28 +296,29 @@ class OrganizationViewSet(viewsets.ModelViewSet):
         )
 
         return Response(
-            {'message': f'Organization {org.name} has been successfully deleted.'}, 
+            {'message': f'Organization {org.name} has been successfully deleted.'},
             status=status.HTTP_200_OK
         )
-    
+
     @action(detail=False, methods=['get'])
     def unit_completion_stats(self, request):
         """
         Get evaluation completion statistics by unit.
-        
+
         Returns completion percentage for each unit based on:
         - Total assignments for members of the unit
         - Completed assignments (status='Submitted')
         """
         from apps.evaluations.models import EvaluationAssignment
-        
+
         # Get active organization
         org_id = request.query_params.get('organization_id')
         if org_id:
-            units = OrganizationUnit.objects.filter(organization_id=org_id, is_active=True)
+            units = OrganizationUnit.objects.filter(
+                organization_id=org_id, is_active=True)
         else:
             units = OrganizationUnit.objects.filter(is_active=True)
-        
+
         stats = []
         for unit in units:
             # Get all active members of this unit
@@ -313,7 +326,7 @@ class OrganizationViewSet(viewsets.ModelViewSet):
                 unit_id=unit,
                 is_active=True
             ).values_list('user_id', flat=True)
-            
+
             if not member_user_ids:
                 stats.append({
                     'unit_id': unit.id,
@@ -325,17 +338,18 @@ class OrganizationViewSet(viewsets.ModelViewSet):
                     'completion_percentage': 0
                 })
                 continue
-            
+
             # Get assignments for these users (as evaluatees)
             assignments = EvaluationAssignment.objects.filter(
                 evaluatee_id__in=member_user_ids
             )
-            
+
             total = assignments.count()
             completed = assignments.filter(status='Completed').count()
-            
-            completion_percentage = round((completed / total * 100), 1) if total > 0 else 0
-            
+
+            completion_percentage = round(
+                (completed / total * 100), 1) if total > 0 else 0
+
             stats.append({
                 'unit_id': unit.id,
                 'unit_name': unit.name,
@@ -345,17 +359,17 @@ class OrganizationViewSet(viewsets.ModelViewSet):
                 'completed_assignments': completed,
                 'completion_percentage': completion_percentage
             })
-        
+
         # Sort by completion percentage descending
         stats.sort(key=lambda x: x['completion_percentage'], reverse=True)
-        
+
         return Response(stats)
-    
+
     @action(detail=False, methods=['get'])
     def analytics_summary(self, request):
         """
         Get comprehensive analytics summary for the dashboard.
-        
+
         Returns:
         - Total organizations
         - Total units
@@ -365,12 +379,13 @@ class OrganizationViewSet(viewsets.ModelViewSet):
         """
         from apps.evaluations.models import EvaluationAssignment
         from apps.users.models import User
-        
+
         org_id = request.query_params.get('organization_id')
-        
+
         # Base querysets
         if org_id:
-            units_qs = OrganizationUnit.objects.filter(organization_id=org_id, is_active=True)
+            units_qs = OrganizationUnit.objects.filter(
+                organization_id=org_id, is_active=True)
             memberships_qs = Membership.objects.filter(
                 unit_id__in=units_qs,
                 is_active=True
@@ -381,13 +396,13 @@ class OrganizationViewSet(viewsets.ModelViewSet):
                 id__in=memberships_qs.values('unit_id'),
                 is_active=True
             )
-        
+
         total_members = memberships_qs.values('user_id').distinct().count()
         total_units = units_qs.count()
-        
+
         # Get all active users
         total_users = User.objects.filter(is_active=True).count()
-        
+
         # Assignment stats
         if org_id:
             member_user_ids = memberships_qs.values_list('user_id', flat=True)
@@ -396,13 +411,14 @@ class OrganizationViewSet(viewsets.ModelViewSet):
             )
         else:
             assignments = EvaluationAssignment.objects.all()
-        
+
         total_assignments = assignments.count()
         completed_assignments = assignments.filter(status='Completed').count()
         pending_assignments = assignments.filter(status='Pending').count()
-        
-        overall_completion = round((completed_assignments / total_assignments * 100), 1) if total_assignments > 0 else 0
-        
+
+        overall_completion = round(
+            (completed_assignments / total_assignments * 100), 1) if total_assignments > 0 else 0
+
         return Response({
             'total_organizations': Organization.objects.filter(is_active=True).count(),
             'total_units': total_units,
@@ -420,7 +436,7 @@ class UnitTypeViewSet(viewsets.ModelViewSet):
     queryset = UnitType.objects.filter(is_active=True)
     serializer_class = UnitTypeSerializer
     permission_classes = [permissions.IsAuthenticated]
-    
+
     def get_queryset(self):
         queryset = super().get_queryset()
         org_id = self.request.query_params.get('organization_id')
@@ -432,8 +448,9 @@ class UnitTypeViewSet(viewsets.ModelViewSet):
         # Prevent deletion if there are active units using this type
         from rest_framework.exceptions import ValidationError
         if OrganizationUnit.objects.filter(type_id=instance, is_active=True).exists():
-            raise ValidationError({'error': 'Cannot delete unit type if active units are still assigned to it.'})
-            
+            raise ValidationError(
+                {'error': 'Cannot delete unit type if active units are still assigned to it.'})
+
         instance.is_active = False
         instance.save()
 
@@ -443,13 +460,13 @@ class OrganizationUnitViewSet(viewsets.ModelViewSet):
     queryset = OrganizationUnit.objects.filter(is_active=True)
     serializer_class = OrganizationUnitSerializer
     permission_classes = [permissions.IsAuthenticated]
-    
+
     def get_queryset(self):
         queryset = super().get_queryset()
         org_id = self.request.query_params.get('organization_id')
         if org_id:
             queryset = queryset.filter(organization_id=org_id)
-            
+
         # Annotate with the number of active members in the unit
         queryset = queryset.annotate(
             members_count=Count('members', filter=Q(members__is_active=True))
@@ -461,12 +478,13 @@ class OrganizationUnitViewSet(viewsets.ModelViewSet):
         if instance.members.filter(is_active=True).exists():
             from rest_framework.exceptions import ValidationError
             raise ValidationError("Cannot delete unit with active members.")
-            
+
         # Soft delete the unit
         instance.is_active = False
         instance.save()
         # Also soft delete memberships tied to this unit
-        Membership.objects.filter(unit_id=instance, is_active=True).update(is_active=False)
+        Membership.objects.filter(
+            unit_id=instance, is_active=True).update(is_active=False)
 
 
 class PositionTypeViewSet(viewsets.ModelViewSet):
@@ -474,7 +492,7 @@ class PositionTypeViewSet(viewsets.ModelViewSet):
     queryset = PositionType.objects.filter(is_active=True)
     serializer_class = PositionTypeSerializer
     permission_classes = [permissions.IsAuthenticated]
-    
+
     def get_queryset(self):
         queryset = super().get_queryset()
         org_id = self.request.query_params.get('organization_id')
@@ -487,8 +505,9 @@ class PositionTypeViewSet(viewsets.ModelViewSet):
         from rest_framework.exceptions import ValidationError
         from .models import Membership
         if Membership.objects.filter(position_id=instance, is_active=True).exists():
-            raise ValidationError({'error': 'Cannot delete position type if active members are still holding it.'})
-            
+            raise ValidationError(
+                {'error': 'Cannot delete position type if active members are still holding it.'})
+
         instance.is_active = False
         instance.save()
 
@@ -498,7 +517,7 @@ class MembershipViewSet(viewsets.ModelViewSet):
     queryset = Membership.objects.filter(is_active=True)
     serializer_class = MembershipSerializer
     permission_classes = [permissions.IsAuthenticated]
-    
+
     def get_queryset(self):
         queryset = super().get_queryset()
         user_id = self.request.query_params.get('user_id')
@@ -513,20 +532,20 @@ class MembershipViewSet(viewsets.ModelViewSet):
         """Override create to validate Admin role before allowing new membership creation"""
         unit_id = request.data.get('unit_id')
         user_id = request.data.get('user_id')
-        
+
         if not unit_id or not user_id:
             return Response({'error': 'unit_id and user_id are required'}, status=status.HTTP_400_BAD_REQUEST)
-            
+
         try:
             unit = OrganizationUnit.objects.get(id=unit_id)
             org = unit.organization_id
         except OrganizationUnit.DoesNotExist:
             return Response({'error': 'Invalid unit'}, status=status.HTTP_400_BAD_REQUEST)
-            
+
         # Verify caller is an Admin in this org
         if not OrganizationRole.objects.filter(user=request.user, organization=org, role='Admin').exists():
             return Response({'error': 'Not authorized to add memberships to this organization'}, status=status.HTTP_403_FORBIDDEN)
-            
+
         return super().create(request, *args, **kwargs)
 
     def perform_create(self, serializer):
@@ -554,7 +573,7 @@ class JoinRequestViewSet(viewsets.ModelViewSet):
     queryset = JoinRequest.objects.all()
     serializer_class = JoinRequestSerializer
     permission_classes = [permissions.IsAuthenticated]
-    
+
     def get_queryset(self):
         queryset = super().get_queryset()
         org_id = self.request.query_params.get('organization_id')
@@ -567,33 +586,35 @@ class JoinRequestViewSet(viewsets.ModelViewSet):
         if req_status:
             queryset = queryset.filter(status=req_status)
         return queryset
-        
+
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
         """Admin action to approve a join request and assign user to a unit and position."""
         join_request = self.get_object()
-        
+
         # Verify user is an admin of this specific org
         if not OrganizationRole.objects.filter(user=request.user, organization=join_request.organization, role='Admin').exists():
             return Response({'error': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
-            
+
         if join_request.status != 'Pending':
             return Response({'error': 'Request is not pending'}, status=status.HTTP_400_BAD_REQUEST)
-            
+
         # Needs unit and position to create the actual membership
         unit_id = request.data.get('unit_id')
         position_id = request.data.get('position_id')
         role_choice = request.data.get('role', 'Member')
-        
+
         if not unit_id or not position_id:
             return Response({'error': 'unit_id and position_id required to approve'}, status=status.HTTP_400_BAD_REQUEST)
-            
+
         try:
-            unit = OrganizationUnit.objects.get(id=unit_id, organization_id=join_request.organization, is_active=True)
-            position = PositionType.objects.get(id=position_id, organization_id=join_request.organization, is_active=True)
+            unit = OrganizationUnit.objects.get(
+                id=unit_id, organization_id=join_request.organization, is_active=True)
+            position = PositionType.objects.get(
+                id=position_id, organization_id=join_request.organization, is_active=True)
         except (OrganizationUnit.DoesNotExist, PositionType.DoesNotExist):
             return Response({'error': 'Invalid unit or position IDs — they may have been deleted'}, status=status.HTTP_400_BAD_REQUEST)
-            
+
         # Re-activate the user account in case they were deactivated
         rejoining_user = join_request.user
         if not rejoining_user.is_active:
@@ -623,16 +644,16 @@ class JoinRequestViewSet(viewsets.ModelViewSet):
                 date_start=timezone.now().date(),
                 is_active=True
             )
-            
+
         OrganizationRole.objects.update_or_create(
             user=rejoining_user,
             organization=join_request.organization,
             defaults={'role': role_choice}
         )
-        
+
         join_request.status = 'Approved'
         join_request.save()
-        
+
         log_action(
             request.user,
             AuditActions.ORG_JOIN_APPROVED,
@@ -640,21 +661,21 @@ class JoinRequestViewSet(viewsets.ModelViewSet):
             target_user_email=join_request.user.email,
             org_name=join_request.organization.name
         )
-        
+
         return Response({'message': 'Member approved and added successfully'})
 
     @action(detail=True, methods=['post'])
     def reject(self, request, pk=None):
         """Admin action to reject a pending join request"""
         join_request = self.get_object()
-        
+
         # Verify user is an admin of this specific org
         if not OrganizationRole.objects.filter(user=request.user, organization=join_request.organization, role='Admin').exists():
             return Response({'error': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
-            
+
         join_request.status = 'Rejected'
         join_request.save()
-        
+
         log_action(
             request.user,
             AuditActions.ORG_JOIN_REJECTED,
@@ -662,5 +683,5 @@ class JoinRequestViewSet(viewsets.ModelViewSet):
             target_user_email=join_request.user.email,
             org_name=join_request.organization.name
         )
-        
+
         return Response({'message': 'Join request rejected'})

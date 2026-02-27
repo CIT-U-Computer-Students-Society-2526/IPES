@@ -10,7 +10,8 @@ from .views import (
 )
 
 router = DefaultRouter()
-router.register(r'organizations', OrganizationViewSet, basename='organizations')
+router.register(r'organizations', OrganizationViewSet,
+                basename='organizations')
 router.register(r'unit-types', UnitTypeViewSet, basename='unit-types')
 router.register(r'units', OrganizationUnitViewSet, basename='units')
 router.register(r'positions', PositionTypeViewSet, basename='positions')

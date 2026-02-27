@@ -115,8 +115,9 @@ const SelectOrganization = () => {
                     description: `${createForm.name} was set up successfully.`,
                 });
             },
-            onError: (err: any) => {
-                const errorMessage = err.data?.error || err.data?.code?.[0] || err.message || "Ensure your code is unique and try again.";
+            onError: (err: unknown) => {
+                const apiErr = err as { data?: { error?: string; code?: string[] }; message?: string };
+                const errorMessage = apiErr.data?.error || apiErr.data?.code?.[0] || apiErr.message || "Ensure your code is unique and try again.";
                 toast({
                     title: "Failed to create organization",
                     description: errorMessage,
@@ -138,8 +139,9 @@ const SelectOrganization = () => {
                     description: "Waiting for Admin approval.",
                 });
             },
-            onError: (err: any) => {
-                const errorMessage = err.data?.error || err.message || "Ensure the code is correct.";
+            onError: (err: unknown) => {
+                const apiErr = err as { data?: { error?: string }; message?: string };
+                const errorMessage = apiErr.data?.error || apiErr.message || "Ensure the code is correct.";
                 toast({
                     title: "Failed to submit join request",
                     description: errorMessage,

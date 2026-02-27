@@ -145,7 +145,11 @@ const EvaluationForm = () => {
 
   const formatPayload = () => {
     return questions.map((q) => {
-      const resp: any = { question_id: q.id };
+      const resp: {
+        question_id: number;
+        score_value?: number;
+        text?: string;
+      } = { question_id: q.id };
       if (answers[q.id]) {
         resp.score_value = Number(answers[q.id]);
       }
@@ -166,10 +170,10 @@ const EvaluationForm = () => {
         title: "Draft Saved",
         description: "Your recent answers have been saved securely.",
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         title: "Error Saving Draft",
-        description: err.message || "Something went wrong.",
+        description: err instanceof Error ? err.message : "Something went wrong.",
         variant: "destructive"
       });
     }
@@ -214,10 +218,10 @@ const EvaluationForm = () => {
       });
       setShowSubmitDialog(false);
       navigate(`${basePath}evaluations`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         title: "Submission Error",
-        description: err.message || "Failed to submit evaluation.",
+        description: err instanceof Error ? err.message : "Failed to submit evaluation.",
         variant: "destructive"
       });
     }

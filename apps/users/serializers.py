@@ -1,14 +1,13 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 from .models import User
-from apps.organizations.models import OrganizationRole
 
 
 class UserSerializer(serializers.ModelSerializer):
     """Serializer for User model - handles reading user data"""
-    
+
     memberships = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = User
         fields = [
@@ -16,7 +15,7 @@ class UserSerializer(serializers.ModelSerializer):
             'display_picture', 'is_active', 'date_joined', 'memberships'
         ]
         read_only_fields = ['id', 'date_joined']
-        
+
     def get_memberships(self, obj):
         """
         Returns the organizations this user belongs to, determined by OrganizationRole.
@@ -34,7 +33,8 @@ class UserSerializer(serializers.ModelSerializer):
         for org_role in active_org_roles:
             org = org_role.organization
 
-            # Get all active Membership rows for this user in this org (for position info)
+            # Get all active Membership rows for this user in this org
+            # (for position info)
             memberships = obj.memberships.filter(
                 unit_id__organization_id=org,
                 is_active=True
@@ -78,7 +78,7 @@ class UserSerializer(serializers.ModelSerializer):
 class UserCreateSerializer(serializers.ModelSerializer):
     """Serializer for admin to create new users"""
     password = serializers.CharField(write_only=True, min_length=8)
-    
+
     class Meta:
         model = User
         fields = [
@@ -86,17 +86,18 @@ class UserCreateSerializer(serializers.ModelSerializer):
             'password'
         ]
         read_only_fields = ['username']
-        
+
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():
-            raise serializers.ValidationError("A user with this email already exists.")
+            raise serializers.ValidationError(
+                "A user with this email already exists.")
         return value
-    
+
     def create(self, validated_data):
         import uuid
         password = validated_data.pop('password')
         # Auto-generate a unique username
-        validated_data['username'] = uuid.uuid4().hex[:30] 
+        validated_data['username'] = uuid.uuid4().hex[:30]
         user = User(**validated_data)
         user.set_password(password)
         user.save()
@@ -107,31 +108,33 @@ class LoginSerializer(serializers.Serializer):
     """Serializer for login requests"""
     email = serializers.EmailField()
     password = serializers.CharField()
-    
+
     def validate(self, attrs):
         email = attrs.get('email')
         password = attrs.get('password')
-        
+
         if email and password:
             # Authenticate using email as username
             user = authenticate(username=email, password=password)
 
             if user:
                 if not user.is_active:
-                    raise serializers.ValidationError('Invalid email or password') # Prevent user enumeration
+                    raise serializers.ValidationError(
+                        'Invalid email or password')  # Prevent user enumeration
                 attrs['user'] = user
                 return attrs
-            
+
             # Generic error message
             raise serializers.ValidationError('Invalid email or password')
         else:
-            raise serializers.ValidationError('Email and password are required')
+            raise serializers.ValidationError(
+                'Email and password are required')
 
 
 class PasswordResetSerializer(serializers.Serializer):
     """Serializer for password resets by Admins"""
     password = serializers.CharField(write_only=True, min_length=8)
-    
+
     def update(self, instance, validated_data):
         instance.set_password(validated_data['password'])
         instance.save()

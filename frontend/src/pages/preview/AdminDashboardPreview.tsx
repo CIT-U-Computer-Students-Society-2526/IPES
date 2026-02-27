@@ -45,8 +45,15 @@ const StatCard = ({
     );
 };
 
+interface ActivityItemData {
+    id: number;
+    action: string;
+    user_name: string;
+    datetime: string;
+}
+
 // Activity item component
-const ActivityItem = ({ activity }: { activity: any }) => {
+const ActivityItem = ({ activity }: { activity: ActivityItemData }) => {
     return (
         <div className="flex gap-3">
             <div className="w-2 h-2 rounded-full bg-primary mt-2 flex-shrink-0" />
@@ -181,8 +188,8 @@ const AdminDashboardPreview = () => {
                         <div
                             key={alert.id}
                             className={`flex items-center justify-between p-4 rounded-lg border ${alert.type === 'warning'
-                                    ? 'bg-warning/5 border-warning/20'
-                                    : 'bg-primary/5 border-primary/20'
+                                ? 'bg-warning/5 border-warning/20'
+                                : 'bg-primary/5 border-primary/20'
                                 }`}
                         >
                             <div className="flex items-center gap-3">

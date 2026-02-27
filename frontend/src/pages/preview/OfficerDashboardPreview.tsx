@@ -53,8 +53,15 @@ const StatCard = ({
     );
 };
 
+interface EvaluationPreview {
+    id: number;
+    form_title: string;
+    form_id: number;
+    due_date?: string;
+}
+
 // Pending evaluation card
-const PendingEvaluationCard = ({ evaluation }: { evaluation: any }) => {
+const PendingEvaluationCard = ({ evaluation }: { evaluation: EvaluationPreview }) => {
     const isUrgent = evaluation.due_date && new Date(evaluation.due_date) <= new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
 
     const formatDate = (dateString: string) => {
@@ -102,8 +109,8 @@ const NotificationItem = ({
 }) => (
     <div className="flex gap-3">
         <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${type === 'success' ? 'bg-success' :
-                type === 'warning' ? 'bg-warning' :
-                    'bg-primary'
+            type === 'warning' ? 'bg-warning' :
+                'bg-primary'
             }`} />
         <div>
             <p className="text-sm text-foreground">{message}</p>

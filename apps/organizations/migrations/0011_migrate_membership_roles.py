@@ -2,19 +2,20 @@
 
 from django.db import migrations
 
+
 def migrate_roles(apps, schema_editor):
     Membership = apps.get_model('organizations', 'Membership')
     OrganizationRole = apps.get_model('organizations', 'OrganizationRole')
-    
+
     role_map = {}
     for m in Membership.objects.select_related('unit_id').all():
         org_id = m.unit_id.organization_id_id
         user_id = m.user_id_id
-        
+
         key = (user_id, org_id)
         if key not in role_map or m.role == 'Admin':
             role_map[key] = m.role
-            
+
     roles_to_create = []
     for (user_id, org_id), role in role_map.items():
         roles_to_create.append(
@@ -24,12 +25,14 @@ def migrate_roles(apps, schema_editor):
                 role=role
             )
         )
-        
+
     OrganizationRole.objects.bulk_create(roles_to_create)
+
 
 def reverse_migrate_roles(apps, schema_editor):
     OrganizationRole = apps.get_model('organizations', 'OrganizationRole')
     OrganizationRole.objects.all().delete()
+
 
 class Migration(migrations.Migration):
 

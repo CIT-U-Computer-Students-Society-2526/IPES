@@ -11,7 +11,7 @@ django.setup()
 from django.test import Client
 from django.contrib.auth import get_user_model
 from apps.organizations.models import Organization, OrganizationRole, Membership
-from apps.portfolio.models import Accomplishment
+# from apps.portfolio.models import Accomplishment
 
 User = get_user_model()
 client = Client()

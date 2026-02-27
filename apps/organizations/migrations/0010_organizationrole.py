@@ -16,10 +16,14 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='OrganizationRole',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('role', models.CharField(choices=[('Admin', 'Admin'), ('Member', 'Member')], default='Member', max_length=50)),
-                ('organization', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='user_roles', to='organizations.organization')),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='organization_roles', to=settings.AUTH_USER_MODEL)),
+                ('id', models.BigAutoField(auto_created=True,
+                 primary_key=True, serialize=False, verbose_name='ID')),
+                ('role', models.CharField(choices=[
+                 ('Admin', 'Admin'), ('Member', 'Member')], default='Member', max_length=50)),
+                ('organization', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE,
+                 related_name='user_roles', to='organizations.organization')),
+                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE,
+                 related_name='organization_roles', to=settings.AUTH_USER_MODEL)),
             ],
             options={
                 'unique_together': {('user', 'organization')},

@@ -151,10 +151,11 @@ const AdminUsers = () => {
         description: "Role added successfully",
       });
       setFormData({ unit_id: undefined, position_id: undefined });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const apiErr = error as { data?: { error?: string } };
       toast({
         title: "Error",
-        description: error.data?.error || "Failed to add role",
+        description: apiErr.data?.error || "Failed to add role",
         variant: "destructive",
       });
     }
@@ -474,7 +475,7 @@ const AdminUsers = () => {
                         <TableCell className="text-muted-foreground text-sm">
                           {activeMemberships.length === 0 ? "Unassigned" : (
                             <div className="space-y-2">
-                              {activeMemberships.map((m: any, idx: number) => (
+                              {activeMemberships.map((m, idx: number) => (
                                 <div key={idx} className="leading-tight">
                                   {m.unit_name}
                                   <br />
@@ -596,7 +597,7 @@ const AdminUsers = () => {
                       <SelectValue placeholder="Select unit..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {units?.map((unit: any) => (
+                      {units?.map((unit) => (
                         <SelectItem key={unit.id} value={unit.id.toString()}>
                           {unit.name}
                         </SelectItem>
@@ -614,7 +615,7 @@ const AdminUsers = () => {
                       <SelectValue placeholder="Select position..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {positions?.map((pos: any) => (
+                      {positions?.map((pos) => (
                         <SelectItem key={pos.id} value={pos.id.toString()}>
                           {pos.name}
                         </SelectItem>

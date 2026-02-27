@@ -16,12 +16,16 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='JoinRequest',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('status', models.CharField(choices=[('Pending', 'Pending'), ('Approved', 'Approved'), ('Rejected', 'Rejected')], default='Pending', max_length=20)),
+                ('id', models.BigAutoField(auto_created=True,
+                 primary_key=True, serialize=False, verbose_name='ID')),
+                ('status', models.CharField(choices=[('Pending', 'Pending'), ('Approved', 'Approved'), (
+                    'Rejected', 'Rejected')], default='Pending', max_length=20)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('organization', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='join_requests', to='organizations.organization')),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='join_requests', to=settings.AUTH_USER_MODEL)),
+                ('organization', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE,
+                 related_name='join_requests', to='organizations.organization')),
+                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE,
+                 related_name='join_requests', to=settings.AUTH_USER_MODEL)),
             ],
             options={
                 'unique_together': {('user', 'organization')},

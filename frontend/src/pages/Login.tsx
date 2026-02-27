@@ -56,19 +56,19 @@ const Login = () => {
 
       // Redirect to Organization Selector Hub
       navigate("/select-organization");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Login error:', err);
       let errorMsg = "";
 
-      if (err.name === 'ApiError' && err.data) {
-        const errorData = err.data as any; // Cast to any to access properties
+      if (err && typeof err === 'object' && 'name' in err && err.name === 'ApiError' && 'data' in err) {
+        const errorData = err.data as { errors?: Record<string, string | string[]>; message?: string };
 
         // Handle field-specific errors if available
         if (errorData.errors) {
           const newFieldErrors: Record<string, string[]> = {};
           let hasFieldErrors = false;
 
-          Object.entries(errorData.errors).forEach(([field, msgs]: [string, any]) => {
+          (Object.entries(errorData.errors) as [string, string | string[]][]).forEach(([field, msgs]) => {
             if (field === 'non_field_errors') {
               // Collect non-field errors to show in the main alert
               const nonFieldMsgs = Array.isArray(msgs) ? msgs.join('; ') : msgs;

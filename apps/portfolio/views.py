@@ -20,7 +20,7 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
     """ViewSet for Accomplishment CRUD operations"""
     queryset = Accomplishment.objects.all()
     permission_classes = [permissions.IsAuthenticated]
-    
+
     def get_serializer_class(self):
         if self.action == 'create':
             return AccomplishmentCreateSerializer
@@ -29,7 +29,7 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
         elif self.action == 'list':
             return AccomplishmentListSerializer
         return AccomplishmentSerializer
-    
+
     def _get_org_id_from_request(self):
         """Return the active organization ID from the request header."""
         return self.request.headers.get('X-Organization-Id')
@@ -40,7 +40,8 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
         user = self.request.user
 
         is_global_admin = user.is_staff or user.is_superuser
-        org_id = self.request.query_params.get('organization_id') or self._get_org_id_from_request()
+        org_id = self.request.query_params.get(
+            'organization_id') or self._get_org_id_from_request()
 
         # If no org_id is provided, users can only see their own accomplishments
         # This prevents cross-tenant data leakage when no org is selected
@@ -84,22 +85,25 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(type=type_param)
 
         return queryset.select_related('user_id', 'verified_by').order_by('-date_completed', '-id')
-    
+
     def perform_create(self, serializer):
         """Auto-set user_id and organization_id from request, then log creation"""
         org_id = self._get_org_id_from_request()
         if not org_id:
             from rest_framework.exceptions import ValidationError
-            raise ValidationError({'organization_id': 'An active organization must be selected to submit an accomplishment.'})
+            raise ValidationError(
+                {'organization_id': 'An active organization must be selected to submit an accomplishment.'})
 
         from apps.organizations.models import Organization
         try:
             organization = Organization.objects.get(pk=org_id)
         except Organization.DoesNotExist:
             from rest_framework.exceptions import ValidationError
-            raise ValidationError({'organization_id': 'Organization not found.'})
+            raise ValidationError(
+                {'organization_id': 'Organization not found.'})
 
-        accomplishment = serializer.save(user_id=self.request.user, organization_id=organization)
+        accomplishment = serializer.save(
+            user_id=self.request.user, organization_id=organization)
         log_action(
             self.request.user,
             AuditActions.ACCOMPLISHMENT_CREATED,
@@ -107,7 +111,7 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
             accomplishment_id=str(accomplishment.id),
             title=accomplishment.title
         )
-    
+
     def perform_update(self, serializer):
         """Update accomplishment and log the change"""
         instance = self.get_object()
@@ -128,45 +132,46 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
             title=accomplishment.title,
             status=accomplishment.status
         )
-    
+
     def update(self, request, *args, **kwargs):
         """Override update to allow only owners to edit pending/rejected accomplishments"""
         accomplishment = self.get_object()
-        
+
         # Only allow editing if user is the owner
         if accomplishment.user_id != request.user:
             return Response(
                 {'error': 'You can only edit your own accomplishments'},
                 status=status.HTTP_403_FORBIDDEN
             )
-        
+
         # Only allow editing if status is Pending or Rejected
         if accomplishment.status not in ['Pending', 'Rejected']:
             return Response(
                 {'error': 'You can only edit pending or rejected accomplishments'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         return super().update(request, *args, **kwargs)
-    
+
     @action(detail=False, methods=['get'])
     def my(self, request):
         """Get current user's accomplishments scoped to the active org"""
         accomplishments = self.get_queryset().filter(user_id=request.user)
         serializer = AccomplishmentListSerializer(accomplishments, many=True)
         return Response(serializer.data)
-    
+
     @action(detail=False, methods=['get'])
     def pending(self, request):
         """Get accomplishments pending verification (Admin only)"""
         user = request.user
         is_global_admin = user.is_staff or user.is_superuser
-        org_id = request.query_params.get('organization_id') or self._get_org_id_from_request()
-        
+        org_id = request.query_params.get(
+            'organization_id') or self._get_org_id_from_request()
+
         if not is_global_admin:
             if not org_id:
                 return Response({'error': 'organization_id is required'}, status=status.HTTP_400_BAD_REQUEST)
-                
+
             from apps.organizations.models import OrganizationRole
             is_org_admin = OrganizationRole.objects.filter(
                 user_id=user,
@@ -174,17 +179,17 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
                 role='Admin',
                 is_active=True
             ).exists()
-            
+
             if not is_org_admin:
                 return Response(
                     {'error': 'Unauthorized'},
                     status=status.HTTP_403_FORBIDDEN
                 )
-        
+
         accomplishments = self.get_queryset().filter(status='Pending')
         serializer = AccomplishmentListSerializer(accomplishments, many=True)
         return Response(serializer.data)
-    
+
     @action(detail=False, methods=['get'])
     def by_type(self, request):
         """Filter accomplishments by type"""
@@ -194,22 +199,23 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
                 {'error': 'type parameter is required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         accomplishments = self.get_queryset().filter(type=type_param)
         serializer = AccomplishmentListSerializer(accomplishments, many=True)
         return Response(serializer.data)
-    
+
     @action(detail=False, methods=['get'])
     def summary(self, request):
         """Get summary statistics for accomplishments"""
         user = request.user
         is_global_admin = user.is_staff or user.is_superuser
-        org_id = request.query_params.get('organization_id') or self._get_org_id_from_request()
-        
+        org_id = request.query_params.get(
+            'organization_id') or self._get_org_id_from_request()
+
         if not is_global_admin:
             if not org_id:
                 return Response({'error': 'organization_id is required'}, status=status.HTTP_400_BAD_REQUEST)
-                
+
             from apps.organizations.models import OrganizationRole
             is_org_admin = OrganizationRole.objects.filter(
                 user_id=user,
@@ -217,7 +223,7 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
                 role='Admin',
                 is_active=True
             ).exists()
-            
+
             if not is_org_admin:
                 return Response(
                     {'error': 'Unauthorized'},
@@ -234,20 +240,20 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
         user_id = request.query_params.get('user_id')
         if user_id:
             queryset = queryset.filter(user_id=user_id)
-        
+
         # Count by status
         total = queryset.count()
         verified = queryset.filter(status='Verified').count()
         pending = queryset.filter(status='Pending').count()
         rejected = queryset.filter(status='Rejected').count()
-        
+
         # Count by type
         by_type = dict(
             queryset.values('type')
             .annotate(count=Count('id'))
             .values_list('type', 'count')
         )
-        
+
         return Response({
             'total': total,
             'verified': verified,
@@ -255,20 +261,21 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
             'rejected': rejected,
             'by_type': by_type
         })
-    
+
     @action(detail=True, methods=['post'])
     def verify(self, request, pk=None):
         """Verify or reject an accomplishment (Admin only)"""
         accomplishment = self.get_object()
-        
+
         user = request.user
         is_global_admin = user.is_staff or user.is_superuser
-        org_id = request.query_params.get('organization_id') or request.data.get('organization_id') or self._get_org_id_from_request()
-        
+        org_id = request.query_params.get('organization_id') or request.data.get(
+            'organization_id') or self._get_org_id_from_request()
+
         if not is_global_admin:
             if not org_id:
                 return Response({'error': 'organization_id is required'}, status=status.HTTP_400_BAD_REQUEST)
-                
+
             from apps.organizations.models import OrganizationRole
             is_org_admin = OrganizationRole.objects.filter(
                 user_id=user,
@@ -276,7 +283,7 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
                 role='Admin',
                 is_active=True
             ).exists()
-            
+
             if not is_org_admin:
                 return Response(
                     {'error': 'Unauthorized'},
@@ -287,25 +294,25 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
         if not is_global_admin and org_id:
             if str(accomplishment.organization_id_id) != str(org_id):
                 return Response({'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
-        
+
         if accomplishment.status != 'Pending':
             return Response(
                 {'error': 'Can only verify pending accomplishments'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         serializer = AccomplishmentVerifySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        
+
         accomplishment.status = serializer.validated_data['status']
         accomplishment.verified_by = request.user
-        
+
         # Store comments if rejecting
         if accomplishment.status == 'Rejected' and 'comments' in serializer.validated_data:
             accomplishment.comments = serializer.validated_data['comments']
-        
+
         accomplishment.save()
-        
+
         # Log verification
         action = AuditActions.ACCOMPLISHMENT_VERIFIED if accomplishment.status == 'Verified' else AuditActions.ACCOMPLISHMENT_REJECTED
         log_action(
@@ -316,13 +323,13 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
             title=accomplishment.title,
             status=accomplishment.status
         )
-        
+
         response_serializer = AccomplishmentSerializer(accomplishment)
         return Response({
             'message': f'Accomplishment {serializer.validated_data["status"].lower()} successfully',
             'accomplishment': response_serializer.data
         })
-    
+
     @action(detail=False, methods=['get'])
     def evaluatee_profile(self, request):
         """
@@ -337,7 +344,8 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
         Only Verified accomplishments are exposed.
         """
         evaluatee_id = request.query_params.get('user_id')
-        org_id = request.query_params.get('organization_id') or self._get_org_id_from_request()
+        org_id = request.query_params.get(
+            'organization_id') or self._get_org_id_from_request()
 
         if not evaluatee_id or not org_id:
             return Response(
@@ -394,11 +402,10 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
         accomplishments = self.get_queryset().filter(status='Verified')
         serializer = AccomplishmentListSerializer(accomplishments, many=True)
         return Response(serializer.data)
-    
+
     @action(detail=False, methods=['get'])
     def rejected(self, request):
         """Get rejected accomplishments"""
         accomplishments = self.get_queryset().filter(status='Rejected')
         serializer = AccomplishmentListSerializer(accomplishments, many=True)
         return Response(serializer.data)
-

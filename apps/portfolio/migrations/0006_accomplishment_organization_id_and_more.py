@@ -15,12 +15,14 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='accomplishment',
             name='organization_id',
-            field=models.ForeignKey(default=1, on_delete=django.db.models.deletion.CASCADE, related_name='accomplishments', to='organizations.organization'),
+            field=models.ForeignKey(default=1, on_delete=django.db.models.deletion.CASCADE,
+                                    related_name='accomplishments', to='organizations.organization'),
             preserve_default=False,
         ),
         migrations.AlterField(
             model_name='accomplishment',
             name='id',
-            field=models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID'),
+            field=models.BigAutoField(
+                auto_created=True, primary_key=True, serialize=False, verbose_name='ID'),
         ),
     ]

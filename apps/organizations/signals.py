@@ -26,12 +26,16 @@ def auto_assign_on_membership_activation(sender, instance, created, **kwargs):
         rules = form.assignment_rules.all()
         for rule in rules:
             # Check if this member's unit/position matches the evaluator side
-            ev_unit_match = (rule.evaluator_unit is None or rule.evaluator_unit == instance.unit_id)
-            ev_pos_match  = (rule.evaluator_position is None or rule.evaluator_position == instance.position_id)
+            ev_unit_match = (
+                rule.evaluator_unit is None or rule.evaluator_unit == instance.unit_id)
+            ev_pos_match = (
+                rule.evaluator_position is None or rule.evaluator_position == instance.position_id)
 
             # Check if this member's unit/position matches the evaluatee side
-            ee_unit_match = (rule.evaluatee_unit is None or rule.evaluatee_unit == instance.unit_id)
-            ee_pos_match  = (rule.evaluatee_position is None or rule.evaluatee_position == instance.position_id)
+            ee_unit_match = (
+                rule.evaluatee_unit is None or rule.evaluatee_unit == instance.unit_id)
+            ee_pos_match = (
+                rule.evaluatee_position is None or rule.evaluatee_position == instance.position_id)
 
             if ev_unit_match and ev_pos_match:
                 # This member is a new evaluator — only generate their outgoing assignments
@@ -46,7 +50,8 @@ def _apply_rule_for_single_evaluator(rule, form, ev_user):
     """Create assignments where ev_user is evaluator, for all matching evaluatees."""
     from apps.evaluations.models import EvaluationAssignment
 
-    evaluatees = _get_memberships_for_side(rule.evaluatee_unit, rule.evaluatee_position, form)
+    evaluatees = _get_memberships_for_side(
+        rule.evaluatee_unit, rule.evaluatee_position, form)
     for ee_membership in evaluatees:
         ee_user = ee_membership.user_id
         if rule.exclude_self and ev_user == ee_user:
@@ -63,7 +68,8 @@ def _apply_rule_for_single_evaluatee(rule, form, ee_user):
     """Create assignments where ee_user is evaluatee, for all matching evaluators."""
     from apps.evaluations.models import EvaluationAssignment
 
-    evaluators = _get_memberships_for_side(rule.evaluator_unit, rule.evaluator_position, form)
+    evaluators = _get_memberships_for_side(
+        rule.evaluator_unit, rule.evaluator_position, form)
     for ev_membership in evaluators:
         ev_user = ev_membership.user_id
         if rule.exclude_self and ev_user == ee_user:
