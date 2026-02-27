@@ -74,7 +74,7 @@ class OrganizationViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Invalid organization code'}, status=status.HTTP_404_NOT_FOUND)
             
         # Check if already an active member
-        if Membership.objects.filter(user_id=request.user, unit_id__organization_id=org, is_active=True).exists():
+        if OrganizationRole.objects.filter(user=request.user, organization=org, is_active=True).exists():
             return Response({'error': 'You are already a member of this organization'}, status=status.HTTP_400_BAD_REQUEST)
             
         # Check explicitly for an already-pending request first.
