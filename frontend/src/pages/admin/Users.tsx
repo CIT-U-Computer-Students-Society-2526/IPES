@@ -501,6 +501,7 @@ const AdminUsers = () => {
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => handleToggleAdminStatus(user)}
+                                disabled={user.id === currentUser?.id && isAdmin}
                               >
                                 {isAdmin ? (
                                   <>
@@ -518,6 +519,7 @@ const AdminUsers = () => {
                               <DropdownMenuItem
                                 className="text-destructive"
                                 onClick={() => handleRemoveFromOrganization(user)}
+                                disabled={user.id === currentUser?.id}
                               >
                                 <AlertTriangle className="w-4 h-4 mr-2" />
                                 Remove from Organization
