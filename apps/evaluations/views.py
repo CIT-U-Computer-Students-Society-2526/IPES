@@ -463,19 +463,12 @@ class AssignmentRuleViewSet(viewsets.ModelViewSet):
             return qs
 
         # Regular users only see rules for organizations where they have an active role or membership
-        from apps.organizations.models import Membership, OrganizationRole
+        from apps.organizations.models import OrganizationRole
         
-        # Orgs from direct unit memberships
-        membership_org_ids = Membership.objects.filter(
-            user_id=user, is_active=True
-        ).values_list('unit_id__organization_id', flat=True)
-        
-        # Orgs from organization roles (e.g. Admins who aren't in a specific unit)
-        role_org_ids = OrganizationRole.objects.filter(
+        # Orgs from organization roles
+        user_org_ids = OrganizationRole.objects.filter(
             user=user, is_active=True
         ).values_list('organization_id', flat=True)
-        
-        user_org_ids = set(membership_org_ids) | set(role_org_ids)
         
         return qs.filter(form_id__organization_id__in=user_org_ids)
 
