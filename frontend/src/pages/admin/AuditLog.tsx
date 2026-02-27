@@ -32,6 +32,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useAuditLogs } from "@/hooks/useAudit";
 import { useOrganizationState } from "@/contexts/OrganizationContext";
+import { useToast } from "@/hooks/use-toast";
+import api from "@/lib/api";
 
 const actionIcons: Record<string, typeof LogIn> = {
   login: LogIn,
@@ -55,6 +57,43 @@ const AuditLog = () => {
   const { activeOrganizationId } = useOrganizationState();
   const [searchQuery, setSearchQuery] = useState("");
   const [actionFilter, setActionFilter] = useState("all");
+  const [isExporting, setIsExporting] = useState(false);
+  const { toast } = useToast();
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (activeOrganizationId) params.append("organization_id", String(activeOrganizationId));
+      if (searchQuery) params.append("q", searchQuery);
+      if (actionFilter !== "all") params.append("action", actionFilter);
+
+      const response = await api.get(`/audit/export_csv/?${params.toString()}`);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `audit_log_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: "Export Successful",
+        description: "Your audit log CSV has been downloaded.",
+      });
+    } catch (error) {
+      console.error("Export failed:", error);
+      toast({
+        title: "Export Failed",
+        description: "There was an error generating your CSV export.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const { data: serverLogs = [], isLoading } = useAuditLogs({
     organization_id: activeOrganizationId ?? undefined
@@ -91,9 +130,17 @@ const AuditLog = () => {
           <h1 className="text-2xl font-semibold text-foreground">Audit Log</h1>
           <p className="text-muted-foreground mt-1">Track all system activities and changes</p>
         </div>
-        <Button variant="outline">
-          <Download className="w-4 h-4 mr-2" />
-          Export Log
+        <Button
+          variant="outline"
+          onClick={handleExport}
+          disabled={isExporting}
+        >
+          {isExporting ? (
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          ) : (
+            <Download className="w-4 h-4 mr-2" />
+          )}
+          {isExporting ? "Exporting..." : "Export Log"}
         </Button>
       </div>
 
