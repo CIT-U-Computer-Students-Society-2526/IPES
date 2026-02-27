@@ -47,17 +47,24 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
         # Needs to check if the user is an admin of the requested organization
         is_org_admin = False
         if org_id and not is_global_admin:
-            from apps.organizations.models import Membership
-            is_org_admin = Membership.objects.filter(
+            from apps.organizations.models import OrganizationRole
+            is_org_admin = OrganizationRole.objects.filter(
                 user_id=user,
-                unit_id__organization_id=org_id,
+                organization_id=org_id,
                 role='Admin',
                 is_active=True
             ).exists()
-            
+
             # Users can only see their own accomplishments within an org if they are not an admin
             if not is_org_admin:
                 return queryset.filter(user_id=user).select_related('user_id', 'verified_by').order_by('-date_completed', '-id')
+
+            # If user is an org admin, restrict the queryset to users who are
+            # members of that organization so admins cannot view other orgs' data
+            queryset = queryset.filter(
+                user_id__memberships__unit_id__organization_id=org_id,
+                user_id__memberships__is_active=True
+            )
 
         # Admin can filter by other users globally, or within their org
         user_id = self.request.query_params.get('user_id')
@@ -134,10 +141,10 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
             if not org_id:
                 return Response({'error': 'organization_id is required'}, status=status.HTTP_400_BAD_REQUEST)
                 
-            from apps.organizations.models import Membership
-            is_org_admin = Membership.objects.filter(
+            from apps.organizations.models import OrganizationRole
+            is_org_admin = OrganizationRole.objects.filter(
                 user_id=user,
-                unit_id__organization_id=org_id,
+                organization_id=org_id,
                 role='Admin',
                 is_active=True
             ).exists()
@@ -148,7 +155,9 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_403_FORBIDDEN
                 )
         
-        accomplishments = Accomplishment.objects.filter(status='Pending')
+        # Use the scoped queryset so org admins only see accomplishments
+        # from their own organization
+        accomplishments = self.get_queryset().filter(status='Pending')
         serializer = AccomplishmentListSerializer(accomplishments, many=True)
         return Response(serializer.data)
     
@@ -177,10 +186,10 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
             if not org_id:
                 return Response({'error': 'organization_id is required'}, status=status.HTTP_400_BAD_REQUEST)
                 
-            from apps.organizations.models import Membership
-            is_org_admin = Membership.objects.filter(
+            from apps.organizations.models import OrganizationRole
+            is_org_admin = OrganizationRole.objects.filter(
                 user_id=user,
-                unit_id__organization_id=org_id,
+                organization_id=org_id,
                 role='Admin',
                 is_active=True
             ).exists()
@@ -192,10 +201,16 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
                 )
         
         from django.db.models import Count
-        
-        # Base queryset
-        queryset = Accomplishment.objects.all()
-        
+
+        # Base queryset - restrict to org members if org admin
+        if not is_global_admin:
+            queryset = Accomplishment.objects.filter(
+                user_id__memberships__unit_id__organization_id=org_id,
+                user_id__memberships__is_active=True
+            )
+        else:
+            queryset = Accomplishment.objects.all()
+
         # If filtering by user
         user_id = request.query_params.get('user_id')
         if user_id:
@@ -235,10 +250,10 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
             if not org_id:
                 return Response({'error': 'organization_id is required'}, status=status.HTTP_400_BAD_REQUEST)
                 
-            from apps.organizations.models import Membership
-            is_org_admin = Membership.objects.filter(
+            from apps.organizations.models import OrganizationRole
+            is_org_admin = OrganizationRole.objects.filter(
                 user_id=user,
-                unit_id__organization_id=org_id,
+                organization_id=org_id,
                 role='Admin',
                 is_active=True
             ).exists()
@@ -248,6 +263,17 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
                     {'error': 'Unauthorized'},
                     status=status.HTTP_403_FORBIDDEN
                 )
+
+        # Additional safety: ensure the accomplishment belongs to the org
+        # the admin is managing. Prevent an org admin from operating on
+        # accomplishments from other organizations.
+        if not is_global_admin and org_id:
+            belongs = accomplishment.user_id.memberships.filter(
+                unit_id__organization_id=org_id,
+                is_active=True
+            ).exists()
+            if not belongs:
+                return Response({'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
         
         if accomplishment.status != 'Pending':
             return Response(
