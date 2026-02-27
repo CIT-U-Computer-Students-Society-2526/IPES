@@ -32,7 +32,12 @@ const SelectOrganization = () => {
     const navigate = useNavigate();
     const { toast } = useToast();
     const { data: user, isLoading } = useCurrentUser();
-    const { setActiveOrganizationId } = useOrganizationState();
+    const { setActiveOrganizationId, clearOrganizationState } = useOrganizationState();
+
+    React.useEffect(() => {
+        // Clear active organization state when in the selector page
+        clearOrganizationState();
+    }, [clearOrganizationState]);
 
     const [isCreateOpen, setIsCreateOpen] = React.useState(false);
     const [isJoinOpen, setIsJoinOpen] = React.useState(false);
