@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Trophy, Plus, ExternalLink, Clock, CheckCircle2, XCircle, Pencil, Loader2 } from "lucide-react";
+import { Trophy, Plus, ExternalLink, Clock, CheckCircle2, XCircle, Pencil, Loader2, AlertCircle, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -204,11 +204,29 @@ const OfficerAccomplishments = () => {
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Edit Accomplishment</DialogTitle>
+              <DialogTitle>
+                {editingAccomplishment?.status === 'Rejected' ? 'Resubmit Accomplishment' : 'Edit Accomplishment'}
+              </DialogTitle>
               <DialogDescription>
-                Update your accomplishment details
+                {editingAccomplishment?.status === 'Rejected'
+                  ? 'Address the feedback below and resubmit for verification.'
+                  : 'Update your accomplishment details'}
               </DialogDescription>
             </DialogHeader>
+            {editingAccomplishment?.status === 'Rejected' && (
+              <div className="mx-6 mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg flex gap-3">
+                <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-destructive">Rejected</p>
+                  <p className="text-xs text-destructive/80 leading-relaxed">
+                    Reason: {editingAccomplishment.comments || 'No feedback provided.'}
+                  </p>
+                  <p className="text-[10px] text-destructive/60 mt-1 uppercase tracking-wider font-semibold">
+                    Resubmitting will reset the status to Pending
+                  </p>
+                </div>
+              </div>
+            )}
             {editingAccomplishment && (
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
@@ -271,8 +289,12 @@ const OfficerAccomplishments = () => {
                 Cancel
               </Button>
               <Button onClick={handleEditSubmit} disabled={updateAccomplishment.isPending}>
-                {updateAccomplishment.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                Update
+                {updateAccomplishment.isPending ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : editingAccomplishment?.status === 'Rejected' ? (
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                ) : null}
+                {editingAccomplishment?.status === 'Rejected' ? 'Resubmit' : 'Update'}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -366,8 +388,8 @@ const OfficerAccomplishments = () => {
                     )}
                   </div>
                   {item.status === 'Pending' && (
-                    <Button 
-                      variant="ghost" 
+                    <Button
+                      variant="ghost"
                       size="sm"
                       onClick={() => handleEdit(item)}
                     >
@@ -375,8 +397,8 @@ const OfficerAccomplishments = () => {
                     </Button>
                   )}
                   {item.status === 'Rejected' && (
-                    <Button 
-                      variant="ghost" 
+                    <Button
+                      variant="ghost"
                       size="sm"
                       onClick={() => handleEdit(item)}
                     >

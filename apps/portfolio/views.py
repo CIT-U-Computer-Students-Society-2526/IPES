@@ -110,7 +110,16 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
     
     def perform_update(self, serializer):
         """Update accomplishment and log the change"""
-        accomplishment = serializer.save()
+        instance = self.get_object()
+        update_kwargs = {}
+
+        # If it was rejected, reset to Pending and clear admin feedback upon update
+        if instance.status == 'Rejected':
+            update_kwargs['status'] = 'Pending'
+            update_kwargs['verified_by'] = None
+            update_kwargs['comments'] = None
+
+        accomplishment = serializer.save(**update_kwargs)
         log_action(
             self.request.user,
             AuditActions.ACCOMPLISHMENT_UPDATED,
