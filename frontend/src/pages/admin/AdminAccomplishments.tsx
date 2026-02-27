@@ -2,7 +2,6 @@ import { useState } from "react";
 import {
   Trophy,
   Search,
-  Filter,
   CheckCircle2,
   XCircle,
   Clock,
@@ -52,11 +51,13 @@ const AdminAccomplishments = () => {
   const { toast } = useToast();
 
   const getStatusColor = (status: string) => {
+    // make status badges non-interactive and lighten on hover
+    const base = "cursor-default transition-colors";
     switch (status) {
-      case "Verified": return "bg-green-100 text-green-700";
-      case "Pending": return "bg-yellow-100 text-yellow-700";
-      case "Rejected": return "bg-red-100 text-red-700";
-      default: return "bg-muted text-muted-foreground";
+      case "Verified": return `${base} bg-green-100 text-green-700 hover:bg-green-200`;
+      case "Pending": return `${base} bg-yellow-100 text-yellow-700 hover:bg-yellow-200`;
+      case "Rejected": return `${base} bg-red-100 text-red-700 hover:bg-red-200`;
+      default: return `${base} bg-muted text-muted-foreground hover:bg-muted/80`;
     }
   };
 
@@ -196,9 +197,6 @@ const AdminAccomplishments = () => {
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              <Button variant="outline" size="icon">
-                <Filter className="w-4 h-4" />
-              </Button>
             </div>
           </div>
         </CardHeader>
@@ -277,7 +275,7 @@ const AdminAccomplishments = () => {
 
       {/* Review Dialog */}
       <Dialog open={reviewDialogOpen} onOpenChange={setReviewDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Review Accomplishment</DialogTitle>
           </DialogHeader>
@@ -289,7 +287,7 @@ const AdminAccomplishments = () => {
               </div>
               <div>
                 <Label className="text-muted-foreground">Description</Label>
-                <p className="text-sm">{selectedAccomplishment.description}</p>
+                <p className="text-sm break-words whitespace-pre-wrap max-h-40 overflow-auto">{selectedAccomplishment.description}</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -318,7 +316,7 @@ const AdminAccomplishments = () => {
               {selectedAccomplishment.status === "Pending" && (
                 <>
                   <div className="space-y-2">
-                    <Label>Reviewer Notes (optional)</Label>
+                    <Label>Accomplishment Comments (optional)</Label>
                     <Textarea
                       placeholder="Add any notes about this accomplishment..."
                       value={reviewNotes}
@@ -327,7 +325,7 @@ const AdminAccomplishments = () => {
                   </div>
                   <div className="flex gap-2">
                     <Button
-                      className="flex-1 bg-green-600 hover:bg-green-700"
+                      className="flex-1"
                       onClick={() => handleVerify("Verified")}
                       disabled={verifyAccomplishment.isPending}
                     >
@@ -350,7 +348,9 @@ const AdminAccomplishments = () => {
               {selectedAccomplishment.status === "Rejected" && selectedAccomplishment.comments && (
                 <div className="p-3 bg-red-50 rounded-lg">
                   <Label className="text-red-700">Rejection Reason</Label>
-                  <p className="text-sm text-red-600">{selectedAccomplishment.comments}</p>
+                  <p className="text-sm text-red-600 break-words whitespace-pre-wrap max-h-40 overflow-auto">
+                    {selectedAccomplishment.comments}
+                  </p>
                 </div>
               )}
             </div>
