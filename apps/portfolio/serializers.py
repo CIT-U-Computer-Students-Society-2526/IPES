@@ -12,12 +12,12 @@ class AccomplishmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Accomplishment
         fields = [
-            'id', 'user_id', 'user_email', 'user_name', 'title',
+            'id', 'user_id', 'user_email', 'user_name', 'organization_id', 'title',
             'description', 'type', 'date_completed', 'proof_link',
             'status', 'verified_by', 'verified_by_email', 'comments',
             'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'user_id', 'status', 'verified_by', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'user_id', 'organization_id', 'status', 'verified_by', 'created_at', 'updated_at']
 
 
 class AccomplishmentCreateSerializer(serializers.ModelSerializer):
@@ -80,7 +80,7 @@ class AccomplishmentListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Accomplishment
         fields = [
-            'id', 'user_id', 'user_email', 'user_name', 'title',
+            'id', 'user_id', 'user_email', 'user_name', 'organization_id', 'title',
             'description', 'type', 'date_completed', 'proof_link', 'status',
             'comments', 'created_at', 'updated_at'
         ]

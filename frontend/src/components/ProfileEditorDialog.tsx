@@ -116,9 +116,7 @@ export function ProfileEditorDialog({ children }: { children: React.ReactNode })
                                             <p className="text-sm text-muted-foreground">System Administrator</p>
                                         )}
                                     </div>
-                                ) : (
-                                    <p className="text-sm text-muted-foreground mt-0.5">Please select an organization</p>
-                                )}
+                                ) : null}
                             </div>
                         </div>
                         <div className="shrink-0">

@@ -58,6 +58,7 @@ erDiagram
         int user_id FK
         int organization_id FK
         string role "Admin, Member"
+        boolean is_active
     }
     JOIN_REQUEST {
         int id PK
@@ -90,6 +91,7 @@ erDiagram
     ORGANIZATION ||--|{ ORGANIZATION_UNIT : "consists of"
     ORGANIZATION ||--o{ JOIN_REQUEST : "receives"
     ORGANIZATION ||--|{ ORGANIZATION_ROLE : "has"
+    ORGANIZATION ||--o{ ACCOMPLISHMENT : "tracks"
 
     UNIT_TYPE ||--|{ ORGANIZATION_UNIT : "defines type"
     POSITION_TYPE ||--|{ MEMBERSHIP : "defines rank"
@@ -110,6 +112,7 @@ erDiagram
     ACCOMPLISHMENT {
         int id PK
         int user_id FK
+        int organization_id FK
         string title
         text description
         string type
@@ -117,13 +120,16 @@ erDiagram
         string proof_link "URL"
         string status "Pending, Verified, Rejected"
         int verified_by_id FK "nullable"
+        text comments "nullable"
+        datetime created_at
+        datetime updated_at
     }
 
     USER ||--|{ MEMBERSHIP : "holds"
     USER ||--o{ JOIN_REQUEST : "submits"
     USER ||--o{ ACCOMPLISHMENT : "logs"
     USER ||--o{ ACCOMPLISHMENT : "verifies (Admin)"
-    USER ||--|| ORGANIZATION_ROLE : "assigned"
+    USER ||--o{ ORGANIZATION_ROLE : "assigned"
 
     %% --- Evaluation Structure ---
 
@@ -138,6 +144,8 @@ erDiagram
         boolean is_active
         boolean results_released
         boolean is_deleted
+        datetime created_at
+        datetime updated_at
     }
 
     QUESTION {

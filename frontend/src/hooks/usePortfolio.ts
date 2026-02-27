@@ -69,10 +69,13 @@ export const useAccomplishments = (params?: { status?: string; type?: string; us
 
 // Fetch my accomplishments (current user)
 export const useMyAccomplishments = () => {
+  const { activeOrganizationId } = useOrganizationState();
+  const queryString = activeOrganizationId ? `?organization_id=${activeOrganizationId}` : '';
+
   return useQuery({
-    queryKey: ['accomplishments', 'my'],
+    queryKey: ['accomplishments', 'my', activeOrganizationId],
     queryFn: async () => {
-      const response = await api.get('/accomplishments/my/');
+      const response = await api.get(`/accomplishments/my/${queryString}`);
       const data = await response.json() as { results: Accomplishment[] } | Accomplishment[];
       return Array.isArray(data) ? data : data.results || [];
     },

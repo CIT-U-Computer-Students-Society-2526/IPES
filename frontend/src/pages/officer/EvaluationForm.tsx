@@ -76,7 +76,6 @@ const EvaluationForm = () => {
   const [currentSection, setCurrentSection] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [textAnswers, setTextAnswers] = useState<Record<number, string>>({});
-  const [comments, setComments] = useState("");
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
 
@@ -127,11 +126,10 @@ const EvaluationForm = () => {
   const sections = [
     { name: "Evaluatee Info", questions: [] as Question[] },
     { name: "Evaluation Questions", questions: questions },
-    { name: "Comments", questions: [] as Question[] },
   ];
 
   const answeredCount = Object.keys(answers).length +
-    Object.keys(textAnswers).filter(id => Number(id) !== -1 && textAnswers[Number(id)]?.trim() !== "").length;
+    Object.keys(textAnswers).filter(id => textAnswers[Number(id)]?.trim() !== "").length;
   const totalQuestions = questions.length;
   const progressPercentage = totalQuestions === 0 ? 0 : Math.min(100, (answeredCount / totalQuestions) * 100);
 
@@ -344,26 +342,6 @@ const EvaluationForm = () => {
       );
     }
 
-    if (currentSection === sections.length - 1) {
-      return (
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="comments" className="text-base font-medium">Additional Comments</Label>
-            <p className="text-sm text-muted-foreground mt-1 mb-3">
-              Share any additional feedback, suggestions, or observations (optional)
-            </p>
-            <Textarea
-              id="comments"
-              placeholder="Enter your final remarks or global comments here..."
-              value={textAnswers[-1] || ""}
-              onChange={(e) => handleTextChange(-1, e.target.value)}
-              className="min-h-[150px] resize-none"
-              disabled={isCompleted}
-            />
-          </div>
-        </div>
-      );
-    }
 
     const sectionQuestions = sections[currentSection].questions;
     return (

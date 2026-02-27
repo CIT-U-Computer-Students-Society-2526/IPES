@@ -163,13 +163,15 @@ const AdminDashboard = () => {
       id: 1,
       type: "warning" as const,
       message: `${pendingReview} accomplishments pending review`,
-      action: "Review now"
+      action: "Review now",
+      link: "/admin/accomplishments"
     }] : []),
     ...(activeEvaluations > 20 ? [{
       id: 2,
       type: "info" as const,
       message: `${activeEvaluations} active evaluations ongoing`,
-      action: "View details"
+      action: "View details",
+      link: "/admin/assignments"
     }] : []),
   ];
 
@@ -237,9 +239,11 @@ const AdminDashboard = () => {
                   }`} />
                 <span className="text-sm text-foreground">{alert.message}</span>
               </div>
-              <Button variant="ghost" size="sm">
-                {alert.action}
-              </Button>
+              <Link to={alert.link}>
+                <Button variant="ghost" size="sm">
+                  {alert.action}
+                </Button>
+              </Link>
             </div>
           ))}
         </div>

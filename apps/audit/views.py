@@ -3,7 +3,9 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db.models import Q
 from django.utils import timezone
+from django.http import HttpResponse
 from datetime import timedelta
+import csv
 
 from .models import AuditLog
 from .serializers import AuditLogSerializer, AuditLogListSerializer
@@ -31,10 +33,10 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
                 # otherwise return nothing to prevent cross-tenant data leakage
                 return AuditLog.objects.none()
                 
-            from apps.organizations.models import Membership
-            is_org_admin = Membership.objects.filter(
-                user_id=self.request.user,
-                unit_id__organization_id=org_id,
+            from apps.organizations.models import OrganizationRole
+            is_org_admin = OrganizationRole.objects.filter(
+                user=self.request.user,
+                organization_id=org_id,
                 role='Admin',
                 is_active=True
             ).exists()
@@ -68,6 +70,17 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
         ip_address = self.request.query_params.get('ip_address')
         if ip_address:
             queryset = queryset.filter(ip_address=ip_address)
+            
+        # General search query
+        q = self.request.query_params.get('q')
+        if q:
+            queryset = queryset.filter(
+                Q(action__icontains=q) |
+                Q(ip_address__icontains=q) |
+                Q(user_id__email__icontains=q) |
+                Q(user_id__first_name__icontains=q) |
+                Q(user_id__last_name__icontains=q)
+            )
         
         return queryset.select_related('user_id', 'organization_id').order_by('-datetime')
     
@@ -206,3 +219,25 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
             'by_action': action_counts,
             'by_user': user_counts
         })
+
+    @action(detail=False, methods=['get'])
+    def export_csv(self, request):
+        """Export audit logs to CSV"""
+        queryset = self.get_queryset()
+        
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="audit_log_{timezone.now().strftime("%Y%m%d_%H%M%S")}.csv"'
+        
+        writer = csv.writer(response)
+        writer.writerow(['Timestamp', 'User Name', 'User Email', 'Action', 'IP Address'])
+        
+        for log in queryset:
+            writer.writerow([
+                log.datetime.strftime('%Y-%m-%d %H:%M:%S'),
+                log.user_id.get_full_name() if log.user_id else 'System',
+                log.user_id.email if log.user_id else 'N/A',
+                log.action,
+                log.ip_address or 'N/A'
+            ])
+            
+        return response

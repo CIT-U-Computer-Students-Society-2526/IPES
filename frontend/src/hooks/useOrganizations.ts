@@ -165,6 +165,23 @@ export const useRemoveMember = () => {
   });
 };
 
+// Set a member's role (Admin / Member) within the active organization
+export const useSetMemberRole = () => {
+  const queryClient = useQueryClient();
+  const { activeOrganizationId } = useOrganizationState();
+
+  return useMutation<{ message: string }, Error, { user_id: number; role: 'Admin' | 'Member' }>({
+    mutationFn: async (data) => {
+      const response = await api.post(`/organizations/${activeOrganizationId}/set-member-role/`, data);
+      return response.json() as Promise<{ message: string }>;
+    },
+    onSuccess: () => {
+      // Invalidate user queries so role changes reflect immediately
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    }
+  });
+};
+
 // Fetch Organization Units
 export interface OrganizationUnit {
   id: number;

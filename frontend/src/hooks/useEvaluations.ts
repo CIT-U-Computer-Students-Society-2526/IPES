@@ -422,11 +422,15 @@ export const useAssignments = (params?: { status?: string; form_id?: number; org
 };
 
 // Fetch pending assignments for current user
-export const useMyPendingEvaluations = () => {
+export const useMyPendingEvaluations = (params?: { organization_id?: number }) => {
+  const { activeOrganizationId } = useOrganizationState();
+  const orgId = params?.organization_id || activeOrganizationId;
+
   return useQuery({
-    queryKey: ['assignments', 'my_pending'],
+    queryKey: ['assignments', 'my_pending', orgId],
     queryFn: async () => {
-      const response = await api.get('/assignments/my_pending/');
+      const url = orgId ? `/assignments/my_pending/?organization_id=${orgId}` : '/assignments/my_pending/';
+      const response = await api.get(url);
       const data = await response.json() as { results: EvaluationAssignment[] } | EvaluationAssignment[];
       return Array.isArray(data) ? data : data.results || [];
     },
@@ -434,11 +438,15 @@ export const useMyPendingEvaluations = () => {
 };
 
 // Fetch my completed evaluations
-export const useMyCompletedEvaluations = () => {
+export const useMyCompletedEvaluations = (params?: { organization_id?: number }) => {
+  const { activeOrganizationId } = useOrganizationState();
+  const orgId = params?.organization_id || activeOrganizationId;
+
   return useQuery({
-    queryKey: ['assignments', 'my_completed'],
+    queryKey: ['assignments', 'my_completed', orgId],
     queryFn: async () => {
-      const response = await api.get('/assignments/?status=Submitted');
+      const url = orgId ? `/assignments/my_completed/?organization_id=${orgId}` : '/assignments/my_completed/';
+      const response = await api.get(url);
       const data = await response.json() as { results: EvaluationAssignment[] } | EvaluationAssignment[];
       return Array.isArray(data) ? data : data.results || [];
     },
@@ -456,12 +464,19 @@ export type MyPerformanceData = {
 };
 
 // Fetch aggregated performance data
-export const useMyPerformance = (formId?: number) => {
+export const useMyPerformance = (formId?: number, organizationId?: number) => {
+  const { activeOrganizationId } = useOrganizationState();
+  const orgId = organizationId || activeOrganizationId;
+
   return useQuery({
-    queryKey: ['assignments', 'my_performance', formId],
+    queryKey: ['assignments', 'my_performance', formId, orgId],
     queryFn: async () => {
-      const url = formId ? `/assignments/my_performance/?form_id=${formId}` : '/assignments/my_performance/';
-      const response = await api.get(url);
+      const params = new URLSearchParams();
+      if (formId) params.append('form_id', String(formId));
+      if (orgId) params.append('organization_id', String(orgId));
+
+      const queryString = params.toString() ? `?${params.toString()}` : '';
+      const response = await api.get(`/assignments/my_performance/${queryString}`);
       return response.json() as Promise<MyPerformanceData>;
     },
   });

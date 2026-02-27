@@ -44,49 +44,15 @@ class OrganizationViewSet(viewsets.ModelViewSet):
         return super().create(request, *args, **kwargs)
 
     def perform_create(self, serializer):
-        """Log organization creation and set founder as Head Administrator"""
+        """Log organization creation and assign founder as Admin"""
         org = serializer.save()
-        
-        # Create default functional structure
-        unit_type = UnitType.objects.create(
-            organization_id=org,
-            name="System"
-        )
-        
-        org_unit = OrganizationUnit.objects.create(
-            organization_id=org,
-            type_id=unit_type,
-            name="Administrators",
-            description="Core system administration and oversight."
-        )
-        
-        position = PositionType.objects.create(
-            organization_id=org,
-            name="Head Administrator",
-            rank=1
-        )
-        
-        PositionType.objects.create(
-            organization_id=org,
-            name="Member Administrator",
-            rank=2
-        )
-        
-        # Automatically assign the creator as Admin with rank 1
-        Membership.objects.create(
-            user_id=self.request.user,
-            unit_id=org_unit,
-            position_id=position,
-            date_start=timezone.now().date(),
-            is_active=True
-        )
-        
+
         OrganizationRole.objects.create(
             user=self.request.user,
             organization=org,
             role='Admin'
         )
-        
+
         log_action(
             self.request.user,
             AuditActions.ORG_CREATED,
@@ -149,6 +115,10 @@ class OrganizationViewSet(viewsets.ModelViewSet):
         if not OrganizationRole.objects.filter(user=request.user, organization=org, role='Admin', is_active=True).exists():
             return Response({'error': 'Not authorized to remove members from this organization'}, status=status.HTTP_403_FORBIDDEN)
             
+        # Prevent self-removal
+        if str(user_id) == str(request.user.id):
+            return Response({'error': 'You cannot remove yourself from the organization.'}, status=status.HTTP_403_FORBIDDEN)
+            
         # 1. Deactivate the OrganizationRole
         role = OrganizationRole.objects.filter(user_id=user_id, organization=org).first()
         if role:
@@ -175,6 +145,52 @@ class OrganizationViewSet(viewsets.ModelViewSet):
         )
         
         return Response({'message': 'Member removed from organization successfully'})
+
+    @action(detail=True, methods=['post'], url_path='set-member-role')
+    def set_member_role(self, request, pk=None):
+        """
+        Update a user's role (Admin/Member) within the organization.
+        Only Admins can call this.
+        """
+        org = self.get_object()
+        user_id = request.data.get('user_id')
+        new_role = request.data.get('role')
+
+        if not user_id or not new_role:
+            return Response({'error': 'user_id and role are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if new_role not in ('Admin', 'Member'):
+            return Response({'error': 'role must be "Admin" or "Member"'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Verify caller is an Admin in this org
+        if not OrganizationRole.objects.filter(user=request.user, organization=org, role='Admin', is_active=True).exists():
+            return Response({'error': 'Not authorized to change roles in this organization'}, status=status.HTTP_403_FORBIDDEN)
+
+        # An admin cannot revoke their own adminship to prevent the org going headless
+        if str(request.user.id) == str(user_id) and new_role == 'Member':
+            return Response(
+                {'error': 'You cannot revoke your own admin privileges.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        org_role = OrganizationRole.objects.filter(user_id=user_id, organization=org).first()
+        if not org_role:
+            return Response({'error': 'User does not have an OrganizationRole in this org'}, status=status.HTTP_404_NOT_FOUND)
+
+        org_role.role = new_role
+        org_role.save(update_fields=['role'])
+
+        from apps.users.models import User
+        target_user = User.objects.filter(id=user_id).first()
+        log_action(
+            request.user,
+            AuditActions.USER_UPDATED,
+            request,
+            target_user_email=target_user.email if target_user else f'User ID: {user_id}',
+            detail=f'Role changed to {new_role} in {org.name}'
+        )
+
+        return Response({'message': f'Role updated to {new_role} successfully'})
         
     @action(detail=True, methods=['post'], url_path='delete-organization')
     def delete_organization(self, request, pk=None):
@@ -206,17 +222,17 @@ class OrganizationViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # 3. Verify the requesting user is a Head Admin (rank = 1) for this specific Org
-        is_head_admin = Membership.objects.filter(
-            user_id=request.user,
-            unit_id__organization_id=org,
-            position_id__rank=1,
+        # 3. Verify the requesting user is an Admin for this specific Org
+        is_admin = OrganizationRole.objects.filter(
+            user=request.user,
+            organization=org,
+            role='Admin',
             is_active=True
         ).exists()
 
-        if not is_head_admin:
+        if not is_admin:
             return Response(
-                {'error': 'Only the Head Administrator can delete this organization.'},
+                {'error': 'Only Administrators can delete this organization.'},
                 status=status.HTTP_403_FORBIDDEN
             )
 
