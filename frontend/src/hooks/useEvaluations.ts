@@ -141,6 +141,19 @@ export const useFormQuestions = (formId: number) => {
       return response.json() as Promise<Question[]>;
     },
     enabled: !!formId,
+    staleTime: 0, // Always refetch to get latest questions
+  });
+};
+
+// Fetch completed assignment count for a form (for edit warning)
+export const useFormCompletedCount = (formId: number) => {
+  return useQuery({
+    queryKey: ['forms', formId, 'completed_count'],
+    queryFn: async () => {
+      const response = await api.get(`/forms/${formId}/completed_count/`);
+      return response.json() as Promise<{ completed_count: number }>;
+    },
+    enabled: !!formId,
   });
 };
 
@@ -364,6 +377,8 @@ export const useCreateQuestions = () => {
     },
     onSuccess: (_, { form_id }) => {
       queryClient.invalidateQueries({ queryKey: ['forms', form_id, 'questions'] });
+      // Invalidate assignments since completed ones are reset
+      queryClient.invalidateQueries({ queryKey: ['assignments'] });
     },
   });
 };
@@ -379,6 +394,8 @@ export const useUpdateQuestion = () => {
     },
     onSuccess: (_, { form_id }) => {
       queryClient.invalidateQueries({ queryKey: ['forms', form_id, 'questions'] });
+      // Invalidate assignments since completed ones are reset
+      queryClient.invalidateQueries({ queryKey: ['assignments'] });
     },
   });
 };
@@ -393,6 +410,8 @@ export const useDeleteQuestion = () => {
     },
     onSuccess: (_, { form_id }) => {
       queryClient.invalidateQueries({ queryKey: ['forms', form_id, 'questions'] });
+      // Invalidate assignments since completed ones are reset
+      queryClient.invalidateQueries({ queryKey: ['assignments'] });
     },
   });
 };
