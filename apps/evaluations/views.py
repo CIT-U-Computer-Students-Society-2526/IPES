@@ -633,6 +633,9 @@ class EvaluationAssignmentViewSet(viewsets.ModelViewSet):
         if not is_admin:
             from django.db.models import Q
             queryset = queryset.filter(Q(evaluatee_id=user) | Q(evaluator_id=user))
+            # Also ensure members are restricted to the org if specified
+            if org_id:
+                queryset = queryset.filter(form_id__organization_id=org_id)
         
         if form_id:
             queryset = queryset.filter(form_id=form_id)
@@ -671,12 +674,16 @@ class EvaluationAssignmentViewSet(viewsets.ModelViewSet):
         """Get aggregate performance data from received evaluations for a specific form or latest released form"""
         user = request.user
         form_id = request.query_params.get('form_id')
+        org_id = request.query_params.get('organization_id')
 
         # Get all completed assignments for the user as evaluatee
         all_evaluatee_assignments = EvaluationAssignment.objects.filter(
             evaluatee_id=user,
             status='Completed'
         ).select_related('form_id')
+
+        if org_id:
+            all_evaluatee_assignments = all_evaluatee_assignments.filter(form_id__organization_id=org_id)
 
         # Find forms that have released results and the user has evaluations for
         released_form_ids = EvaluationForm.objects.filter(

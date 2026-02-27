@@ -33,7 +33,7 @@ class EndpointAuthTests(APITestCase):
 	def test_audit_recent_non_admin_forbidden(self):
 		from django.contrib.auth import get_user_model
 		User = get_user_model()
-		user = User.objects.create(username='user', email='user@example.com', role='officer')
+		user = User.objects.create(username='user', email='user@example.com')
 		self.client.force_authenticate(user=user)
 		resp = self.client.get('/api/audit/recent/')
 		self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
@@ -41,7 +41,7 @@ class EndpointAuthTests(APITestCase):
 	def test_audit_recent_admin_ok(self):
 		from django.contrib.auth import get_user_model
 		User = get_user_model()
-		admin = User.objects.create(username='admin', email='admin@example.com', role='admin')
+		admin = User.objects.create(username='admin', email='admin@example.com', is_staff=True, is_superuser=True)
 		self.client.force_authenticate(user=admin)
 		resp = self.client.get('/api/audit/recent/')
 		self.assertEqual(resp.status_code, status.HTTP_200_OK)
