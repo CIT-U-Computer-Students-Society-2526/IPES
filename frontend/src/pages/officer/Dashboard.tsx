@@ -242,7 +242,7 @@ const OfficerDashboard = () => {
         <StatCard
           label="Average Rating"
           value={averageRating}
-          suffix="/5"
+          suffix={`/${performanceData?.overallMaxScore || 5}`}
           icon={TrendingUp}
           color="primary"
           isLoading={performanceLoading}

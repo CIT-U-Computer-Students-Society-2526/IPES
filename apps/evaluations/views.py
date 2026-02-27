@@ -768,6 +768,7 @@ class EvaluationAssignmentViewSet(viewsets.ModelViewSet):
         if not released_form_ids:
             return DRFResponse({
                 'overallScore': 0,
+                'overallMaxScore': 5,
                 'categoryScores': [],
                 'feedbackComments': [],
                 'evaluationHistory': [],
@@ -797,6 +798,20 @@ class EvaluationAssignmentViewSet(viewsets.ModelViewSet):
         overall_score = assignments.aggregate(avg=models.Avg('total_score'))['avg'] or 0
         overall_score = round(overall_score, 1)
         evaluator_count = assignments.count()
+
+        # Calculate overall max score based on questions in the form
+        form_questions = Question.objects.filter(form_id_id=selected_form_id)
+        if form_questions.exists():
+            total_weighted_max = 0
+            total_weight = 0
+            for q in form_questions:
+                q_max = q.max_value if q.max_value is not None else (100 if q.input_type == 'number' else 5)
+                if q.weight:
+                    total_weighted_max += q_max * q.weight
+                    total_weight += q.weight
+            overall_max_score = round(total_weighted_max / total_weight, 1) if total_weight > 0 else 5
+        else:
+            overall_max_score = 5
 
         # evaluationHistory: still useful to show historical averages for comparison maybe?
         # Let's keep it but calculate it from ALL released assignments
@@ -832,17 +847,23 @@ class EvaluationAssignmentViewSet(viewsets.ModelViewSet):
             # Use question text as category since category field is missing in model
             category = (question.text[:30] + '...') if len(question.text) > 30 else question.text
             
+            # Use the actual max_value from the question (default to 5 for rating, 100 for number)
+            question_max = question.max_value if question.max_value is not None else (100 if question.input_type == 'number' else 5)
+            
             if category not in category_map:
-                category_map[category] = {'score_sum': 0, 'weight_sum': 0, 'max_score': 5}
+                category_map[category] = {'score_sum': 0, 'weight_sum': 0, 'max_score_sum': 0}
             
             if response.score_value is not None and question.weight:
                 category_map[category]['score_sum'] += response.score_value * question.weight
                 category_map[category]['weight_sum'] += question.weight
+                category_map[category]['max_score_sum'] += question_max * question.weight
                 
             if response.text and response.text.strip():
-                feedback_type = 'positive' if (response.score_value and response.score_value >= 4) else 'constructive'
-                if not response.score_value:
-                    feedback_type = 'info'
+                # Determine feedback type based on relative score (above 80% = positive)
+                feedback_type = 'info'
+                if response.score_value is not None and question_max > 0:
+                    score_ratio = response.score_value / question_max
+                    feedback_type = 'positive' if score_ratio >= 0.8 else 'constructive'
                     
                 feedback_comments.append({
                     'id': comment_id,
@@ -854,14 +875,18 @@ class EvaluationAssignmentViewSet(viewsets.ModelViewSet):
         category_scores = []
         for name, data in category_map.items():
             if data['weight_sum'] > 0:
+                # Calculate the weighted average score and max score
+                avg_score = round(data['score_sum'] / data['weight_sum'], 1)
+                avg_max = round(data['max_score_sum'] / data['weight_sum'], 1)
                 category_scores.append({
                     'name': name,
-                    'score': round(data['score_sum'] / data['weight_sum'], 1),
-                    'maxScore': 5
+                    'score': avg_score,
+                    'maxScore': avg_max
                 })
 
         return DRFResponse({
             'overallScore': overall_score,
+            'overallMaxScore': overall_max_score,
             'categoryScores': category_scores,
             'feedbackComments': feedback_comments[:10],
             'evaluationHistory': evaluation_history,

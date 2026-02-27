@@ -474,6 +474,7 @@ export const useMyCompletedEvaluations = (params?: { organization_id?: number })
 
 export type MyPerformanceData = {
   overallScore: number;
+  overallMaxScore: number;
   categoryScores: { name: string; score: number; maxScore: number }[];
   feedbackComments: { id: number; text: string; type: string }[];
   evaluationHistory: { period: string; score: number; evaluators: number }[];

@@ -28,6 +28,7 @@ const OfficerResults = () => {
 
   const {
     overallScore,
+    overallMaxScore,
     categoryScores,
     feedbackComments,
     evaluationHistory,
@@ -56,7 +57,7 @@ const OfficerResults = () => {
     );
   }
 
-  const maxScore = 5;
+  const maxScore = overallMaxScore || 5;
   const currentForm = available_forms.find(f => f.id === backendSelectedId);
 
   return (
