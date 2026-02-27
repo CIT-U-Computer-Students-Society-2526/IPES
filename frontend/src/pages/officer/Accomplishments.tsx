@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Trophy, Plus, ExternalLink, Clock, CheckCircle2, XCircle, Pencil, Loader2, AlertCircle, RotateCcw } from "lucide-react";
+import { Trophy, Plus, ExternalLink, Clock, CheckCircle2, XCircle, Pencil, Loader2, AlertCircle, RotateCcw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMyAccomplishments, useCreateAccomplishment, useUpdateAccomplishment, AccomplishmentCreate, Accomplishment } from "@/hooks/usePortfolio";
 import { useToast } from "@/hooks/use-toast";
 
@@ -48,6 +49,8 @@ const getStatusBadge = (status: string) => {
 const OfficerAccomplishments = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [newAccomplishment, setNewAccomplishment] = useState<AccomplishmentCreate>({
     title: "",
     description: "",
@@ -56,11 +59,36 @@ const OfficerAccomplishments = () => {
     proof_link: ""
   });
   const [editingAccomplishment, setEditingAccomplishment] = useState<Accomplishment | null>(null);
+  const [originalAccomplishment, setOriginalAccomplishment] = useState<Accomplishment | null>(null);
 
   const { data: accomplishments = [], isLoading } = useMyAccomplishments();
   const createAccomplishment = useCreateAccomplishment();
   const updateAccomplishment = useUpdateAccomplishment();
   const { toast } = useToast();
+
+  // determine if the user has changed any editable fields compared to when the dialog opened
+  const hasChanges = !!editingAccomplishment && !!originalAccomplishment && (
+    editingAccomplishment.title !== originalAccomplishment.title ||
+    editingAccomplishment.description !== originalAccomplishment.description ||
+    editingAccomplishment.type !== originalAccomplishment.type ||
+    editingAccomplishment.date_completed !== originalAccomplishment.date_completed ||
+    (editingAccomplishment.proof_link || "") !== (originalAccomplishment.proof_link || "")
+  );
+
+  // filter accomplishments by status
+  const filteredAccomplishments = accomplishments.filter(a => {
+    const matchesSearch = a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      a.description.toLowerCase().includes(searchQuery.toLowerCase());
+    if (activeTab === "all") return matchesSearch;
+    return a.status.toLowerCase() === activeTab && matchesSearch;
+  });
+
+  const stats = {
+    pending: accomplishments.filter(a => a.status === "Pending").length,
+    verified: accomplishments.filter(a => a.status === "Verified").length,
+    rejected: accomplishments.filter(a => a.status === "Rejected").length,
+    total: accomplishments.length,
+  };
 
   const handleSubmit = async () => {
     try {
@@ -82,6 +110,7 @@ const OfficerAccomplishments = () => {
 
   const handleEdit = (accomplishment: Accomplishment) => {
     setEditingAccomplishment(accomplishment);
+    setOriginalAccomplishment(accomplishment);
     setIsEditDialogOpen(true);
   };
 
@@ -288,7 +317,7 @@ const OfficerAccomplishments = () => {
               <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleEditSubmit} disabled={updateAccomplishment.isPending}>
+              <Button onClick={handleEditSubmit} disabled={updateAccomplishment.isPending || !hasChanges}>
                 {updateAccomplishment.isPending ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 ) : editingAccomplishment?.status === 'Rejected' ? (
@@ -310,7 +339,7 @@ const OfficerAccomplishments = () => {
             </div>
             <div>
               <p className="text-2xl font-bold text-foreground">
-                {accomplishments.filter(a => a.status === 'Verified').length}
+                {stats.verified}
               </p>
               <p className="text-sm text-muted-foreground">Verified</p>
             </div>
@@ -323,7 +352,7 @@ const OfficerAccomplishments = () => {
             </div>
             <div>
               <p className="text-2xl font-bold text-foreground">
-                {accomplishments.filter(a => a.status === 'Pending').length}
+                {stats.pending}
               </p>
               <p className="text-sm text-muted-foreground">Pending</p>
             </div>
@@ -335,7 +364,7 @@ const OfficerAccomplishments = () => {
               <Trophy className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{accomplishments.length}</p>
+              <p className="text-2xl font-bold text-foreground">{stats.total}</p>
               <p className="text-sm text-muted-foreground">Total</p>
             </div>
           </div>
@@ -344,8 +373,24 @@ const OfficerAccomplishments = () => {
 
       {/* Accomplishments List */}
       <div className="bg-card rounded-xl border border-border">
-        <div className="p-4 border-b border-border">
-          <h2 className="font-semibold text-foreground">All Accomplishments</h2>
+        <div className="p-4 border-b border-border flex items-center justify-between gap-4">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList>
+              <TabsTrigger value="all">All ({stats.total})</TabsTrigger>
+              <TabsTrigger value="pending">Pending ({stats.pending})</TabsTrigger>
+              <TabsTrigger value="verified">Verified ({stats.verified})</TabsTrigger>
+              <TabsTrigger value="rejected">Rejected ({stats.rejected})</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <div className="relative w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search accomplishments..."
+              className="pl-10"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
         </div>
         <div className="divide-y divide-border">
           {isLoading ? (
@@ -356,8 +401,12 @@ const OfficerAccomplishments = () => {
             <div className="p-8 text-center text-muted-foreground">
               No accomplishments found.
             </div>
+          ) : filteredAccomplishments.length === 0 ? (
+            <div className="p-8 text-center text-muted-foreground">
+              No {activeTab} accomplishments found.
+            </div>
           ) : (
-            accomplishments.map((item) => (
+            filteredAccomplishments.map((item) => (
               <div key={item.id} className="p-4 hover:bg-muted/30 transition-colors">
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                   <div className="flex-1">
