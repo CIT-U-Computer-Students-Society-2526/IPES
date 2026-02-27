@@ -33,10 +33,10 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
                 # otherwise return nothing to prevent cross-tenant data leakage
                 return AuditLog.objects.none()
                 
-            from apps.organizations.models import Membership
-            is_org_admin = Membership.objects.filter(
-                user_id=self.request.user,
-                unit_id__organization_id=org_id,
+            from apps.organizations.models import OrganizationRole
+            is_org_admin = OrganizationRole.objects.filter(
+                user=self.request.user,
+                organization_id=org_id,
                 role='Admin',
                 is_active=True
             ).exists()

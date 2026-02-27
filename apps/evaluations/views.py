@@ -632,10 +632,10 @@ class EvaluationAssignmentViewSet(viewsets.ModelViewSet):
         
         is_admin = user.is_superuser
         if not is_admin and org_id:
-            from apps.organizations.models import Membership
-            is_admin = Membership.objects.filter(
-                user_id=user,
-                unit_id__organization_id=org_id,
+            from apps.organizations.models import OrganizationRole
+            is_admin = OrganizationRole.objects.filter(
+                user=user,
+                organization_id=org_id,
                 role='Admin',
                 is_active=True
             ).exists()
