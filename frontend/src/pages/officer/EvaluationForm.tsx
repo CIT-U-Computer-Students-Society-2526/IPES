@@ -19,6 +19,7 @@ import {
 
 import {
   useAssignment,
+  useForm,
   useFormQuestions,
   useAssignmentResponses,
   useSubmitEvaluation,
@@ -53,6 +54,7 @@ const EvaluationForm = () => {
   const { toast } = useToast();
   // API Hooks
   const { data: assignment, isLoading: aLoading, error: aError } = useAssignment(Number(id));
+  const { data: form } = useForm(assignment?.form_id || 0);
   const { data: questions, isLoading: qLoading } = useFormQuestions(assignment?.form_id || 0);
   const { data: responses, isLoading: rLoading } = useAssignmentResponses(Number(id));
 
@@ -331,7 +333,7 @@ const EvaluationForm = () => {
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
           <Clock className="w-4 h-4" />
-          {assignment.due_date ? `Due ${new Date(assignment.due_date).toLocaleDateString()}` : "No specific deadline"}
+          {form?.end_date ? `Due ${new Date(form.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : "No specific deadline"}
         </div>
       </div>
 
