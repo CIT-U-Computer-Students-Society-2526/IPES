@@ -627,7 +627,7 @@ class JoinRequestViewSet(viewsets.ModelViewSet):
         OrganizationRole.objects.update_or_create(
             user=rejoining_user,
             organization=join_request.organization,
-            defaults={'role': role_choice}
+            defaults={'role': role_choice, 'is_active': True}
         )
         
         join_request.status = 'Approved'
