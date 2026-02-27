@@ -311,6 +311,70 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
         })
     
     @action(detail=False, methods=['get'])
+    def evaluatee_profile(self, request):
+        """
+        Return a specific user's Verified accomplishments + org unit info,
+        for use by evaluators filling out a peer evaluation form.
+
+        Required query params:
+          - user_id: the evaluatee's user PK
+          - organization_id: must be an org both parties belong to
+
+        Any authenticated member of the org can call this.
+        Only Verified accomplishments are exposed.
+        """
+        evaluatee_id = request.query_params.get('user_id')
+        org_id = request.query_params.get('organization_id')
+
+        if not evaluatee_id or not org_id:
+            return Response(
+                {'error': 'user_id and organization_id are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        from apps.organizations.models import Membership
+
+        # Verify the requesting user is a member of the org
+        requester_is_member = Membership.objects.filter(
+            user_id=request.user,
+            unit_id__organization_id=org_id,
+            is_active=True
+        ).exists()
+        if not requester_is_member:
+            return Response(
+                {'error': 'You are not a member of this organization'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Fetch the evaluatee's active membership in the org
+        evaluatee_membership = Membership.objects.filter(
+            user_id=evaluatee_id,
+            unit_id__organization_id=org_id,
+            is_active=True
+        ).select_related('user_id', 'unit_id', 'position_id').first()
+
+        if not evaluatee_membership:
+            return Response(
+                {'error': 'Evaluatee is not a member of this organization'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Only expose Verified accomplishments
+        accomplishments = Accomplishment.objects.filter(
+            user_id=evaluatee_id,
+            status='Verified'
+        ).order_by('-date_completed', '-id')
+
+        serializer = AccomplishmentListSerializer(accomplishments, many=True)
+
+        return Response({
+            'evaluatee_name': evaluatee_membership.user_id.get_full_name() or evaluatee_membership.user_id.email,
+            'unit_name': evaluatee_membership.unit_id.name if evaluatee_membership.unit_id else None,
+            'position_name': evaluatee_membership.position_id.name if evaluatee_membership.position_id else None,
+            'accomplishments': serializer.data,
+        })
+
+    @action(detail=False, methods=['get'])
     def verified(self, request):
         """Get verified accomplishments"""
         accomplishments = self.get_queryset().filter(status='Verified')

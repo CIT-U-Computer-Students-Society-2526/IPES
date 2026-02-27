@@ -42,6 +42,13 @@ export interface AccomplishmentVerify {
 
 // ===== Fetch Hooks =====
 
+export interface EvaluateeProfile {
+  evaluatee_name: string;
+  unit_name: string | null;
+  position_name: string | null;
+  accomplishments: Accomplishment[];
+}
+
 // Fetch all accomplishments
 export const useAccomplishments = (params?: { status?: string; type?: string; user_id?: number }) => {
   const queryString = params
@@ -110,6 +117,20 @@ export const useAccomplishmentsByType = (type: Accomplishment['type']) => {
       return Array.isArray(data) ? data : data.results || [];
     },
     enabled: !!type,
+  });
+};
+
+// Fetch an evaluatee's profile (unit, position, verified accomplishments) for an evaluation form
+export const useEvaluateeProfile = (userId: number | undefined, organizationId: number | undefined) => {
+  return useQuery({
+    queryKey: ['evaluatee-profile', userId, organizationId],
+    queryFn: async () => {
+      const response = await api.get(
+        `/accomplishments/evaluatee_profile/?user_id=${userId}&organization_id=${organizationId}`
+      );
+      return response.json() as Promise<EvaluateeProfile>;
+    },
+    enabled: !!userId && !!organizationId,
   });
 };
 
