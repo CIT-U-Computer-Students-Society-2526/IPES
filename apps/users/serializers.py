@@ -18,24 +18,30 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'date_joined']
         
     def get_memberships(self, obj):
-        user_roles = {r.organization_id: r.role for r in obj.organization_roles.all()}
+        try:
+            user_roles = {r.organization_id: r.role for r in obj.organization_roles.all()}
+        except Exception:
+            user_roles = {}
         
-        return [
-            {
-                'id': m.id,
-                'organization_id': m.unit_id.organization_id.id,
-                'organization_name': m.unit_id.organization_id.name,
-                'organization_email': m.unit_id.organization_id.email,
-                'unit_id': m.unit_id.id,
-                'unit_name': m.unit_id.name,
-                'position_id': m.position_id.id,
-                'position_name': m.position_id.name,
-                'position_rank': m.position_id.rank,
-                'role': user_roles.get(m.unit_id.organization_id.id, 'Member'),
-                'is_active': m.is_active
-            }
-            for m in obj.memberships.filter(is_active=True, unit_id__organization_id__is_active=True)
-        ]
+        try:
+            return [
+                {
+                    'id': m.id,
+                    'organization_id': m.unit_id.organization_id.id,
+                    'organization_name': m.unit_id.organization_id.name,
+                    'organization_email': m.unit_id.organization_id.email,
+                    'unit_id': m.unit_id.id,
+                    'unit_name': m.unit_id.name,
+                    'position_id': m.position_id.id,
+                    'position_name': m.position_id.name,
+                    'position_rank': m.position_id.rank,
+                    'role': user_roles.get(m.unit_id.organization_id.id, 'Member'),
+                    'is_active': m.is_active
+                }
+                for m in obj.memberships.filter(is_active=True, unit_id__organization_id__is_active=True)
+            ]
+        except Exception:
+            return []
 
 
 class UserCreateSerializer(serializers.ModelSerializer):

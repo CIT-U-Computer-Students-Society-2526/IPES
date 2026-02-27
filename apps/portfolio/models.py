@@ -10,3 +10,6 @@ class Accomplishment(models.Model):
     proof_link = models.URLField(null=True, blank=True)
     status = models.CharField(max_length=50, default='Pending')
     verified_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='verified_accomplishments')
+    comments = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)

@@ -11,6 +11,7 @@ from .serializers import (
     AccomplishmentSerializer,
     AccomplishmentCreateSerializer,
     AccomplishmentListSerializer,
+    AccomplishmentUpdateSerializer,
     AccomplishmentVerifySerializer
 )
 
@@ -23,6 +24,8 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == 'create':
             return AccomplishmentCreateSerializer
+        elif self.action in ['update', 'partial_update']:
+            return AccomplishmentUpdateSerializer
         elif self.action == 'list':
             return AccomplishmentListSerializer
         return AccomplishmentSerializer
@@ -44,17 +47,24 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
         # Needs to check if the user is an admin of the requested organization
         is_org_admin = False
         if org_id and not is_global_admin:
-            from apps.organizations.models import Membership
-            is_org_admin = Membership.objects.filter(
+            from apps.organizations.models import OrganizationRole
+            is_org_admin = OrganizationRole.objects.filter(
                 user_id=user,
-                unit_id__organization_id=org_id,
+                organization_id=org_id,
                 role='Admin',
                 is_active=True
             ).exists()
-            
+
             # Users can only see their own accomplishments within an org if they are not an admin
             if not is_org_admin:
                 return queryset.filter(user_id=user).select_related('user_id', 'verified_by').order_by('-date_completed', '-id')
+
+            # If user is an org admin, restrict the queryset to users who are
+            # members of that organization so admins cannot view other orgs' data
+            queryset = queryset.filter(
+                user_id__memberships__unit_id__organization_id=org_id,
+                user_id__memberships__is_active=True
+            )
 
         # Admin can filter by other users globally, or within their org
         user_id = self.request.query_params.get('user_id')
@@ -81,6 +91,38 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
             title=accomplishment.title
         )
     
+    def perform_update(self, serializer):
+        """Update accomplishment and log the change"""
+        accomplishment = serializer.save()
+        log_action(
+            self.request.user,
+            AuditActions.ACCOMPLISHMENT_UPDATED,
+            self.request,
+            accomplishment_id=str(accomplishment.id),
+            title=accomplishment.title,
+            status=accomplishment.status
+        )
+    
+    def update(self, request, *args, **kwargs):
+        """Override update to allow only owners to edit pending/rejected accomplishments"""
+        accomplishment = self.get_object()
+        
+        # Only allow editing if user is the owner
+        if accomplishment.user_id != request.user:
+            return Response(
+                {'error': 'You can only edit your own accomplishments'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Only allow editing if status is Pending or Rejected
+        if accomplishment.status not in ['Pending', 'Rejected']:
+            return Response(
+                {'error': 'You can only edit pending or rejected accomplishments'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        return super().update(request, *args, **kwargs)
+    
     @action(detail=False, methods=['get'])
     def my(self, request):
         """Get current user's accomplishments"""
@@ -99,10 +141,10 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
             if not org_id:
                 return Response({'error': 'organization_id is required'}, status=status.HTTP_400_BAD_REQUEST)
                 
-            from apps.organizations.models import Membership
-            is_org_admin = Membership.objects.filter(
+            from apps.organizations.models import OrganizationRole
+            is_org_admin = OrganizationRole.objects.filter(
                 user_id=user,
-                unit_id__organization_id=org_id,
+                organization_id=org_id,
                 role='Admin',
                 is_active=True
             ).exists()
@@ -113,7 +155,9 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_403_FORBIDDEN
                 )
         
-        accomplishments = Accomplishment.objects.filter(status='Pending')
+        # Use the scoped queryset so org admins only see accomplishments
+        # from their own organization
+        accomplishments = self.get_queryset().filter(status='Pending')
         serializer = AccomplishmentListSerializer(accomplishments, many=True)
         return Response(serializer.data)
     
@@ -142,10 +186,10 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
             if not org_id:
                 return Response({'error': 'organization_id is required'}, status=status.HTTP_400_BAD_REQUEST)
                 
-            from apps.organizations.models import Membership
-            is_org_admin = Membership.objects.filter(
+            from apps.organizations.models import OrganizationRole
+            is_org_admin = OrganizationRole.objects.filter(
                 user_id=user,
-                unit_id__organization_id=org_id,
+                organization_id=org_id,
                 role='Admin',
                 is_active=True
             ).exists()
@@ -157,10 +201,16 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
                 )
         
         from django.db.models import Count
-        
-        # Base queryset
-        queryset = Accomplishment.objects.all()
-        
+
+        # Base queryset - restrict to org members if org admin
+        if not is_global_admin:
+            queryset = Accomplishment.objects.filter(
+                user_id__memberships__unit_id__organization_id=org_id,
+                user_id__memberships__is_active=True
+            )
+        else:
+            queryset = Accomplishment.objects.all()
+
         # If filtering by user
         user_id = request.query_params.get('user_id')
         if user_id:
@@ -200,10 +250,10 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
             if not org_id:
                 return Response({'error': 'organization_id is required'}, status=status.HTTP_400_BAD_REQUEST)
                 
-            from apps.organizations.models import Membership
-            is_org_admin = Membership.objects.filter(
+            from apps.organizations.models import OrganizationRole
+            is_org_admin = OrganizationRole.objects.filter(
                 user_id=user,
-                unit_id__organization_id=org_id,
+                organization_id=org_id,
                 role='Admin',
                 is_active=True
             ).exists()
@@ -213,6 +263,17 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
                     {'error': 'Unauthorized'},
                     status=status.HTTP_403_FORBIDDEN
                 )
+
+        # Additional safety: ensure the accomplishment belongs to the org
+        # the admin is managing. Prevent an org admin from operating on
+        # accomplishments from other organizations.
+        if not is_global_admin and org_id:
+            belongs = accomplishment.user_id.memberships.filter(
+                unit_id__organization_id=org_id,
+                is_active=True
+            ).exists()
+            if not belongs:
+                return Response({'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
         
         if accomplishment.status != 'Pending':
             return Response(
@@ -225,6 +286,11 @@ class AccomplishmentViewSet(viewsets.ModelViewSet):
         
         accomplishment.status = serializer.validated_data['status']
         accomplishment.verified_by = request.user
+        
+        # Store comments if rejecting
+        if accomplishment.status == 'Rejected' and 'comments' in serializer.validated_data:
+            accomplishment.comments = serializer.validated_data['comments']
+        
         accomplishment.save()
         
         # Log verification

@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { useMyAccomplishments, useCreateAccomplishment, AccomplishmentCreate } from "@/hooks/usePortfolio";
+import { useMyAccomplishments, useCreateAccomplishment, useUpdateAccomplishment, AccomplishmentCreate, Accomplishment } from "@/hooks/usePortfolio";
 import { useToast } from "@/hooks/use-toast";
 
 const getStatusBadge = (status: string) => {
@@ -47,6 +47,7 @@ const getStatusBadge = (status: string) => {
 
 const OfficerAccomplishments = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [newAccomplishment, setNewAccomplishment] = useState<AccomplishmentCreate>({
     title: "",
     description: "",
@@ -54,9 +55,11 @@ const OfficerAccomplishments = () => {
     date_completed: new Date().toISOString().split('T')[0],
     proof_link: ""
   });
+  const [editingAccomplishment, setEditingAccomplishment] = useState<Accomplishment | null>(null);
 
   const { data: accomplishments = [], isLoading } = useMyAccomplishments();
   const createAccomplishment = useCreateAccomplishment();
+  const updateAccomplishment = useUpdateAccomplishment();
   const { toast } = useToast();
 
   const handleSubmit = async () => {
@@ -72,6 +75,39 @@ const OfficerAccomplishments = () => {
       toast({
         title: "Error",
         description: "Failed to submit accomplishment.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEdit = (accomplishment: Accomplishment) => {
+    setEditingAccomplishment(accomplishment);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleEditSubmit = async () => {
+    if (!editingAccomplishment) return;
+    try {
+      await updateAccomplishment.mutateAsync({
+        id: editingAccomplishment.id,
+        data: {
+          title: editingAccomplishment.title,
+          description: editingAccomplishment.description,
+          type: editingAccomplishment.type,
+          date_completed: editingAccomplishment.date_completed,
+          proof_link: editingAccomplishment.proof_link
+        }
+      });
+      toast({
+        title: "Success",
+        description: "Accomplishment updated successfully.",
+      });
+      setIsEditDialogOpen(false);
+      setEditingAccomplishment(null);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update accomplishment.",
         variant: "destructive",
       });
     }
@@ -160,6 +196,83 @@ const OfficerAccomplishments = () => {
               <Button onClick={handleSubmit} disabled={createAccomplishment.isPending}>
                 {createAccomplishment.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                 Submit
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Edit Accomplishment</DialogTitle>
+              <DialogDescription>
+                Update your accomplishment details
+              </DialogDescription>
+            </DialogHeader>
+            {editingAccomplishment && (
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-title">Title</Label>
+                  <Input
+                    id="edit-title"
+                    placeholder="e.g., Led Research Week 2025"
+                    value={editingAccomplishment.title}
+                    onChange={(e) => setEditingAccomplishment(prev => prev ? { ...prev, title: e.target.value } : null)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-type">Type</Label>
+                  <Select value={editingAccomplishment.type} onValueChange={(val: any) => setEditingAccomplishment(prev => prev ? { ...prev, type: val } : null)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="award">Award</SelectItem>
+                      <SelectItem value="certification">Certification</SelectItem>
+                      <SelectItem value="project">Project</SelectItem>
+                      <SelectItem value="training">Training</SelectItem>
+                      <SelectItem value="presentation">Presentation</SelectItem>
+                      <SelectItem value="publication">Publication</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-date">Date Completed</Label>
+                  <Input
+                    id="edit-date"
+                    type="date"
+                    value={editingAccomplishment.date_completed}
+                    onChange={(e) => setEditingAccomplishment(prev => prev ? { ...prev, date_completed: e.target.value } : null)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-description">Description</Label>
+                  <Textarea
+                    id="edit-description"
+                    placeholder="Describe your accomplishment..."
+                    value={editingAccomplishment.description}
+                    onChange={(e) => setEditingAccomplishment(prev => prev ? { ...prev, description: e.target.value } : null)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-proof">Proof Link (optional)</Label>
+                  <Input
+                    id="edit-proof"
+                    placeholder="https://..."
+                    value={editingAccomplishment.proof_link || ""}
+                    onChange={(e) => setEditingAccomplishment(prev => prev ? { ...prev, proof_link: e.target.value } : null)}
+                  />
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleEditSubmit} disabled={updateAccomplishment.isPending}>
+                {updateAccomplishment.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                Update
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -253,7 +366,20 @@ const OfficerAccomplishments = () => {
                     )}
                   </div>
                   {item.status === 'Pending' && (
-                    <Button variant="ghost" size="sm">
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => handleEdit(item)}
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                  )}
+                  {item.status === 'Rejected' && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => handleEdit(item)}
+                    >
                       <Pencil className="w-4 h-4" />
                     </Button>
                   )}

@@ -12,5 +12,5 @@ class IsAdmin(permissions.BasePermission):
         if request.user.is_staff or request.user.is_superuser:
             return True
             
-        # Check if the user has an 'Admin' role in ANY active membership
-        return request.user.memberships.filter(is_active=True, role__iexact='admin').exists()
+        # Check if the user has an 'Admin' role in ANY active organization
+        return request.user.organization_roles.filter(is_active=True, role__iexact='admin').exists()
