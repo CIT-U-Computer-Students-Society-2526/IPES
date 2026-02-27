@@ -217,6 +217,14 @@ const AdminUsers = () => {
 
   // Handle removal from org — opens confirmation dialog
   const handleRemoveFromOrganization = (user: User) => {
+    if (user.id === currentUser?.id) {
+      toast({
+        title: "Action Blocked",
+        description: "You cannot remove yourself from the organization.",
+        variant: "destructive",
+      });
+      return;
+    }
     setUserToRemove(user);
   };
 

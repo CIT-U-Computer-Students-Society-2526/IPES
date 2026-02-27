@@ -115,6 +115,10 @@ class OrganizationViewSet(viewsets.ModelViewSet):
         if not OrganizationRole.objects.filter(user=request.user, organization=org, role='Admin', is_active=True).exists():
             return Response({'error': 'Not authorized to remove members from this organization'}, status=status.HTTP_403_FORBIDDEN)
             
+        # Prevent self-removal
+        if str(user_id) == str(request.user.id):
+            return Response({'error': 'You cannot remove yourself from the organization.'}, status=status.HTTP_403_FORBIDDEN)
+            
         # 1. Deactivate the OrganizationRole
         role = OrganizationRole.objects.filter(user_id=user_id, organization=org).first()
         if role:
