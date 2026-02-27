@@ -452,18 +452,32 @@ class AssignmentRuleViewSet(viewsets.ModelViewSet):
             'evaluatee_unit', 'evaluatee_position',
             'form_id',
         )
+        
+        # Filter by form_id if provided
         form_id = self.request.query_params.get('form_id')
         if form_id:
             qs = qs.filter(form_id=form_id)
 
-        # Scope to forms the user's org owns
-        from apps.organizations.models import Membership
-        user_org_ids = Membership.objects.filter(
-            user_id=user, is_active=True
-        ).values_list('unit_id__organization_id', flat=True).distinct()
-        qs = qs.filter(form_id__organization_id__in=user_org_ids)
+        # Superusers see everything
+        if user.is_superuser:
+            return qs
 
-        return qs
+        # Regular users only see rules for organizations where they have an active role or membership
+        from apps.organizations.models import Membership, OrganizationRole
+        
+        # Orgs from direct unit memberships
+        membership_org_ids = Membership.objects.filter(
+            user_id=user, is_active=True
+        ).values_list('unit_id__organization_id', flat=True)
+        
+        # Orgs from organization roles (e.g. Admins who aren't in a specific unit)
+        role_org_ids = OrganizationRole.objects.filter(
+            user=user, is_active=True
+        ).values_list('organization_id', flat=True)
+        
+        user_org_ids = set(membership_org_ids) | set(role_org_ids)
+        
+        return qs.filter(form_id__organization_id__in=user_org_ids)
 
     @action(detail=False, methods=['post'])
     def generate(self, request):
