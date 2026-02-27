@@ -121,11 +121,17 @@ class UserViewSet(viewsets.ModelViewSet):
         queryset = User.objects.all()
         org_id = self.request.query_params.get('organization_id')
         if org_id:
-            # Only return users who have an active membership in the specified organization
-            queryset = queryset.filter(
-                memberships__unit_id__organization_id=org_id,
-                memberships__is_active=True
-            ).distinct()
+            try:
+                org_id = int(org_id)
+                # Return users who belong to this organization via OrganizationRole
+                # and are currently active in it.
+                queryset = queryset.filter(
+                    organization_roles__organization_id=org_id,
+                    organization_roles__is_active=True
+                ).distinct()
+            except (ValueError, TypeError):
+                # Invalid organization_id parameter
+                queryset = User.objects.none()
         return queryset
     
     def perform_create(self, serializer):

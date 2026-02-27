@@ -163,13 +163,15 @@ const AdminDashboard = () => {
       id: 1,
       type: "warning" as const,
       message: `${pendingReview} accomplishments pending review`,
-      action: "Review now"
+      action: "Review now",
+      link: "/admin/accomplishments"
     }] : []),
     ...(activeEvaluations > 20 ? [{
       id: 2,
       type: "info" as const,
       message: `${activeEvaluations} active evaluations ongoing`,
-      action: "View details"
+      action: "View details",
+      link: "/admin/assignments"
     }] : []),
   ];
 
@@ -182,17 +184,6 @@ const AdminDashboard = () => {
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Admin Dashboard</h1>
           <p className="text-muted-foreground mt-1">Overview of evaluation activities</p>
-        </div>
-        <div className="flex gap-2">
-          <Link to="/admin/forms">
-            <Button variant="outline">Create Form</Button>
-          </Link>
-          <Link to="/admin/assignments">
-            <Button>
-              New Assignment
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
-          </Link>
         </div>
       </div>
 
@@ -239,8 +230,8 @@ const AdminDashboard = () => {
             <div
               key={alert.id}
               className={`flex items-center justify-between p-4 rounded-lg border ${alert.type === 'warning'
-                  ? 'bg-warning/5 border-warning/20'
-                  : 'bg-primary/5 border-primary/20'
+                ? 'bg-warning/5 border-warning/20'
+                : 'bg-primary/5 border-primary/20'
                 }`}
             >
               <div className="flex items-center gap-3">
@@ -248,9 +239,11 @@ const AdminDashboard = () => {
                   }`} />
                 <span className="text-sm text-foreground">{alert.message}</span>
               </div>
-              <Button variant="ghost" size="sm">
-                {alert.action}
-              </Button>
+              <Link to={alert.link}>
+                <Button variant="ghost" size="sm">
+                  {alert.action}
+                </Button>
+              </Link>
             </div>
           ))}
         </div>
@@ -314,6 +307,12 @@ const AdminDashboard = () => {
       <div className="bg-card rounded-xl border border-border p-6">
         <h2 className="font-semibold text-foreground mb-4">Quick Actions</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Link to="/admin/accomplishments">
+            <Button variant="outline" className="w-full h-auto py-4 flex-col gap-2">
+              <CheckCircle2 className="w-5 h-5" />
+              <span className="text-xs">Review Accomplishments</span>
+            </Button>
+          </Link>
           <Link to="/admin/forms">
             <Button variant="outline" className="w-full h-auto py-4 flex-col gap-2">
               <ClipboardList className="w-5 h-5" />
@@ -323,13 +322,7 @@ const AdminDashboard = () => {
           <Link to="/admin/assignments">
             <Button variant="outline" className="w-full h-auto py-4 flex-col gap-2">
               <Users className="w-5 h-5" />
-              <span className="text-xs">Assign Evaluations</span>
-            </Button>
-          </Link>
-          <Link to="/admin/accomplishments">
-            <Button variant="outline" className="w-full h-auto py-4 flex-col gap-2">
-              <CheckCircle2 className="w-5 h-5" />
-              <span className="text-xs">Review Accomplishments</span>
+              <span className="text-xs">View Assignments</span>
             </Button>
           </Link>
           <Link to="/admin/analytics">

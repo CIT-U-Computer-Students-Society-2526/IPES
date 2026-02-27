@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, User, Trophy, Save, Send, Clock, ChevronRight, AlertCircle } from "lucide-react";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { ArrowLeft, User, Trophy, Save, Send, Clock, ChevronRight, AlertCircle, Building2, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
@@ -8,6 +8,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -19,12 +21,15 @@ import {
 
 import {
   useAssignment,
+  useForm,
   useFormQuestions,
   useAssignmentResponses,
   useSubmitEvaluation,
   useSaveDraftResponses,
   type Question
 } from "@/hooks/useEvaluations";
+import { useEvaluateeProfile } from "@/hooks/usePortfolio";
+import { useOrganizationState } from "@/contexts/OrganizationContext";
 
 // Generate rating label ranges dynamically based on max value
 const getRatingContext = (min: number | undefined, max: number | undefined) => {
@@ -47,13 +52,23 @@ const getRatingContext = (min: number | undefined, max: number | undefined) => {
 
 const EvaluationForm = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const basePath = location.pathname.startsWith('/admin') ? '/admin/my-' : '/member/';
   const { id } = useParams();
   const { toast } = useToast();
+  const { activeOrganizationId } = useOrganizationState();
 
   // API Hooks
   const { data: assignment, isLoading: aLoading, error: aError } = useAssignment(Number(id));
+  const { data: form } = useForm(assignment?.form_id || 0);
   const { data: questions, isLoading: qLoading } = useFormQuestions(assignment?.form_id || 0);
   const { data: responses, isLoading: rLoading } = useAssignmentResponses(Number(id));
+
+  const isSelfEval = assignment ? assignment.evaluatee_id === assignment.evaluator_id : false;
+  const { data: evaluateeProfile, isLoading: profileLoading } = useEvaluateeProfile(
+    assignment && !isSelfEval ? assignment.evaluatee_id : undefined,
+    activeOrganizationId ?? undefined
+  );
 
   const submitMutation = useSubmitEvaluation();
   const draftMutation = useSaveDraftResponses();
@@ -61,7 +76,6 @@ const EvaluationForm = () => {
   const [currentSection, setCurrentSection] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [textAnswers, setTextAnswers] = useState<Record<number, string>>({});
-  const [comments, setComments] = useState("");
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
 
@@ -100,7 +114,7 @@ const EvaluationForm = () => {
         <AlertCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
         <h2 className="text-xl font-bold">Error</h2>
         <p>Could not load this evaluation. It may not exist or you don't have access.</p>
-        <Button onClick={() => navigate("/officer/evaluations")} className="mt-6" variant="outline">
+        <Button onClick={() => navigate(`${basePath}evaluations`)} className="mt-6" variant="outline">
           Return to My Evaluations
         </Button>
       </div>
@@ -109,15 +123,13 @@ const EvaluationForm = () => {
 
   const isCompleted = assignment.status === 'Completed';
 
-  // Grouping questions for basic UI (Since API doesn't use categories yet, we group all under 'Questions')
   const sections = [
     { name: "Evaluatee Info", questions: [] as Question[] },
     { name: "Evaluation Questions", questions: questions },
-    { name: "Comments", questions: [] as Question[] },
   ];
 
   const answeredCount = Object.keys(answers).length +
-    Object.keys(textAnswers).filter(id => Number(id) !== -1 && textAnswers[Number(id)]?.trim() !== "").length;
+    Object.keys(textAnswers).filter(id => textAnswers[Number(id)]?.trim() !== "").length;
   const totalQuestions = questions.length;
   const progressPercentage = totalQuestions === 0 ? 0 : Math.min(100, (answeredCount / totalQuestions) * 100);
 
@@ -201,7 +213,7 @@ const EvaluationForm = () => {
         description: "Thank you for completing this peer evaluation.",
       });
       setShowSubmitDialog(false);
-      navigate("/officer/evaluations");
+      navigate(`${basePath}evaluations`);
     } catch (err: any) {
       toast({
         title: "Submission Error",
@@ -213,10 +225,11 @@ const EvaluationForm = () => {
 
   const renderSection = () => {
     if (currentSection === 0) {
-      return (
-        <div className="space-y-6">
-          <div className="bg-muted/50 rounded-lg p-5">
-            <div className="flex items-start gap-4">
+      // Self-evaluation: simplified view
+      if (isSelfEval) {
+        return (
+          <div className="space-y-6">
+            <div className="bg-muted/50 rounded-lg p-5 flex items-start gap-4">
               <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                 <User className="w-7 h-7 text-primary" />
               </div>
@@ -224,13 +237,101 @@ const EvaluationForm = () => {
                 <h3 className="text-lg font-semibold text-foreground">
                   {assignment.evaluatee_name || `User #${assignment.evaluatee_id}`}
                 </h3>
-                <p className="text-muted-foreground mt-1">
+                <Badge variant="secondary" className="mt-1">Self-Evaluation</Badge>
+                <p className="text-muted-foreground mt-2 text-sm">
+                  You are evaluating <strong>yourself</strong> for the <strong>{assignment.form_title}</strong> module.
+                </p>
+              </div>
+            </div>
+            <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+              <p className="text-sm text-foreground">
+                <strong>Reminder:</strong> Be objective and honest when rating your own performance.
+              </p>
+            </div>
+          </div>
+        );
+      }
+
+      // Peer evaluation: rich evaluatee info
+      return (
+        <div className="space-y-5">
+          {/* Identity card */}
+          <div className="bg-muted/50 rounded-lg p-5">
+            <div className="flex items-start gap-4">
+              <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <User className="w-7 h-7 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                {profileLoading ? (
+                  <>
+                    <Skeleton className="h-6 w-48 mb-2" />
+                    <Skeleton className="h-4 w-32" />
+                  </>
+                ) : (
+                  <>
+                    <h3 className="text-lg font-semibold text-foreground">
+                      {evaluateeProfile?.evaluatee_name || assignment.evaluatee_name || `User #${assignment.evaluatee_id}`}
+                    </h3>
+                    <div className="flex flex-wrap items-center gap-2 mt-1">
+                      {evaluateeProfile?.unit_name && (
+                        <span className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <Building2 className="w-3.5 h-3.5" />
+                          {evaluateeProfile.unit_name}
+                        </span>
+                      )}
+                      {evaluateeProfile?.position_name && (
+                        <Badge variant="outline" className="text-xs">
+                          {evaluateeProfile.position_name}
+                        </Badge>
+                      )}
+                    </div>
+                  </>
+                )}
+                <p className="text-sm text-muted-foreground mt-2">
                   You are evaluating this peer for the <strong>{assignment.form_title}</strong> module.
                 </p>
               </div>
             </div>
           </div>
 
+          {/* Verified Accomplishments */}
+          <div className="rounded-lg border border-border">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
+              <Trophy className="w-4 h-4 text-primary" />
+              <h4 className="font-medium text-foreground text-sm">Accomplishments</h4>
+            </div>
+            <div className="divide-y divide-border max-h-64 overflow-y-auto">
+              {profileLoading ? (
+                <div className="p-4 space-y-3">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-5/6" />
+                </div>
+              ) : !evaluateeProfile?.accomplishments?.length ? (
+                <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+                  <Star className="w-6 h-6 mx-auto mb-2 opacity-30" />
+                  No accomplishments yet
+                </div>
+              ) : (
+                evaluateeProfile.accomplishments.map((acc) => (
+                  <div key={acc.id} className="px-4 py-3 flex items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{acc.title}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{acc.description}</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                      <Badge variant="secondary" className="text-xs capitalize">{acc.type}</Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(acc.date_completed).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Reminder */}
           <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
             <p className="text-sm text-foreground">
               <strong>Reminder:</strong> Please evaluate objectively based on the officer's performance.
@@ -241,26 +342,6 @@ const EvaluationForm = () => {
       );
     }
 
-    if (currentSection === sections.length - 1) {
-      return (
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="comments" className="text-base font-medium">Additional Comments</Label>
-            <p className="text-sm text-muted-foreground mt-1 mb-3">
-              Share any additional feedback, suggestions, or observations (optional)
-            </p>
-            <Textarea
-              id="comments"
-              placeholder="Enter your final remarks or global comments here..."
-              value={textAnswers[-1] || ""}
-              onChange={(e) => handleTextChange(-1, e.target.value)}
-              className="min-h-[150px] resize-none"
-              disabled={isCompleted}
-            />
-          </div>
-        </div>
-      );
-    }
 
     const sectionQuestions = sections[currentSection].questions;
     return (
@@ -317,7 +398,7 @@ const EvaluationForm = () => {
       {/* Header */}
       <div className="mb-6">
         <button
-          onClick={() => navigate("/officer/evaluations")}
+          onClick={() => navigate(`${basePath}evaluations`)}
           className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -331,7 +412,7 @@ const EvaluationForm = () => {
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
           <Clock className="w-4 h-4" />
-          {assignment.due_date ? `Due ${new Date(assignment.due_date).toLocaleDateString()}` : "No specific deadline"}
+          {form?.end_date ? `Due ${new Date(form.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : "No specific deadline"}
         </div>
       </div>
 

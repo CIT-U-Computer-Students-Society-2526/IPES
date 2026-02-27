@@ -12,16 +12,18 @@ import {
   Trophy,
   Settings,
   Shield,
-  Bell,
   LogOut,
   Menu,
   X,
   ClipboardCheck,
+  CheckCircle,
   Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
+
+import { ProfileEditorDialog } from "@/components/ProfileEditorDialog";
 
 const navigation = [
   { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
@@ -34,6 +36,7 @@ const navigation = [
   { name: "Audit Log", href: "/admin/audit-log", icon: Shield },
   { name: "Settings", href: "/admin/settings", icon: Settings },
 ];
+
 
 const AdminLayout = () => {
   const location = useLocation();
@@ -66,6 +69,11 @@ const AdminLayout = () => {
 
   const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email;
 
+  // Check if they have a membership role that is NOT part of the system org unit
+  const hasMemberRole = user.memberships?.some(
+    (m) => m.organization_id === activeOrganizationId && m.unit_name !== 'Administrators'
+  );
+
   return (
     <div className="min-h-screen bg-background flex">
       {/* Mobile sidebar backdrop */}
@@ -85,10 +93,15 @@ const AdminLayout = () => {
           {/* Logo */}
           <div className="h-16 flex items-center justify-between px-4 border-b border-border">
             <Link to="/admin/dashboard" className="flex items-center gap-2.5">
-              <img src="/ipes-logo-colored.svg" alt="IPES Logo" className="w-7 h-7 object-contain" />
-              <div className="flex items-center gap-2">
-                <span className="text-[#293F55] dark:text-white font-bold text-2xl tracking-tight">IPES</span>
-                <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium">Admin</span>
+              <img src="/ipes-logo-colored.svg" alt="IPES Logo" className="w-7 h-7 object-contain shrink-0" />
+              <div className="flex flex-col justify-center">
+                <div className="flex items-center gap-2">
+                  <span className="text-[#293F55] dark:text-white font-bold text-xl tracking-tight">IPES</span>
+                  <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium shrink-0">Admin</span>
+                </div>
+                <span className="text-xs text-muted-foreground truncate max-w-[140px]" title={activeMembership?.organization_name}>
+                  {activeMembership?.organization_name}
+                </span>
               </div>
             </Link>
             <button
@@ -120,21 +133,100 @@ const AdminLayout = () => {
                 </Link>
               );
             })}
+
+            {/* My Space Section */}
+            {hasMemberRole && (
+              <>
+                <div className="px-3 pt-4 pb-2">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    My Space
+                  </span>
+                </div>
+                <Link
+                  to="/admin/my-dashboard"
+                  onClick={() => setSidebarOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                    location.pathname === "/admin/my-dashboard"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  )}
+                >
+                  <LayoutDashboard className="w-5 h-5" />
+                  Dashboard
+                </Link>
+                <Link
+                  to="/admin/my-evaluations"
+                  onClick={() => setSidebarOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                    location.pathname.startsWith("/admin/my-evaluations")
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  )}
+                >
+                  <ClipboardList className="w-5 h-5" />
+                  My Evaluations
+                </Link>
+                <Link
+                  to="/admin/my-results"
+                  onClick={() => setSidebarOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                    location.pathname === "/admin/my-results"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  )}
+                >
+                  <BarChart3 className="w-5 h-5" />
+                  My Results
+                </Link>
+                <Link
+                  to="/admin/my-accomplishments"
+                  onClick={() => setSidebarOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                    location.pathname === "/admin/my-accomplishments"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  )}
+                >
+                  <Trophy className="w-5 h-5" />
+                  Accomplishments
+                </Link>
+              </>
+            )}
+
+            {/* Spacer */}
+            <div className="flex-1" />
+
+            {/* Bottom Actions */}
+            <div className="pt-4 mt-4 border-t border-border">
+              <Link
+                to="/select-organization"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <LogOut className="w-5 h-5 rotate-180" />
+                Switch Organization
+              </Link>
+            </div>
           </nav>
 
           {/* User section */}
           <div className="p-4 border-t border-border">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
-                <Shield className="w-4 h-4 text-primary" />
+            <ProfileEditorDialog>
+              <div className="flex items-center gap-3 mb-3 cursor-pointer hover:bg-muted/50 p-2 rounded-lg transition-colors">
+                <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <Shield className="w-4 h-4 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{fullName}</p>
+                  <p className="text-xs text-muted-foreground truncate">System Administrator</p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">{fullName}</p>
-                <p className="text-xs text-muted-foreground truncate">System Administrator</p>
-              </div>
-            </div>
+            </ProfileEditorDialog>
             <Link to="/login">
-              <Button variant="ghost" size="sm" className="w-full justify-start text-muted-foreground">
+              <Button variant="ghost" size="sm" className="w-full justify-start text-muted-foreground mt-2">
                 <LogOut className="w-4 h-4 mr-2" />
                 Sign out
               </Button>
@@ -156,10 +248,6 @@ const AdminLayout = () => {
 
           <div className="flex items-center gap-3 ml-auto">
             <ThemeToggle />
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-accent rounded-full" />
-            </Button>
           </div>
         </header>
 

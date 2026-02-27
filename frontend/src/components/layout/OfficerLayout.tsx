@@ -8,7 +8,6 @@ import {
   Trophy,
   BarChart3,
   User,
-  Bell,
   LogOut,
   Menu,
   X,
@@ -18,12 +17,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+import { ProfileEditorDialog } from "@/components/ProfileEditorDialog";
+
 const navigation = [
   { name: "Dashboard", href: "/member/dashboard", icon: LayoutDashboard },
   { name: "My Evaluations", href: "/member/evaluations", icon: ClipboardList },
   { name: "My Results", href: "/member/results", icon: BarChart3 },
   { name: "Accomplishments", href: "/member/accomplishments", icon: Trophy },
-  { name: "Profile", href: "/member/profile", icon: User },
 ];
 
 const OfficerLayout = () => {
@@ -78,11 +78,14 @@ const OfficerLayout = () => {
           <div className="h-16 flex items-center justify-between px-4 border-b border-border">
             <Link to="/member/dashboard" className="flex items-center gap-2.5">
               <img src="/ipes-logo-colored.svg" alt="IPES Logo" className="w-7 h-7 object-contain shrink-0" />
-              <div className="flex items-center gap-2 max-w-[130px]">
-                <span className="text-[#293F55] font-bold text-lg truncate tracking-tight" title={activeMembership.organization_name}>
+              <div className="flex flex-col justify-center">
+                <div className="flex items-center gap-2">
+                  <span className="text-[#293F55] dark:text-white font-bold text-xl tracking-tight">IPES</span>
+                  <span className="text-[10px] bg-blue-500/10 text-blue-500 px-1.5 py-0.5 rounded font-medium shrink-0">Member</span>
+                </div>
+                <span className="text-xs text-muted-foreground truncate max-w-[140px]" title={activeMembership.organization_name}>
                   {activeMembership.organization_name}
                 </span>
-                <span className="text-[10px] bg-blue-500/10 text-blue-500 px-1.5 py-0.5 rounded font-medium shrink-0">Member</span>
               </div>
             </Link>
             <button
@@ -114,21 +117,37 @@ const OfficerLayout = () => {
                 </Link>
               );
             })}
+
+            {/* Spacer */}
+            <div className="flex-1" />
+
+            {/* Bottom Actions */}
+            <div className="pt-4 mt-4 border-t border-border">
+              <Link
+                to="/select-organization"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <LogOut className="w-5 h-5 rotate-180" />
+                Switch Organization
+              </Link>
+            </div>
           </nav>
 
           {/* User section */}
           <div className="p-4 border-t border-border">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
-                <span className="text-sm font-medium text-primary">{initials}</span>
+            <ProfileEditorDialog>
+              <div className="flex items-center gap-3 mb-3 cursor-pointer hover:bg-muted/50 p-2 rounded-lg transition-colors">
+                <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <span className="text-sm font-medium text-primary">{initials}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{fullName}</p>
+                  <p className="text-xs text-muted-foreground truncate">{activeMembership.unit_name} • {activeMembership.position_name}</p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">{fullName}</p>
-                <p className="text-xs text-muted-foreground truncate">{activeMembership.unit_name} • {activeMembership.position_name}</p>
-              </div>
-            </div>
+            </ProfileEditorDialog>
             <Link to="/login">
-              <Button variant="ghost" size="sm" className="w-full justify-start text-muted-foreground">
+              <Button variant="ghost" size="sm" className="w-full justify-start text-muted-foreground mt-2">
                 <LogOut className="w-4 h-4 mr-2" />
                 Sign out
               </Button>
@@ -149,10 +168,6 @@ const OfficerLayout = () => {
           </button>
 
           <div className="flex items-center gap-3 ml-auto">
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-accent rounded-full" />
-            </Button>
           </div>
         </header>
 

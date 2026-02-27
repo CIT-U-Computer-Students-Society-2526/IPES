@@ -18,7 +18,6 @@ import OfficerEvaluations from "./pages/officer/Evaluations";
 import EvaluationForm from "./pages/officer/EvaluationForm";
 import OfficerResults from "./pages/officer/Results";
 import OfficerAccomplishments from "./pages/officer/Accomplishments";
-import OfficerProfile from "./pages/officer/Profile";
 
 // Admin pages
 import AdminLayout from "./components/layout/AdminLayout";
@@ -41,8 +40,6 @@ import AdminDashboardPreview from "./pages/preview/AdminDashboardPreview";
 import OfficerEvaluationsPreview from "./pages/preview/OfficerEvaluationsPreview";
 import OfficerResultsPreview from "./pages/preview/OfficerResultsPreview";
 import OfficerAccomplishmentsPreview from "./pages/preview/OfficerAccomplishmentsPreview";
-import OfficerProfilePreview from "./pages/preview/OfficerProfilePreview";
-
 import AdminOrganizationPreview from "./pages/preview/AdminOrganizationPreview";
 import AdminFormBuilderPreview from "./pages/preview/AdminFormBuilderPreview";
 import AdminAssignmentsPreview from "./pages/preview/AdminAssignmentsPreview";
@@ -72,7 +69,6 @@ const App = () => (
               <Route path="evaluations" element={<OfficerEvaluationsPreview />} />
               <Route path="results" element={<OfficerResultsPreview />} />
               <Route path="accomplishments" element={<OfficerAccomplishmentsPreview />} />
-              <Route path="profile" element={<OfficerProfilePreview />} />
             </Route>
             <Route path="/preview/admin" element={<AdminPreviewLayout />}>
               <Route path="dashboard" element={<AdminDashboardPreview />} />
@@ -93,7 +89,6 @@ const App = () => (
               <Route path="evaluations/:id" element={<EvaluationForm />} />
               <Route path="results" element={<OfficerResults />} />
               <Route path="accomplishments" element={<OfficerAccomplishments />} />
-              <Route path="profile" element={<OfficerProfile />} />
             </Route>
 
             {/* Admin routes */}
@@ -107,6 +102,13 @@ const App = () => (
               <Route path="users" element={<AdminUsers />} />
               <Route path="audit-log" element={<AdminAuditLog />} />
               <Route path="settings" element={<AdminSettings />} />
+
+              {/* My Space (Member overlay) */}
+              <Route path="my-dashboard" element={<OfficerDashboard />} />
+              <Route path="my-evaluations" element={<OfficerEvaluations />} />
+              <Route path="my-evaluations/:id" element={<EvaluationForm />} />
+              <Route path="my-results" element={<OfficerResults />} />
+              <Route path="my-accomplishments" element={<OfficerAccomplishments />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />

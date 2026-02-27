@@ -15,7 +15,7 @@ def get_client_ip(request):
     return ip
 
 
-def log_action(user, action, request=None, **extra_data):
+def log_action(user, action, request=None, organization_id=None, **extra_data):
     """
     Helper function to create audit log entries
     
@@ -23,11 +23,18 @@ def log_action(user, action, request=None, **extra_data):
         user: User instance or None
         action: String describing the action (e.g., 'user.login', 'form.created')
         request: Optional Django request object for IP extraction
+        organization_id: The ID of the organization the action belongs to, if applicable.
         **extra_data: Additional context to store with the action
     """
     ip_address = None
     if request:
         ip_address = get_client_ip(request)
+        
+        # Optionally try to pull organization_id from HTTP headers if missing
+        if not organization_id and 'HTTP_X_ORGANIZATION_ID' in request.META:
+            org_id = request.META.get('HTTP_X_ORGANIZATION_ID')
+            if org_id and str(org_id).isdigit():
+                organization_id = int(org_id)
     
     # Create action string with extra data if provided
     action_string = action
@@ -38,6 +45,7 @@ def log_action(user, action, request=None, **extra_data):
     try:
         AuditLog.objects.create(
             user_id=user,
+            organization_id_id=organization_id,
             action=action_string,
             ip_address=ip_address
         )

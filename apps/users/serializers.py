@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 from .models import User
+from apps.organizations.models import OrganizationRole
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -17,21 +18,61 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'date_joined']
         
     def get_memberships(self, obj):
-        return [
-            {
-                'id': m.id,
-                'organization_id': m.unit_id.organization_id.id,
-                'organization_name': m.unit_id.organization_id.name,
-                'unit_id': m.unit_id.id,
-                'unit_name': m.unit_id.name,
-                'position_id': m.position_id.id,
-                'position_name': m.position_id.name,
-                'position_rank': m.position_id.rank,
-                'role': m.role,
-                'is_active': m.is_active
-            }
-            for m in obj.memberships.filter(is_active=True, unit_id__organization_id__is_active=True)
-        ]
+        """
+        Returns the organizations this user belongs to, determined by OrganizationRole.
+        Membership rows are supplementary — they provide position/unit data only.
+        """
+        try:
+            active_org_roles = obj.organization_roles.filter(
+                is_active=True,
+                organization__is_active=True
+            ).select_related('organization')
+        except Exception:
+            return []
+
+        result = []
+        for org_role in active_org_roles:
+            org = org_role.organization
+
+            # Get all active Membership rows for this user in this org (for position info)
+            memberships = obj.memberships.filter(
+                unit_id__organization_id=org,
+                is_active=True
+            ).select_related('unit_id', 'position_id')
+
+            if memberships.exists():
+                # One entry per position/unit the user holds in this org
+                for m in memberships:
+                    result.append({
+                        'id': m.id,
+                        'organization_id': org.id,
+                        'organization_name': org.name,
+                        'organization_email': org.email,
+                        'unit_id': m.unit_id.id if m.unit_id else None,
+                        'unit_name': m.unit_id.name if m.unit_id else None,
+                        'position_id': m.position_id.id if m.position_id else None,
+                        'position_name': m.position_id.name if m.position_id else None,
+                        'position_rank': m.position_id.rank if m.position_id else None,
+                        'role': org_role.role,
+                        'is_active': True,
+                    })
+            else:
+                # User has an org role but no positional membership yet
+                result.append({
+                    'id': None,
+                    'organization_id': org.id,
+                    'organization_name': org.name,
+                    'organization_email': org.email,
+                    'unit_id': None,
+                    'unit_name': None,
+                    'position_id': None,
+                    'position_name': None,
+                    'position_rank': None,
+                    'role': org_role.role,
+                    'is_active': True,
+                })
+
+        return result
 
 
 class UserCreateSerializer(serializers.ModelSerializer):

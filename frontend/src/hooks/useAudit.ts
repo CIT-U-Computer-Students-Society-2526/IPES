@@ -6,6 +6,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { useOrganizationState } from '@/contexts/OrganizationContext';
 
 // Audit log types
 export interface AuditLog {
@@ -22,17 +23,18 @@ export interface AuditLog {
 // ===== Fetch Hooks =====
 
 // Fetch all audit logs
-export const useAuditLogs = (params?: { 
-  user_id?: number; 
-  action?: string; 
-  start_date?: string; 
+export const useAuditLogs = (params?: {
+  user_id?: number;
+  action?: string;
+  start_date?: string;
   end_date?: string;
   limit?: number;
+  organization_id?: number;
 }) => {
   const queryString = params
     ? '?' + new URLSearchParams(
-        Object.entries(params).filter(([, v]) => v !== undefined).reduce((acc, [k, v]) => ({ ...acc, [k]: String(v) }), {})
-      ).toString()
+      Object.entries(params).filter(([, v]) => v !== undefined).reduce((acc, [k, v]) => ({ ...acc, [k]: String(v) }), {})
+    ).toString()
     : '';
 
   return useQuery({
@@ -47,11 +49,15 @@ export const useAuditLogs = (params?: {
 };
 
 // Fetch recent audit logs (last 100)
-export const useRecentAuditLogs = () => {
+export const useRecentAuditLogs = (organizationId?: number) => {
+  const { activeOrganizationId } = useOrganizationState();
+  const effectiveOrgId = organizationId || activeOrganizationId;
+  const queryString = effectiveOrgId ? `?organization_id=${effectiveOrgId}` : '';
+
   return useQuery({
-    queryKey: ['audit', 'recent'],
+    queryKey: ['audit', 'recent', effectiveOrgId],
     queryFn: async () => {
-      const response = await api.get('/audit/recent/');
+      const response = await api.get(`/audit/recent/${queryString}`);
       const data = await response.json() as { results: AuditLog[] } | AuditLog[];
       return Array.isArray(data) ? data : data.results || [];
     },

@@ -8,7 +8,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
         fields = [
-            'id', 'name', 'code', 'display_picture', 'description',
+            'id', 'name', 'code', 'display_picture', 'description', 'email',
             'period_year_start', 'period_year_end', 'is_active'
         ]
         read_only_fields = ['id']
@@ -54,12 +54,13 @@ class MembershipSerializer(serializers.ModelSerializer):
     user_email = serializers.CharField(source='user_id.email', read_only=True)
     unit_name = serializers.CharField(source='unit_id.name', read_only=True)
     position_name = serializers.CharField(source='position_id.name', read_only=True)
+    position_rank = serializers.IntegerField(source='position_id.rank', read_only=True)
     
     class Meta:
         model = Membership
         fields = [
             'id', 'user_id', 'user_email', 'unit_id', 'unit_name',
-            'position_id', 'position_name', 'role', 'date_start', 
+            'position_id', 'position_name', 'position_rank', 'date_start', 
             'date_end', 'is_active'
         ]
         read_only_fields = ['id', 'date_start', 'date_end']

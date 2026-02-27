@@ -80,13 +80,12 @@ const POSITIONS = [
 ];
 
 import { useOrganizationState } from "@/contexts/OrganizationContext";
-import { useUpdateMembership, useOrganizationUnits, usePositionTypes, useCreateMembership } from "@/hooks/useOrganizations";
+import { useUpdateMembership, useOrganizationUnits, usePositionTypes, useCreateMembership, useRemoveMember, useSetMemberRole } from "@/hooks/useOrganizations";
 
 const AdminUsers = () => {
   const { activeOrganizationId } = useOrganizationState();
+  const { data: currentUser } = useCurrentUser();
 
-  // Fetch logged in user profile to evaluate Head Admin status
-  const { data: currentUserProfile } = useCurrentUser();
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
 
@@ -108,6 +107,8 @@ const AdminUsers = () => {
   // Mutations
   const updateMembership = useUpdateMembership();
   const createMembership = useCreateMembership();
+  const removeMember = useRemoveMember();
+  const setMemberRole = useSetMemberRole();
 
   // Filter users
   const filteredUsers = users?.filter((user: User) => {
@@ -126,7 +127,7 @@ const AdminUsers = () => {
     return matchesSearch && matchesRole;
   }) || [];
 
-  // Calculate stats
+  // Calculate stats — role is injected by the server from OrganizationRole
   const stats = {
     total: filteredUsers.length || 0,
     admins: filteredUsers.filter((u: User) => u.memberships?.some(m => m.organization_id === activeOrganizationId && m.role === 'Admin')).length || 0,
@@ -134,9 +135,6 @@ const AdminUsers = () => {
     active: filteredUsers.filter((u: User) => u.is_active).length || 0,
   };
 
-  // Calculate logged in user's rank status
-  const currentUserMembership = currentUserProfile?.memberships?.find(m => m.organization_id === activeOrganizationId);
-  const isHeadAdmin = currentUserMembership?.position_rank === 1;
 
   // Handle adding new role
   const handleAddRole = async () => {
@@ -189,30 +187,20 @@ const AdminUsers = () => {
 
     const isCurrentlyAdmin = membership.role === 'Admin';
 
-    // Prevent anyone from revoking the Head Admin's privileges (including themselves)
-    const isTargetHeadAdmin = membership.position_rank === 1;
-    if (isCurrentlyAdmin && isTargetHeadAdmin) {
+    // Prevent an admin from revoking their own adminship
+    if (isCurrentlyAdmin && user.id === currentUser?.id) {
       toast({
         title: "Action Blocked",
-        description: "The Head Administrator's admin privileges cannot be revoked by anyone, including themselves.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (isCurrentlyAdmin && !isHeadAdmin) {
-      toast({
-        title: "Permission Denied",
-        description: "Only the Head Administrator can revoke Admin privileges.",
+        description: "You cannot revoke your own admin privileges.",
         variant: "destructive",
       });
       return;
     }
 
     try {
-      await updateMembership.mutateAsync({
-        id: membership.id,
-        data: { role: isCurrentlyAdmin ? 'Member' : 'Admin' }
+      await setMemberRole.mutateAsync({
+        user_id: user.id,
+        role: isCurrentlyAdmin ? 'Member' : 'Admin'
       });
       toast({
         title: "Success",
@@ -229,17 +217,22 @@ const AdminUsers = () => {
 
   // Handle removal from org — opens confirmation dialog
   const handleRemoveFromOrganization = (user: User) => {
+    if (user.id === currentUser?.id) {
+      toast({
+        title: "Action Blocked",
+        description: "You cannot remove yourself from the organization.",
+        variant: "destructive",
+      });
+      return;
+    }
     setUserToRemove(user);
   };
 
   const confirmRemoveFromOrganization = async () => {
     if (!userToRemove) return;
-    const membership = userToRemove.memberships?.find(m => m.organization_id === activeOrganizationId);
-    if (!membership) { setUserToRemove(null); return; }
     try {
-      await updateMembership.mutateAsync({
-        id: membership.id,
-        data: { is_active: false }
+      await removeMember.mutateAsync({
+        user_id: userToRemove.id
       });
       toast({
         title: "Success",
@@ -443,13 +436,9 @@ const AdminUsers = () => {
                 ) : (
                   filteredUsers.map((user) => {
                     const activeMemberships = user.memberships?.filter(m => m.organization_id === activeOrganizationId) || [];
+                    // role is populated by the server from OrganizationRole
                     const isAdmin = activeMemberships.some(m => m.role === 'Admin');
                     const isActive = activeMemberships.some(m => m.is_active);
-
-                    const isSelf = user.id === currentUserProfile?.id;
-                    const isSelfHeadAdmin = isSelf && activeMemberships.some(m => m.role === 'Admin' && m.position_rank === 1);
-                    // The Head Admin's privileges are protected from everyone — including themselves
-                    const isTargetHeadAdmin = activeMemberships.some(m => m.role === 'Admin' && m.position_rank === 1);
 
                     return (
                       <TableRow key={user.id}>
@@ -512,7 +501,7 @@ const AdminUsers = () => {
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => handleToggleAdminStatus(user)}
-                                disabled={isTargetHeadAdmin}
+                                disabled={user.id === currentUser?.id && isAdmin}
                               >
                                 {isAdmin ? (
                                   <>
@@ -530,7 +519,7 @@ const AdminUsers = () => {
                               <DropdownMenuItem
                                 className="text-destructive"
                                 onClick={() => handleRemoveFromOrganization(user)}
-                                disabled={isSelfHeadAdmin}
+                                disabled={user.id === currentUser?.id}
                               >
                                 <AlertTriangle className="w-4 h-4 mr-2" />
                                 Remove from Organization
@@ -569,23 +558,19 @@ const AdminUsers = () => {
                 return (
                   <div className="space-y-2">
                     {activeRoles.map(role => {
-                      const isSelf = selectedUser?.id === currentUserProfile?.id;
-                      const isThisRoleHeadAdmin = role.role === 'Admin' && role.position_rank === 1;
-                      const isDisableRemove = isSelf && isThisRoleHeadAdmin;
-
                       return (
                         <div key={role.id} className="flex items-center justify-between p-3 border rounded-lg bg-card text-card-foreground">
                           <div>
                             <p className="font-medium text-sm">{role.unit_name}</p>
-                            <p className="text-xs text-muted-foreground">{role.position_name} &bull; {role.role}</p>
+                            <p className="text-xs text-muted-foreground">{role.position_name}</p>
                           </div>
                           <Button
                             variant="ghost"
                             size="icon"
                             className="text-destructive hover:text-destructive hover:bg-destructive/10"
                             onClick={() => handleRemoveRole(role.id)}
-                            disabled={updateMembership.isPending || isDisableRemove}
-                            title={isDisableRemove ? "Head Administrators cannot remove their own primary role." : "Remove role"}
+                            disabled={updateMembership.isPending}
+                            title="Remove role"
                           >
                             <UserMinus className="w-4 h-4" />
                           </Button>

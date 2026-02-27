@@ -7,6 +7,7 @@ class Organization(models.Model):
     code = models.CharField(max_length=50, unique=True)
     display_picture = models.ImageField(upload_to='organizations/pictures/', blank=True, null=True)
     description = models.TextField()
+    email = models.EmailField(blank=True, null=True)
     period_year_start = models.DateField()
     period_year_end = models.DateField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
@@ -37,15 +38,23 @@ class Membership(models.Model):
     unit_id = models.ForeignKey(OrganizationUnit, on_delete=models.CASCADE, related_name='members')
     position_id = models.ForeignKey(PositionType, on_delete=models.PROTECT)
     
+    date_start = models.DateField()
+    date_end = models.DateField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+
+class OrganizationRole(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='organization_roles')
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='user_roles')
+    
     ROLE_CHOICES = (
         ('Admin', 'Admin'),
         ('Member', 'Member'),
     )
     role = models.CharField(max_length=50, choices=ROLE_CHOICES, default='Member')
-    
-    date_start = models.DateField()
-    date_end = models.DateField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
+    
+    class Meta:
+        unique_together = ('user', 'organization')
 
 class JoinRequest(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='join_requests')
