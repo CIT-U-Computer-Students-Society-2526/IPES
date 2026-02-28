@@ -57,10 +57,11 @@ const Login = () => {
 
     try {
       const response = await api.post("/auth/login/", { email, password });
-      const data: LoginResponse = await response.json();
+      const data: LoginResponse & { token: string } = await response.json();
 
-      // Store user info in localStorage
+      // Store user info & token in localStorage
       localStorage.setItem("user", JSON.stringify(data.user));
+      localStorage.setItem("authToken", data.token);
 
       // Redirect to Organization Selector Hub with replace to prevent back navigation
       navigate("/select-organization", { replace: true });

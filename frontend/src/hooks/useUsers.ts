@@ -201,6 +201,7 @@ export const useLogout = () => {
     // Clear all user data from localStorage
     localStorage.removeItem('user');
     localStorage.removeItem('activeOrganizationId');
+    localStorage.removeItem('authToken');
 
     // Clear all cached queries
     queryClient.clear();

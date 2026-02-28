@@ -42,8 +42,13 @@ class AuthViewSet(viewsets.ViewSet):
         # Log successful login
         log_action(user, AuditActions.USER_LOGIN, request)
 
+        # Generate or retrieve token for API authentication
+        from rest_framework.authtoken.models import Token
+        token, _ = Token.objects.get_or_create(user=user)
+
         return Response({
             'user': UserSerializer(user).data,
+            'token': token.key,
             'message': 'Login successful'
         })
 
@@ -57,6 +62,12 @@ class AuthViewSet(viewsets.ViewSet):
         # Log logout if user was authenticated
         if user:
             log_action(user, AuditActions.USER_LOGOUT, request)
+            # delete auth token so it cannot be reused
+            try:
+                from rest_framework.authtoken.models import Token
+                Token.objects.filter(user=user).delete()
+            except Exception:
+                pass
 
         return Response({'message': 'Logout successful'})
         

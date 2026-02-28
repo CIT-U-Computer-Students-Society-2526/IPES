@@ -96,13 +96,19 @@ export const apiRequest = async (
     defaultHeaders['X-Organization-Id'] = activeOrgId;
   }
 
+  // Include token authorization header if present
+  const token = localStorage.getItem('authToken');
+  if (token) {
+    defaultHeaders['Authorization'] = `Token ${token}`;
+  }
+
   const response = await fetch(url, {
     ...options,
     headers: {
       ...defaultHeaders,
       ...options.headers,
     },
-    credentials: 'include', // Include cookies for session authentication
+    credentials: 'same-origin', // only send cookies for same-origin (not needed for token)
   });
 
   if (!response.ok) {
