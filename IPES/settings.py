@@ -28,7 +28,7 @@ DEBUG = config('DEBUG', default=False, cast=bool)
 
 ALLOWED_HOSTS = config(
     'ALLOWED_HOSTS',
-    default='localhost,127.0.0.1,0.0.0.0,testserver',
+    default='localhost,127.0.0.1,0.0.0.0,testserver,css-ipes.onrender.com,css-ipes-frontend.onrender.com',
     cast=lambda v: [s.strip() for s in v.split(',')]
 )
 
@@ -147,6 +147,7 @@ AUTH_USER_MODEL = "users.User"
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "https://css-ipes-frontend.onrender.com",
 ]
 CORS_ALLOW_CREDENTIALS = True
 
@@ -161,6 +162,7 @@ CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:5173",
     "http://localhost:8080",
     "http://127.0.0.1:8080",
+    "https://css-ipes-frontend.onrender.com",
 ]
 
 # Also allow Vite fallback ports (dev servers may pick another port)
