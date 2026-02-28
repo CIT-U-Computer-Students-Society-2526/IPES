@@ -151,6 +151,12 @@ CORS_ALLOWED_ORIGINS = [
 ]
 CORS_ALLOW_CREDENTIALS = True
 
+# Session and CSRF Cookie Configuration for cross-origin requests
+SESSION_COOKIE_SECURE = True
+SESSION_COOKIE_DOMAIN = '.onrender.com'
+CSRF_COOKIE_SECURE = True
+CSRF_COOKIE_DOMAIN = '.onrender.com'
+
 from corsheaders.defaults import default_headers
 CORS_ALLOW_HEADERS = list(default_headers) + [
     "x-organization-id",
