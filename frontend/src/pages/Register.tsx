@@ -47,6 +47,14 @@ const Register = () => {
         return () => clearInterval(interval);
     }, [organizations.length]);
 
+    // Redirect if already logged in - prevents back navigation to register after logging in
+    useEffect(() => {
+        const user = localStorage.getItem("user");
+        if (user) {
+            navigate("/select-organization", { replace: true });
+        }
+    }, [navigate]);
+
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -71,8 +79,8 @@ const Register = () => {
             // Store user info in localStorage
             localStorage.setItem("user", JSON.stringify(data.user));
 
-            // Redirect to Organization Selector Hub
-            navigate("/select-organization");
+            // Redirect to Organization Selector Hub with replace to prevent back navigation
+            navigate("/select-organization", { replace: true });
         } catch (err: unknown) {
             console.error('Registration error:', err);
             let errorMsg = "";

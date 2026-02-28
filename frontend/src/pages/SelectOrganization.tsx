@@ -1,6 +1,6 @@
 import React from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { useCurrentUser, Membership } from '@/hooks/useUsers';
+import { useNavigate } from 'react-router-dom';
+import { useCurrentUser, Membership, useLogout } from '@/hooks/useUsers';
 import { useOrganizationState } from '@/contexts/OrganizationContext';
 import { useCreateOrganization, useJoinOrganization } from '@/hooks/useOrganizations';
 import {
@@ -33,6 +33,7 @@ const SelectOrganization = () => {
     const { toast } = useToast();
     const { data: user, isLoading } = useCurrentUser();
     const { setActiveOrganizationId, clearOrganizationState } = useOrganizationState();
+    const { logout } = useLogout();
 
     React.useEffect(() => {
         // Clear active organization state when in the selector page
@@ -352,12 +353,10 @@ const SelectOrganization = () => {
 
                 <div className="flex flex-col items-center gap-2 pt-4 border-t border-border">
                     <p className="text-sm text-muted-foreground">Not the right account?</p>
-                    <Link to="/login">
-                        <Button variant="ghost" className="gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10">
-                            <LogOut className="w-4 h-4" />
-                            Sign out
-                        </Button>
-                    </Link>
+                    <Button variant="ghost" className="gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={logout}>
+                        <LogOut className="w-4 h-4" />
+                        Sign out
+                    </Button>
                 </div>
 
             </div>
