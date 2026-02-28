@@ -185,3 +185,29 @@ export const useUserStats = () => {
     },
   });
 };
+
+// Logout hook - properly clears session and prevents back navigation
+export const useLogout = () => {
+  const queryClient = useQueryClient();
+
+  const logout = async () => {
+    try {
+      // Call the backend logout endpoint to clear session
+      await api.post('/auth/logout/', {});
+    } catch {
+      // Continue with client-side cleanup even if API fails
+    }
+
+    // Clear all user data from localStorage
+    localStorage.removeItem('user');
+    localStorage.removeItem('activeOrganizationId');
+
+    // Clear all cached queries
+    queryClient.clear();
+
+    // Navigate to login with replace to prevent back navigation
+    window.location.replace('/login');
+  };
+
+  return { logout };
+};
