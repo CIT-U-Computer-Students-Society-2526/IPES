@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 import { ProfileEditorDialog } from "@/components/ProfileEditorDialog";
 
@@ -168,6 +169,7 @@ const OfficerLayout = () => {
           </button>
 
           <div className="flex items-center gap-3 ml-auto">
+            <ThemeToggle />
           </div>
         </header>
 

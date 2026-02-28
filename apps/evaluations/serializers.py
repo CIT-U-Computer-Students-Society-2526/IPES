@@ -102,17 +102,34 @@ class AssignmentRuleSerializer(serializers.ModelSerializer):
 class EvaluationAssignmentSerializer(serializers.ModelSerializer):
     """Serializer for EvaluationAssignment model"""
     evaluator_email = serializers.CharField(source='evaluator_id.email', read_only=True)
+    evaluator_name = serializers.SerializerMethodField()
     evaluatee_email = serializers.CharField(source='evaluatee_id.email', read_only=True)
+    evaluatee_name = serializers.SerializerMethodField()
     form_title = serializers.CharField(source='form_id.title', read_only=True)
     
     class Meta:
         model = EvaluationAssignment
         fields = [
-            'id', 'evaluator_id', 'evaluator_email', 'evaluatee_id', 
-            'evaluatee_email', 'form_id', 'form_title', 'status',
+            'id', 'evaluator_id', 'evaluator_email', 'evaluator_name',
+            'evaluatee_id', 'evaluatee_email', 'evaluatee_name',
+            'form_id', 'form_title', 'status',
             'submitted_at', 'total_score'
         ]
         read_only_fields = ['id', 'status', 'submitted_at', 'total_score']
+    
+    def get_evaluator_name(self, obj):
+        user = obj.evaluator_id
+        if user:
+            full_name = f"{user.first_name} {user.last_name}".strip()
+            return full_name if full_name else user.email
+        return None
+    
+    def get_evaluatee_name(self, obj):
+        user = obj.evaluatee_id
+        if user:
+            full_name = f"{user.first_name} {user.last_name}".strip()
+            return full_name if full_name else user.email
+        return None
 
 
 class ResponseSerializer(serializers.ModelSerializer):

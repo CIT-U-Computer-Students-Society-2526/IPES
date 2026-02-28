@@ -3,6 +3,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { OrganizationProvider } from "./contexts/OrganizationContext";
+import { ThemeProvider } from "./components/theme-provider";
 
 // Pages
 import Index from "./pages/Index";
@@ -52,16 +53,17 @@ import AdminSettingsPreview from "./pages/preview/AdminSettingsPreview";
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <OrganizationProvider>
-        <Toaster />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/select-organization" element={<SelectOrganization />} />
+  <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <OrganizationProvider>
+          <Toaster />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/select-organization" element={<SelectOrganization />} />
 
             {/* System Preview routes (No Auth) */}
             <Route path="/preview/member" element={<OfficerPreviewLayout />}>
@@ -117,6 +119,7 @@ const App = () => (
       </OrganizationProvider>
     </TooltipProvider>
   </QueryClientProvider>
+  </ThemeProvider>
 );
 
 export default App;

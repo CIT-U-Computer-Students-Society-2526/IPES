@@ -68,6 +68,33 @@ export const useAnalyticsSummary = (organizationId?: number) => {
   });
 };
 
+// Organization detail type
+export interface Organization {
+  id: number;
+  name: string;
+  code: string;
+  description: string;
+  email: string | null;
+  is_active: boolean;
+  period_year_start: string;
+  period_year_end: string | null;
+}
+
+// Fetch single organization by ID
+export const useOrganization = (organizationId?: number) => {
+  const { activeOrganizationId } = useOrganizationState();
+  const effectiveOrgId = organizationId || activeOrganizationId;
+
+  return useQuery({
+    queryKey: ['organizations', effectiveOrgId],
+    queryFn: async () => {
+      const response = await api.get(`/organizations/${effectiveOrgId}/`);
+      return response.json() as Promise<Organization>;
+    },
+    enabled: !!effectiveOrgId,
+  });
+};
+
 // Create new organization
 export const useCreateOrganization = () => {
   const queryClient = useQueryClient();

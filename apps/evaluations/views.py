@@ -187,6 +187,16 @@ class EvaluationFormViewSet(viewsets.ModelViewSet):
         serializer = QuestionSerializer(questions, many=True)
         return DRFResponse(serializer.data)
     
+    @action(detail=True, methods=['get'])
+    def completed_count(self, request, pk=None):
+        """Get count of completed assignments for this form - used for edit warning"""
+        form = self.get_object()
+        count = EvaluationAssignment.objects.filter(
+            form_id=form,
+            status='Completed'
+        ).count()
+        return DRFResponse({'completed_count': count})
+    
     @action(detail=True, methods=['post'])
     def duplicate(self, request, pk=None):
         """Duplicate a form with its questions"""
@@ -541,6 +551,56 @@ class QuestionViewSet(viewsets.ModelViewSet):
         
         return queryset.order_by('order')
     
+    def _reset_completed_assignments(self, form_id):
+        """Reset completed assignments to In Progress when questions change"""
+        EvaluationAssignment.objects.filter(
+            form_id=form_id,
+            status='Completed'
+        ).update(status='In Progress', submitted_at=None)
+    
+    def _question_content_changed(self, old_question, new_data):
+        """Check if question content (not just order) has changed"""
+        # Compare fields that affect the actual question content
+        if str(old_question.text) != str(new_data.get('text', old_question.text)):
+            return True
+        if old_question.weight != new_data.get('weight', old_question.weight):
+            return True
+        if old_question.min_value != new_data.get('min_value', old_question.min_value):
+            return True
+        if old_question.max_value != new_data.get('max_value', old_question.max_value):
+            return True
+        if old_question.input_type != new_data.get('input_type', old_question.input_type):
+            return True
+        if old_question.is_required != new_data.get('is_required', old_question.is_required):
+            return True
+        return False
+    
+    def update(self, request, *args, **kwargs):
+        """Override update to only reset assignments if content changed"""
+        instance = self.get_object()
+        
+        # Check if content actually changed before updating
+        content_changed = self._question_content_changed(instance, request.data)
+        
+        # Perform the normal update
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        question = serializer.save()
+        
+        # Only reset if content changed (not just order)
+        if content_changed:
+            self._reset_completed_assignments(question.form_id_id)
+        
+        return DRFResponse(serializer.data)
+    
+    def perform_destroy(self, instance):
+        """Reset completed assignments and delete related responses when a question is deleted"""
+        form_id = instance.form_id_id
+        # Delete responses for this question
+        Response.objects.filter(question_id=instance).delete()
+        instance.delete()
+        self._reset_completed_assignments(form_id)
+    
     @action(detail=False, methods=['post'])
     def bulk_create(self, request):
         """Bulk create questions for a form"""
@@ -565,6 +625,10 @@ class QuestionViewSet(viewsets.ModelViewSet):
         for question_data in questions_data:
             question = Question.objects.create(form_id=form, **question_data)
             created_questions.append(question)
+        
+        # Reset completed assignments since questions changed
+        if created_questions:
+            self._reset_completed_assignments(form_id)
         
         serializer = QuestionSerializer(created_questions, many=True)
         return DRFResponse(serializer.data, status=status.HTTP_201_CREATED)
@@ -617,6 +681,9 @@ class EvaluationAssignmentViewSet(viewsets.ModelViewSet):
         """Filter assignments based on user role"""
         queryset = EvaluationAssignment.objects.all()
         user = self.request.user
+        
+        # Exclude assignments for deleted forms
+        queryset = queryset.filter(form_id__is_deleted=False)
         
         org_id = self.request.query_params.get('organization_id')
         form_id = self.request.query_params.get('form_id')
@@ -701,6 +768,7 @@ class EvaluationAssignmentViewSet(viewsets.ModelViewSet):
         if not released_form_ids:
             return DRFResponse({
                 'overallScore': 0,
+                'overallMaxScore': 5,
                 'categoryScores': [],
                 'feedbackComments': [],
                 'evaluationHistory': [],
@@ -730,6 +798,20 @@ class EvaluationAssignmentViewSet(viewsets.ModelViewSet):
         overall_score = assignments.aggregate(avg=models.Avg('total_score'))['avg'] or 0
         overall_score = round(overall_score, 1)
         evaluator_count = assignments.count()
+
+        # Calculate overall max score based on questions in the form
+        form_questions = Question.objects.filter(form_id_id=selected_form_id)
+        if form_questions.exists():
+            total_weighted_max = 0
+            total_weight = 0
+            for q in form_questions:
+                q_max = q.max_value if q.max_value is not None else (100 if q.input_type == 'number' else 5)
+                if q.weight:
+                    total_weighted_max += q_max * q.weight
+                    total_weight += q.weight
+            overall_max_score = round(total_weighted_max / total_weight, 1) if total_weight > 0 else 5
+        else:
+            overall_max_score = 5
 
         # evaluationHistory: still useful to show historical averages for comparison maybe?
         # Let's keep it but calculate it from ALL released assignments
@@ -765,17 +847,23 @@ class EvaluationAssignmentViewSet(viewsets.ModelViewSet):
             # Use question text as category since category field is missing in model
             category = (question.text[:30] + '...') if len(question.text) > 30 else question.text
             
+            # Use the actual max_value from the question (default to 5 for rating, 100 for number)
+            question_max = question.max_value if question.max_value is not None else (100 if question.input_type == 'number' else 5)
+            
             if category not in category_map:
-                category_map[category] = {'score_sum': 0, 'weight_sum': 0, 'max_score': 5}
+                category_map[category] = {'score_sum': 0, 'weight_sum': 0, 'max_score_sum': 0}
             
             if response.score_value is not None and question.weight:
                 category_map[category]['score_sum'] += response.score_value * question.weight
                 category_map[category]['weight_sum'] += question.weight
+                category_map[category]['max_score_sum'] += question_max * question.weight
                 
             if response.text and response.text.strip():
-                feedback_type = 'positive' if (response.score_value and response.score_value >= 4) else 'constructive'
-                if not response.score_value:
-                    feedback_type = 'info'
+                # Determine feedback type based on relative score (above 80% = positive)
+                feedback_type = 'info'
+                if response.score_value is not None and question_max > 0:
+                    score_ratio = response.score_value / question_max
+                    feedback_type = 'positive' if score_ratio >= 0.8 else 'constructive'
                     
                 feedback_comments.append({
                     'id': comment_id,
@@ -787,14 +875,18 @@ class EvaluationAssignmentViewSet(viewsets.ModelViewSet):
         category_scores = []
         for name, data in category_map.items():
             if data['weight_sum'] > 0:
+                # Calculate the weighted average score and max score
+                avg_score = round(data['score_sum'] / data['weight_sum'], 1)
+                avg_max = round(data['max_score_sum'] / data['weight_sum'], 1)
                 category_scores.append({
                     'name': name,
-                    'score': round(data['score_sum'] / data['weight_sum'], 1),
-                    'maxScore': 5
+                    'score': avg_score,
+                    'maxScore': avg_max
                 })
 
         return DRFResponse({
             'overallScore': overall_score,
+            'overallMaxScore': overall_max_score,
             'categoryScores': category_scores,
             'feedbackComments': feedback_comments[:10],
             'evaluationHistory': evaluation_history,

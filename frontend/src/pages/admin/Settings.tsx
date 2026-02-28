@@ -6,6 +6,8 @@ import {
   Shield,
   Database,
   Mail,
+  Copy,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +38,7 @@ import { Alert } from "@/components/ui/alert";
 import {
   useDeleteOrganization,
   useUpdateOrganization,
+  useOrganization,
 } from "@/hooks/useOrganizations";
 import { useCurrentMembership } from "@/hooks/useUsers";
 import { useNavigate } from "react-router-dom";
@@ -53,7 +56,9 @@ const AdminSettings = () => {
   const { data: currentMembership } = useCurrentMembership();
   const { mutate: deleteOrganization, isPending: isDeleting } = useDeleteOrganization();
   const { mutate: updateOrganization, isPending: isUpdatingOrg } = useUpdateOrganization();
+  const { data: organization } = useOrganization();
   const { toast } = useToast();
+  const [codeCopied, setCodeCopied] = useState(false);
 
   // Dialog states for deleting organization
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -178,6 +183,35 @@ const AdminSettings = () => {
                   onChange={(e) => setOrgData({ ...orgData, name: e.target.value })}
                   placeholder="e.g. University Student Council"
                 />
+              </div>
+              <div className="space-y-2">
+                <Label>Organization Code</Label>
+                <p className="text-xs text-muted-foreground">Share this code with members so they can join your organization</p>
+                <div className="flex gap-2">
+                  <Input
+                    value={organization?.code || ''}
+                    readOnly
+                    className="font-mono bg-muted"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => {
+                      if (organization?.code) {
+                        navigator.clipboard.writeText(organization.code);
+                        setCodeCopied(true);
+                        setTimeout(() => setCodeCopied(false), 2000);
+                        toast({
+                          title: "Copied!",
+                          description: "Organization code copied to clipboard.",
+                        });
+                      }
+                    }}
+                  >
+                    {codeCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>

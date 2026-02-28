@@ -53,7 +53,7 @@ import { formatApiError } from "@/lib/api";
 
 import {
   useForms, useCreateForm, useUpdateForm, useDeleteForm, useDuplicateForm, useActivateForm, useDeactivateForm, useReleaseResults,
-  useFormQuestions, useCreateQuestions, useUpdateQuestion, useDeleteQuestion,
+  useFormQuestions, useCreateQuestions, useUpdateQuestion, useDeleteQuestion, useFormCompletedCount,
   useFormRules, useCreateRule, useDeleteRule, useGenerateAssignments,
   type EvaluationForm, type Question, type AssignmentRule
 } from "@/hooks/useEvaluations";
@@ -131,6 +131,16 @@ const AdminFormBuilder = () => {
   const createQuestionsMutation = useCreateQuestions();
   const updateQuestionMutation = useUpdateQuestion();
   const deleteQuestionMutation = useDeleteQuestion();
+  
+  // Completed count for edit warning
+  const { data: completedCountData } = useFormCompletedCount(selectedForm?.id || 0);
+  const completedAssignmentCount = completedCountData?.completed_count || 0;
+  
+  // Save warning dialog (for forms with completed responses)
+  const [isSaveWarningOpen, setIsSaveWarningOpen] = useState(false);
+  
+  // Activate warning dialog (for forms with completed responses)
+  const [isActivateWarningOpen, setIsActivateWarningOpen] = useState(false);
 
   // Assignment Rules hooks
   const { data: formRules = [], isLoading: rulesLoading } = useFormRules(selectedForm?.id || 0);
@@ -265,9 +275,66 @@ const AdminFormBuilder = () => {
   const handleActivateForm = async () => {
     if (!selectedForm) return;
     setIsActivateDialogOpen(false);
+    
+    // Validate empty questions
+    if (localQuestions.some(q => !q.text || q.text.trim() === '')) {
+      toast({ title: "Validation Error", description: "Question text cannot be empty.", variant: "destructive" });
+      return;
+    }
+    
+    // Show warning if there are completed assignments AND questions changed
+    if (completedAssignmentCount > 0 && hasQuestionChanges()) {
+      setIsActivateWarningOpen(true);
+      return;
+    }
+    
+    await performActivateForm();
+  };
+
+  const performActivateForm = async () => {
+    if (!selectedForm) return;
+    setIsActivateWarningOpen(false);
+    
     try {
+      // Save any unsaved questions first
+      const newQuestions = localQuestions.filter(q => !q.id);
+      const existingQuestions = localQuestions.filter(q => q.id);
+
+      // Update existing linearly
+      for (const q of existingQuestions) {
+        if (q.id) {
+          await updateQuestionMutation.mutateAsync({
+            id: q.id,
+            form_id: selectedForm.id,
+            data: {
+              text: q.text, order: q.order, weight: q.weight, input_type: q.input_type,
+              is_required: q.is_required, min_value: q.min_value, max_value: q.max_value
+            }
+          });
+        }
+      }
+
+      // Bulk create new questions
+      if (newQuestions.length > 0) {
+        await createQuestionsMutation.mutateAsync({
+          form_id: selectedForm.id,
+          questions: newQuestions.map(q => ({
+            text: q.text, input_type: q.input_type, order: q.order, weight: q.weight,
+            is_required: q.is_required, min_value: q.min_value, max_value: q.max_value
+          }))
+        });
+      }
+
+      // Refresh questions after save
+      const { data: freshQuestions } = await refetchQuestions();
+      if (freshQuestions) {
+        setLocalQuestions(freshQuestions);
+        seededFormIdRef.current = selectedForm.id;
+      }
+      
+      // Now activate the form
       await activateFormMutation.mutateAsync(selectedForm.id);
-      toast({ title: "Form Activated", description: "This form can now be assigned." });
+      toast({ title: "Form Activated", description: "Questions saved and form is now ready for assignments." });
       setSelectedForm({ ...selectedForm, is_active: true });
     } catch (e: unknown) {
       toast({ title: "Error Activating Form", description: formatApiError(e), variant: "destructive" });
@@ -424,6 +491,26 @@ const AdminFormBuilder = () => {
     setLocalQuestions(newQs);
   };
 
+  // Check if questions have actually changed (content, not just order)
+  const hasQuestionChanges = () => {
+    // Check for new questions
+    if (localQuestions.some(q => !q.id)) return true;
+    
+    // Check for content changes in existing questions
+    for (const local of localQuestions) {
+      if (!local.id) continue;
+      const original = formQuestions.find(q => q.id === local.id);
+      if (!original) continue;
+      if (local.text !== original.text) return true;
+      if (local.weight !== original.weight) return true;
+      if (local.min_value !== original.min_value) return true;
+      if (local.max_value !== original.max_value) return true;
+      if (local.input_type !== original.input_type) return true;
+      if (local.is_required !== original.is_required) return true;
+    }
+    return false;
+  };
+
   const handleSaveDraft = async () => {
     if (!selectedForm) return;
 
@@ -432,6 +519,19 @@ const AdminFormBuilder = () => {
       toast({ title: "Validation Error", description: "Question text cannot be empty.", variant: "destructive" });
       return;
     }
+
+    // Show warning if there are completed assignments AND questions changed
+    if (completedAssignmentCount > 0 && hasQuestionChanges()) {
+      setIsSaveWarningOpen(true);
+      return;
+    }
+
+    await performSaveDraft();
+  };
+
+  const performSaveDraft = async () => {
+    if (!selectedForm) return;
+    setIsSaveWarningOpen(false);
 
     setIsSavingDraft(true);
     try {
@@ -709,11 +809,20 @@ const AdminFormBuilder = () => {
                 <CardTitle className="text-base">Add Question Types</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
+                {selectedForm?.is_active && (
+                  <div className="bg-amber-50 text-amber-800 text-xs p-2.5 rounded border border-amber-200 mb-3">
+                    Form is active. Deactivate to edit questions.
+                  </div>
+                )}
                 {questionTypes.map((type) => (
                   <div
                     key={type.id}
-                    onClick={() => handleAddQuestion(type.id)}
-                    className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted cursor-pointer transition-colors"
+                    onClick={() => !selectedForm?.is_active && handleAddQuestion(type.id)}
+                    className={`flex items-center gap-3 p-3 rounded-lg border border-border transition-colors ${
+                      selectedForm?.is_active
+                        ? "opacity-50 cursor-not-allowed"
+                        : "hover:bg-muted cursor-pointer"
+                    }`}
                   >
                     <type.icon className="w-5 h-5 text-primary" />
                     <div>
@@ -752,6 +861,36 @@ const AdminFormBuilder = () => {
                         {isSavingDraft ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                         {isSavingDraft ? "Saving..." : "Save Draft"}
                       </Button>
+                      
+                      {/* Warning dialog for forms with completed responses */}
+                      <Dialog open={isSaveWarningOpen} onOpenChange={setIsSaveWarningOpen}>
+                        <DialogContent className="max-w-md">
+                          <DialogHeader>
+                            <DialogTitle className="text-amber-600">Warning: Responses Will Be Affected</DialogTitle>
+                            <DialogDescription className="space-y-2 pt-2">
+                              <p>
+                                This form has <strong>{completedAssignmentCount}</strong> completed evaluation{completedAssignmentCount !== 1 ? 's' : ''}. 
+                                Saving these changes will reset their status from "Completed" to "In Progress".
+                              </p>
+                              <p className="text-sm">
+                                Members who already submitted will need to review and resubmit their responses. Existing answers will be preserved where questions remain unchanged.
+                              </p>
+                            </DialogDescription>
+                          </DialogHeader>
+                          <DialogFooter className="gap-2">
+                            <Button variant="outline" onClick={() => setIsSaveWarningOpen(false)}>Cancel</Button>
+                            <Button
+                              variant="destructive"
+                              onClick={performSaveDraft}
+                              disabled={isSavingDraft}
+                            >
+                              {isSavingDraft ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                              Save Anyway
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                      
                       {!selectedForm?.is_active && !selectedForm?.results_released && (
                         <>
                           <Button
@@ -780,6 +919,35 @@ const AdminFormBuilder = () => {
                                 >
                                   {activateFormMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
                                   Yes, Activate
+                                </Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+                          
+                          {/* Warning dialog for activate with completed responses */}
+                          <Dialog open={isActivateWarningOpen} onOpenChange={setIsActivateWarningOpen}>
+                            <DialogContent className="max-w-md">
+                              <DialogHeader>
+                                <DialogTitle className="text-amber-600">Warning: Responses Will Be Affected</DialogTitle>
+                                <DialogDescription className="space-y-2 pt-2">
+                                  <p>
+                                    This form has <strong>{completedAssignmentCount}</strong> completed evaluation{completedAssignmentCount !== 1 ? 's' : ''}. 
+                                    Saving these changes will reset their status from "Completed" to "In Progress".
+                                  </p>
+                                  <p className="text-sm">
+                                    Members who already submitted will need to review and resubmit their responses. Existing answers will be preserved where questions remain unchanged.
+                                  </p>
+                                </DialogDescription>
+                              </DialogHeader>
+                              <DialogFooter className="gap-2">
+                                <Button variant="outline" onClick={() => setIsActivateWarningOpen(false)}>Cancel</Button>
+                                <Button
+                                  variant="destructive"
+                                  onClick={performActivateForm}
+                                  disabled={activateFormMutation.isPending}
+                                >
+                                  {activateFormMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                                  Save & Activate
                                 </Button>
                               </DialogFooter>
                             </DialogContent>
@@ -876,7 +1044,7 @@ const AdminFormBuilder = () => {
                       key={idx}
                       className="flex items-start gap-3 p-4 rounded-lg border border-border bg-card hover:shadow-sm transition-shadow relative group"
                     >
-                      <div className="cursor-move text-muted-foreground hover:text-foreground mt-2">
+                      <div className={`mt-2 ${selectedForm?.is_active ? "text-muted-foreground/30" : "cursor-move text-muted-foreground hover:text-foreground"}`}>
                         <GripVertical className="w-5 h-5" />
                       </div>
                       <div className="flex-1 space-y-3">

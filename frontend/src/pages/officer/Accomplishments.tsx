@@ -17,6 +17,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMyAccomplishments, useCreateAccomplishment, useUpdateAccomplishment, AccomplishmentCreate, Accomplishment } from "@/hooks/usePortfolio";
 import { useToast } from "@/hooks/use-toast";
+import { formatApiError } from "@/lib/api";
 
 const getStatusBadge = (status: string) => {
   switch (status) {
@@ -102,15 +103,21 @@ const OfficerAccomplishments = () => {
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to submit accomplishment.",
+        description: formatApiError(error),
         variant: "destructive",
       });
     }
   };
 
   const handleEdit = (accomplishment: Accomplishment) => {
-    setEditingAccomplishment(accomplishment);
-    setOriginalAccomplishment(accomplishment);
+    // Format the date to YYYY-MM-DD for the date input
+    const formattedDate = accomplishment.date_completed 
+      ? new Date(accomplishment.date_completed).toISOString().split('T')[0]
+      : new Date().toISOString().split('T')[0];
+    
+    const editData = { ...accomplishment, date_completed: formattedDate };
+    setEditingAccomplishment(editData);
+    setOriginalAccomplishment(editData);
     setIsEditDialogOpen(true);
   };
 
@@ -136,7 +143,7 @@ const OfficerAccomplishments = () => {
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to update accomplishment.",
+        description: formatApiError(error),
         variant: "destructive",
       });
     }
