@@ -34,6 +34,14 @@ const Login = () => {
     { logo: "/ssg2-logo.svg", name: "CIT-U Supreme Student Government" },
   ];
 
+  // Redirect if already logged in - prevents back navigation to login after logging in
+  useEffect(() => {
+    const user = localStorage.getItem("user");
+    if (user) {
+      navigate("/select-organization", { replace: true });
+    }
+  }, [navigate]);
+
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentOrg((prev) => (prev + 1) % organizations.length);
@@ -54,8 +62,8 @@ const Login = () => {
       // Store user info in localStorage
       localStorage.setItem("user", JSON.stringify(data.user));
 
-      // Redirect to Organization Selector Hub
-      navigate("/select-organization");
+      // Redirect to Organization Selector Hub with replace to prevent back navigation
+      navigate("/select-organization", { replace: true });
     } catch (err: any) {
       console.error('Login error:', err);
       let errorMsg = "";

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -67,18 +68,20 @@ const AdminSettings = () => {
 
   const [orgData, setOrgData] = useState({
     name: "",
+    description: "",
     email: "",
   });
 
   useEffect(() => {
-    if (currentMembership) {
-      // @ts-ignore - Email property exist on the backend API now pending a type regeneration
+    if (currentMembership || organization) {
       setOrgData({
-        name: currentMembership.organization_name || "",
-        email: currentMembership.organization_email || "",
+        name: currentMembership?.organization_name || organization?.name || "",
+        description: organization?.description || "",
+        // @ts-ignore - Email property exist on the backend API now pending a type regeneration
+        email: currentMembership?.organization_email || organization?.email || "",
       });
     }
-  }, [currentMembership]);
+  }, [currentMembership, organization]);
 
   const handleSaveOrganization = () => {
     if (!activeOrganizationId) return;
@@ -87,6 +90,7 @@ const AdminSettings = () => {
       id: activeOrganizationId,
       data: {
         name: orgData.name,
+        description: orgData.description,
         email: orgData.email,
       }
     }, {
@@ -182,6 +186,15 @@ const AdminSettings = () => {
                   value={orgData.name}
                   onChange={(e) => setOrgData({ ...orgData, name: e.target.value })}
                   placeholder="e.g. University Student Council"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Description</Label>
+                <Textarea
+                  value={orgData.description}
+                  onChange={(e) => setOrgData({ ...orgData, description: e.target.value })}
+                  placeholder="Brief description of your organization"
+                  rows={3}
                 />
               </div>
               <div className="space-y-2">

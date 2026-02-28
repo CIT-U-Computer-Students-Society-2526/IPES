@@ -1,11 +1,11 @@
 from django.conf import settings
 from django.db import models
-from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.validators import MinValueValidator, MaxValueValidator, FileExtensionValidator
 
 class Organization(models.Model):
     name = models.CharField(max_length=255)
     code = models.CharField(max_length=50, unique=True)
-    display_picture = models.ImageField(upload_to='organizations/pictures/', blank=True, null=True)
+    display_picture = models.ImageField(upload_to='organizations/pictures/', blank=True, null=True, validators=[FileExtensionValidator(['jpg', 'jpeg', 'png', 'gif'])])
     description = models.TextField()
     email = models.EmailField(blank=True, null=True)
     period_year_start = models.DateField()

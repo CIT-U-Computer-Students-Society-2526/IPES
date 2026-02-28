@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation, Outlet, Navigate } from "react-router-dom";
-import { useCurrentUser } from "@/hooks/useUsers";
+import { useCurrentUser, useLogout } from "@/hooks/useUsers";
 import { useOrganizationState } from "@/contexts/OrganizationContext";
 import { usePendingJoinRequests } from "@/hooks/useOrganizations";
 import { usePendingAccomplishments } from "@/hooks/usePortfolio";
@@ -45,6 +45,7 @@ const AdminLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { data: user, isLoading, isError } = useCurrentUser();
   const { activeOrganizationId } = useOrganizationState();
+  const { logout } = useLogout();
   const { data: pendingRequests } = usePendingJoinRequests();
   const { data: pendingAccomplishments } = usePendingAccomplishments();
   
@@ -241,7 +242,7 @@ const AdminLayout = () => {
               </div>
             </ProfileEditorDialog>
             <Link to="/login">
-              <Button variant="ghost" size="sm" className="w-full justify-start text-muted-foreground mt-2">
+              <Button variant="ghost" size="sm" className="w-full justify-start text-muted-foreground mt-2" onClick={(e) => { e.preventDefault(); logout(); }}>
                 <LogOut className="w-4 h-4 mr-2" />
                 Sign out
               </Button>
