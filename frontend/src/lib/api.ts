@@ -89,8 +89,10 @@ export const apiRequest = async (
   }
 
   // Include active Organization ID for tenant scoping & audit trails
+  // (skip during login/register to avoid CORS preflight on first request)
   const activeOrgId = localStorage.getItem('activeOrganizationId');
-  if (activeOrgId) {
+  const skipOrgHeader = endpoint.startsWith('/auth/login') || endpoint.startsWith('/auth/register');
+  if (activeOrgId && !skipOrgHeader) {
     defaultHeaders['X-Organization-Id'] = activeOrgId;
   }
 
