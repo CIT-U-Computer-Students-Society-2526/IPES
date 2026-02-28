@@ -4,3 +4,4 @@ pillow
 django-cors-headers
 djangorestframework
 flake8
+gunicorn
