@@ -345,6 +345,37 @@ Supabase uses PostgreSQL. Connect to your Supabase database and run:
    ```
 ---
 
+## 🧪 Testing the Application
+
+The project uses Django's built-in testing framework for the backend and Vitest/React Testing Library for the frontend.
+
+### Backend Tests
+To run the backend tests, assure your environment is set up and your database is accessible.
+
+```bash
+# Run all backend tests
+python manage.py test
+
+# Run tests for specific apps
+python manage.py test apps.users apps.organizations
+```
+> **Note:** Django creates a separate `test_` database for tests. If you are prompted to destroy an old test database, type `yes`. Ensure you don't have active database client connections (like PgAdmin/DBeaver) to the test database, or it may hang.
+
+### Frontend Tests
+The frontend uses Vitest for rapid execution and React Testing Library for simulating user interactions.
+
+```bash
+cd frontend
+
+# Run frontend tests in the console
+npm run test
+
+# Run tests with a visual, interactive dashboard in your browser
+npm run test:ui
+```
+
+---
+
 ## ▶️ Running the Application
 
 ### Development Mode
