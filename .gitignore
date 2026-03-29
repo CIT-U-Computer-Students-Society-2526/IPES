@@ -91,13 +91,9 @@ fabric.properties
 .idea/caches/build_file_checksums.ser
 
 
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-.venv/
-venv/
-ENV/
-env/
+# Server logs
+server.log
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
