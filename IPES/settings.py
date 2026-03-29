@@ -102,7 +102,7 @@ DATABASES = {
         "HOST": config('DB_HOST', default='127.0.0.1'),
         "PORT": config('DB_PORT', default='5432'),
         "OPTIONS": {
-            "sslmode": config('DB_SSLMODE', default='require'),
+            "sslmode": config('DB_SSLMODE', default='require' if not DEBUG else 'prefer'),
         },
     }
 }
@@ -163,12 +163,15 @@ if DEBUG:
 CORS_ALLOW_CREDENTIALS = True
 
 # Session and CSRF Cookie Configuration
+# Cross-origin requests (frontend on :5173, backend on :8000) require SameSite=None.
+# In dev, Secure=False because localhost uses http. In prod, Secure=True for https.
+SESSION_COOKIE_SAMESITE = 'None'
 SESSION_COOKIE_SECURE = config('SESSION_COOKIE_SECURE', default=not DEBUG, cast=bool)
+CSRF_COOKIE_SAMESITE = 'None'
 CSRF_COOKIE_SECURE = config('CSRF_COOKIE_SECURE', default=not DEBUG, cast=bool)
+CSRF_COOKIE_HTTPONLY = False  # Allow JS to read the CSRF token
 
 if not DEBUG:
-    SESSION_COOKIE_SAMESITE = 'None'
-    CSRF_COOKIE_SAMESITE = 'None'
     SESSION_COOKIE_DOMAIN = config('SESSION_COOKIE_DOMAIN', default=None)
     CSRF_COOKIE_DOMAIN = config('CSRF_COOKIE_DOMAIN', default=None)
 
