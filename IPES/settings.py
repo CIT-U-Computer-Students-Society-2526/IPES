@@ -163,15 +163,19 @@ if DEBUG:
 CORS_ALLOW_CREDENTIALS = True
 
 # Session and CSRF Cookie Configuration
-# Cross-origin requests (frontend on :5173, backend on :8000) require SameSite=None.
-# In dev, Secure=False because localhost uses http. In prod, Secure=True for https.
-SESSION_COOKIE_SAMESITE = 'None'
-SESSION_COOKIE_SECURE = config('SESSION_COOKIE_SECURE', default=not DEBUG, cast=bool)
-CSRF_COOKIE_SAMESITE = 'None'
-CSRF_COOKIE_SECURE = config('CSRF_COOKIE_SECURE', default=not DEBUG, cast=bool)
 CSRF_COOKIE_HTTPONLY = False  # Allow JS to read the CSRF token
 
-if not DEBUG:
+if DEBUG:
+    # Dev: Vite proxy makes API requests same-origin, so default Lax cookies work.
+    # No special SameSite or Secure settings needed.
+    pass
+else:
+    # Prod: Frontend and API are on different subdomains (cross-origin).
+    # SameSite=None + Secure=True required for cross-origin cookies.
+    SESSION_COOKIE_SAMESITE = 'None'
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SAMESITE = 'None'
+    CSRF_COOKIE_SECURE = True
     SESSION_COOKIE_DOMAIN = config('SESSION_COOKIE_DOMAIN', default=None)
     CSRF_COOKIE_DOMAIN = config('CSRF_COOKIE_DOMAIN', default=None)
 
