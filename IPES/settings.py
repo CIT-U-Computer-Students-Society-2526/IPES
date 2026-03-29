@@ -26,11 +26,14 @@ SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=False, cast=bool)
 
+# Allowed Hosts
 ALLOWED_HOSTS = config(
     'ALLOWED_HOSTS',
-    default='localhost,127.0.0.1,0.0.0.0,testserver,css-ipes.onrender.com,css-ipes-frontend.onrender.com',
-    cast=lambda v: [s.strip() for s in v.split(',')]
+    default='',
+    cast=lambda v: [s.strip() for s in v.split(',') if s.strip()]
 )
+if DEBUG:
+    ALLOWED_HOSTS.extend(['localhost', '127.0.0.1', '0.0.0.0', 'testserver'])
 
 
 # Application definition
@@ -99,7 +102,7 @@ DATABASES = {
         "HOST": config('DB_HOST', default='127.0.0.1'),
         "PORT": config('DB_PORT', default='5432'),
         "OPTIONS": {
-            "sslmode": "require",  # Required for Supabase connections
+            "sslmode": config('DB_SSLMODE', default='require' if not DEBUG else 'prefer'),
         },
     }
 }
@@ -144,44 +147,58 @@ STATIC_URL = "static/"
 AUTH_USER_MODEL = "users.User"
 
 # CORS Configuration
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "https://css-ipes-frontend.onrender.com",
-]
+CORS_ALLOWED_ORIGINS = config(
+    'CORS_ALLOWED_ORIGINS',
+    default='',
+    cast=lambda v: [s.strip() for s in v.split(',') if s.strip()]
+)
+if DEBUG:
+    CORS_ALLOWED_ORIGINS.extend([
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
+    ])
+
 CORS_ALLOW_CREDENTIALS = True
 
-# Session and CSRF Cookie Configuration for cross-origin requests
-SESSION_COOKIE_SECURE = True
-SESSION_COOKIE_SAMESITE = 'None'  # must be None to allow cookies on cross-site XHR
-SESSION_COOKIE_DOMAIN = '.onrender.com'  # share across subdomains
-CSRF_COOKIE_SECURE = True
-CSRF_COOKIE_SAMESITE = 'None'
-CSRF_COOKIE_DOMAIN = '.onrender.com'
+# Session and CSRF Cookie Configuration
+CSRF_COOKIE_HTTPONLY = False  # Allow JS to read the CSRF token
+
+if DEBUG:
+    # Dev: Vite proxy makes API requests same-origin, so default Lax cookies work.
+    # No special SameSite or Secure settings needed.
+    pass
+else:
+    # Prod: Frontend and API are on different subdomains (cross-origin).
+    # SameSite=None + Secure=True required for cross-origin cookies.
+    SESSION_COOKIE_SAMESITE = 'None'
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SAMESITE = 'None'
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_DOMAIN = config('SESSION_COOKIE_DOMAIN', default=None)
+    CSRF_COOKIE_DOMAIN = config('CSRF_COOKIE_DOMAIN', default=None)
 
 from corsheaders.defaults import default_headers
 CORS_ALLOW_HEADERS = list(default_headers) + [
     "x-organization-id",
 ]
 
-# Trusted origins for CSRF (development)
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:8080",
-    "http://127.0.0.1:8080",
-    "https://css-ipes-frontend.onrender.com",
-]
-
-# Also allow Vite fallback ports (dev servers may pick another port)
-CORS_ALLOWED_ORIGINS += [
-    "http://localhost:5174",
-    "http://127.0.0.1:5174",
-]
-CSRF_TRUSTED_ORIGINS += [
-    "http://localhost:5174",
-    "http://127.0.0.1:5174",
-]
+# Trusted origins for CSRF
+CSRF_TRUSTED_ORIGINS = config(
+    'CSRF_TRUSTED_ORIGINS',
+    default='',
+    cast=lambda v: [s.strip() for s in v.split(',') if s.strip()]
+)
+if DEBUG:
+    CSRF_TRUSTED_ORIGINS.extend([
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ])
 
 # Django REST Framework Configuration
 REST_FRAMEWORK = {
