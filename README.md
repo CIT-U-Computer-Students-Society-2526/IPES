@@ -241,7 +241,7 @@ erDiagram
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/rkSp4/IPES.git
+git clone https://github.com/CIT-U-Computer-Students-Society-2526/IPES.git
 cd IPES
 ```
 
