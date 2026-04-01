@@ -185,27 +185,6 @@ const Login = () => {
         </p>
       </div>
 
-      <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 text-center animate-fade-up delay-300">
-        <p className="text-xs text-slate-400 dark:text-slate-500 mb-4 uppercase tracking-widest">System Preview</p>
-        <div className="flex gap-3 justify-center">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate("/preview/member/dashboard")}
-            className="border-slate-200 dark:border-slate-700 text-[#293F55] dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-[#293F55] dark:hover:text-white transition-all"
-          >
-            Member View
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate("/preview/admin/dashboard")}
-            className="border-slate-200 dark:border-slate-700 text-[#293F55] dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-[#293F55] dark:hover:text-white transition-all"
-          >
-            Admin View
-          </Button>
-        </div>
-      </div>
     </div>
   );
 };
