@@ -255,6 +255,7 @@ const AdminFormBuilder = () => {
 
   // Questions State
   const [localQuestions, setLocalQuestions] = useState<(Partial<Question> & { tempId?: string })[]>([]);
+  const [deletedQuestionIds, setDeletedQuestionIds] = useState<number[]>([]);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
 
   // API Hooks
@@ -329,6 +330,7 @@ const AdminFormBuilder = () => {
         tempId: q.id ? undefined : `temp-${Math.random().toString(36).substring(2, 9)}`
       }));
       setLocalQuestions(questionsWithIds);
+      setDeletedQuestionIds([]); // Reset deletions when switching forms
     }
     // formQuestions deliberately NOT in deps — its reference changes every render.
     // We capture the current value when the stable deps (id, tab, loading) change.
@@ -457,6 +459,14 @@ const AdminFormBuilder = () => {
             }
           });
         }
+      }
+
+      // Process deferred deletions
+      if (deletedQuestionIds.length > 0) {
+        for (const id of deletedQuestionIds) {
+          await deleteQuestionMutation.mutateAsync({ id, form_id: selectedForm.id });
+        }
+        setDeletedQuestionIds([]);
       }
 
       // Bulk create new questions
@@ -612,23 +622,18 @@ const AdminFormBuilder = () => {
     }]);
   };
 
-  const handleRemoveQuestion = async (index: number) => {
+  const handleRemoveQuestion = (index: number) => {
     const qToRemove = localQuestions[index];
     if (qToRemove.id) {
-      try {
-        await deleteQuestionMutation.mutateAsync({ id: qToRemove.id, form_id: selectedForm!.id });
-      } catch (e: unknown) {
-        toast({ title: "Error Deleting Question", description: formatApiError(e), variant: "destructive" });
-        return;
-      }
+      setDeletedQuestionIds([...deletedQuestionIds, qToRemove.id]);
     }
     const newQs = [...localQuestions];
     newQs.splice(index, 1);
-
+    
     // Auto re-order
     const reordered = newQs.map((q, idx) => ({ ...q, order: idx + 1 }));
     setLocalQuestions(reordered);
-    toast({ title: "Question Removed" });
+    toast({ title: "Question Removed", description: "Changes will be saved once you Save Draft." });
   };
 
   const handleQuestionChange = <K extends keyof Question>(index: number, field: K, value: Question[K]) => {
@@ -639,6 +644,9 @@ const AdminFormBuilder = () => {
 
   // Check if questions have actually changed (content, not just order)
   const hasQuestionChanges = () => {
+    // Check if any were deleted
+    if (deletedQuestionIds.length > 0) return true;
+
     // Check for new questions
     if (localQuestions.some(q => !q.id)) return true;
     
@@ -653,6 +661,9 @@ const AdminFormBuilder = () => {
       if (local.max_value !== original.max_value) return true;
       if (local.input_type !== original.input_type) return true;
       if (local.is_required !== original.is_required) return true;
+      
+      // Also check if order actually changed based on the original data
+      if (local.order !== original.order) return true;
     }
     return false;
   };
@@ -696,6 +707,14 @@ const AdminFormBuilder = () => {
             }
           });
         }
+      }
+
+      // Process deferred deletions
+      if (deletedQuestionIds.length > 0) {
+        for (const id of deletedQuestionIds) {
+          await deleteQuestionMutation.mutateAsync({ id, form_id: selectedForm.id });
+        }
+        setDeletedQuestionIds([]);
       }
 
       // Bulk create new questions
@@ -1017,6 +1036,12 @@ const AdminFormBuilder = () => {
                       </div>
                       {selectedForm?.description && (
                         <p className="text-sm text-muted-foreground mt-1 truncate">{selectedForm.description}</p>
+                      )}
+                      {!selectedForm?.is_active && hasQuestionChanges() && (
+                        <div className="flex items-center gap-2 mt-3 text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-md text-xs w-fit animate-in fade-in slide-in-from-top-1">
+                          <Info className="w-3.5 h-3.5 text-amber-500" />
+                          <span className="font-medium">You have unsaved changes in this form.</span>
+                        </div>
                       )}
                     </div>
                     <div className="flex gap-2 shrink-0">
