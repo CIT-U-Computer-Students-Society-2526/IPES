@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function AuthLayout() {
   const [currentOrg, setCurrentOrg] = useState(0);
@@ -35,7 +36,7 @@ export default function AuthLayout() {
   }, []);
 
   return (
-    <div className="min-h-screen flex font-sans text-[#293F55]">
+    <div className="min-h-screen flex font-sans text-[#293F55] dark:text-blue-100 transition-colors duration-300">
       <style>{`
         @keyframes fadeUp {
           from { opacity: 0; transform: translateY(10px); }
@@ -109,11 +110,16 @@ export default function AuthLayout() {
       </div>
 
       {/* RIGHT SIDE - CONTENT OUTLET */}
-      <div className="flex-1 flex items-center justify-center p-6 bg-[#293F55] lg:bg-[#F8FAFC] relative overflow-y-auto">
+      <div className="flex-1 flex items-center justify-center p-6 bg-[#293F55] lg:bg-[#F8FAFC] dark:lg:bg-slate-950 relative overflow-y-auto transition-colors duration-300">
         {/* Top Left Logo for Right Pane (Desktop/Tablet) */}
         <div className="hidden lg:flex absolute top-10 left-10 items-center gap-3 animate-fade-up">
           <img src="/ipes-logo-colored.svg" alt="IPES Logo" className="w-10 h-10 object-contain" />
-          <span className="text-[#293F55] font-bold text-2xl tracking-tight">IPES</span>
+          <span className="text-[#293F55] dark:text-blue-100 font-bold text-2xl tracking-tight">IPES</span>
+        </div>
+
+        {/* Top Right Theme Toggle */}
+        <div className="absolute top-10 right-10 z-50 animate-fade-up">
+          <ThemeToggle />
         </div>
         
         <Outlet />
@@ -121,3 +127,4 @@ export default function AuthLayout() {
     </div>
   );
 }
+

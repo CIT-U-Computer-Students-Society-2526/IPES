@@ -108,16 +108,16 @@ const Register = () => {
     };
 
     return (
-        <div className="w-full max-w-[420px] bg-white p-8 md:p-10 rounded-2xl shadow-xl border border-slate-100 animate-fade-up my-auto">
+        <div className="w-full max-w-[420px] bg-white dark:bg-slate-900 p-8 md:p-10 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 animate-fade-up my-auto transition-colors duration-300">
             {/* Mobile Header */}
-            <div className="lg:hidden flex items-center gap-2 mb-8 justify-center text-[#293F55]">
+            <div className="lg:hidden flex items-center gap-2 mb-8 justify-center text-[#293F55] dark:text-blue-100">
                 <img src="/ipes-logo-colored.svg" alt="Logo" className="w-8 h-8" />
                 <span className="text-xl font-bold tracking-tight">IPES Portal</span>
             </div>
 
             <div className="mb-6">
-                <h2 className="text-3xl font-bold text-[#293F55] mb-2">Create an Account</h2>
-                <p className="text-slate-500 text-sm">Sign up to access the performance evaluation system.</p>
+                <h2 className="text-3xl font-bold text-[#293F55] dark:text-white mb-2">Create an Account</h2>
+                <p className="text-slate-500 dark:text-slate-400 text-sm">Sign up to access the performance evaluation system.</p>
             </div>
 
             <form onSubmit={handleRegister} className="space-y-4">
@@ -129,7 +129,7 @@ const Register = () => {
 
                 <div className="grid grid-cols-2 gap-4 animate-fade-up delay-100">
                     <div className="space-y-2">
-                        <Label htmlFor="firstName" className="text-[#293F55] font-semibold text-sm">
+                        <Label htmlFor="firstName" className="text-[#293F55] dark:text-slate-300 font-semibold text-sm">
                             First Name
                         </Label>
                         <Input
@@ -138,14 +138,14 @@ const Register = () => {
                             required
                             value={firstName}
                             onChange={(e) => setFirstName(e.target.value)}
-                            className={`h-12 bg-slate-50 border-slate-200 focus-visible:ring-[#293F55] focus-visible:ring-offset-0 focus-visible:border-[#293F55] transition-all ${fieldErrors.first_name ? "border-red-500 focus-visible:border-red-500" : ""}`}
+                            className={`h-12 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-[#293F55] dark:text-white focus-visible:ring-[#293F55] dark:focus-visible:ring-[#FCBD78] focus-visible:ring-offset-0 focus-visible:border-[#293F55] transition-all ${fieldErrors.first_name ? "border-red-500 focus-visible:border-red-500" : ""}`}
                         />
                         {fieldErrors.first_name && (
                             <p className="text-sm text-red-500 mt-1">{fieldErrors.first_name[0]}</p>
                         )}
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="lastName" className="text-[#293F55] font-semibold text-sm">
+                        <Label htmlFor="lastName" className="text-[#293F55] dark:text-slate-300 font-semibold text-sm">
                             Last Name
                         </Label>
                         <Input
@@ -154,7 +154,7 @@ const Register = () => {
                             required
                             value={lastName}
                             onChange={(e) => setLastName(e.target.value)}
-                            className={`h-12 bg-slate-50 border-slate-200 focus-visible:ring-[#293F55] focus-visible:ring-offset-0 focus-visible:border-[#293F55] transition-all ${fieldErrors.last_name ? "border-red-500 focus-visible:border-red-500" : ""}`}
+                            className={`h-12 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-[#293F55] dark:text-white focus-visible:ring-[#293F55] dark:focus-visible:ring-[#FCBD78] focus-visible:ring-offset-0 focus-visible:border-[#293F55] transition-all ${fieldErrors.last_name ? "border-red-500 focus-visible:border-red-500" : ""}`}
                         />
                         {fieldErrors.last_name && (
                             <p className="text-sm text-red-500 mt-1">{fieldErrors.last_name[0]}</p>
@@ -163,7 +163,7 @@ const Register = () => {
                 </div>
 
                 <div className="space-y-2 animate-fade-up delay-100">
-                    <Label htmlFor="email" className="text-[#293F55] font-semibold text-sm">
+                    <Label htmlFor="email" className="text-[#293F55] dark:text-slate-300 font-semibold text-sm">
                         Institutional Email
                     </Label>
                     <Input
@@ -173,7 +173,7 @@ const Register = () => {
                         placeholder="firstname.lastname@cit.edu"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className={`h-12 bg-slate-50 border-slate-200 focus-visible:ring-[#293F55] focus-visible:ring-offset-0 focus-visible:border-[#293F55] transition-all ${fieldErrors.email ? "border-red-500 focus-visible:border-red-500" : ""}`}
+                        className={`h-12 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-[#293F55] dark:text-white focus-visible:ring-[#293F55] dark:focus-visible:ring-[#FCBD78] focus-visible:ring-offset-0 focus-visible:border-[#293F55] transition-all ${fieldErrors.email ? "border-red-500 focus-visible:border-red-500" : ""}`}
                     />
                     {fieldErrors.email && (
                         <p className="text-sm text-red-500 mt-1 animate-fade-up">
@@ -183,7 +183,7 @@ const Register = () => {
                 </div>
 
                 <div className="space-y-2 animate-fade-up delay-200">
-                    <Label htmlFor="password" className="text-[#293F55] font-semibold text-sm">Password</Label>
+                    <Label htmlFor="password" className="text-[#293F55] dark:text-slate-300 font-semibold text-sm">Password</Label>
                     <div className="relative">
                         <Input
                             id="password"
@@ -191,12 +191,12 @@ const Register = () => {
                             required
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className={`h-12 bg-slate-50 border-slate-200 focus-visible:ring-[#293F55] focus-visible:ring-offset-0 focus-visible:border-[#293F55] transition-all pr-10 ${fieldErrors.password ? "border-red-500 focus-visible:border-red-500" : ""}`}
+                            className={`h-12 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-[#293F55] dark:text-white focus-visible:ring-[#293F55] dark:focus-visible:ring-[#FCBD78] focus-visible:ring-offset-0 focus-visible:border-[#293F55] transition-all pr-10 ${fieldErrors.password ? "border-red-500 focus-visible:border-red-500" : ""}`}
                         />
                         <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#293F55] transition-colors"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#293F55] dark:hover:text-[#FCBD78] transition-colors"
                         >
                             {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                         </button>
@@ -209,7 +209,7 @@ const Register = () => {
                 </div>
 
                 <div className="space-y-2 animate-fade-up delay-200">
-                    <Label htmlFor="confirmPassword" className="text-[#293F55] font-semibold text-sm">Confirm Password</Label>
+                    <Label htmlFor="confirmPassword" className="text-[#293F55] dark:text-slate-300 font-semibold text-sm">Confirm Password</Label>
                     <div className="relative">
                         <Input
                             id="confirmPassword"
@@ -217,12 +217,12 @@ const Register = () => {
                             required
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
-                            className="h-12 bg-slate-50 border-slate-200 focus-visible:ring-[#293F55] focus-visible:ring-offset-0 focus-visible:border-[#293F55] transition-all pr-10"
+                            className="h-12 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-[#293F55] dark:text-white focus-visible:ring-[#293F55] dark:focus-visible:ring-[#FCBD78] focus-visible:ring-offset-0 focus-visible:border-[#293F55] transition-all pr-10"
                         />
                         <button
                             type="button"
                             onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#293F55] transition-colors"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#293F55] dark:hover:text-[#FCBD78] transition-colors"
                         >
                             {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                         </button>
@@ -241,7 +241,7 @@ const Register = () => {
             </form>
 
             <div className="mt-6 text-center animate-fade-up delay-300">
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-slate-500 dark:text-slate-400">
                     Already have an account?{' '}
                     <button
                         onClick={() => navigate("/login")}
