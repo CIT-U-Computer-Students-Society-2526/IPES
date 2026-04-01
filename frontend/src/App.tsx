@@ -33,23 +33,7 @@ import AdminUsers from "./pages/admin/Users";
 import AdminAuditLog from "./pages/admin/AuditLog";
 import AdminSettings from "./pages/admin/Settings";
 
-// Preview components
-import OfficerPreviewLayout from "./components/layout/OfficerPreviewLayout";
-import AdminPreviewLayout from "./components/layout/AdminPreviewLayout";
-import OfficerDashboardPreview from "./pages/preview/OfficerDashboardPreview";
-import AdminDashboardPreview from "./pages/preview/AdminDashboardPreview";
 
-import OfficerEvaluationsPreview from "./pages/preview/OfficerEvaluationsPreview";
-import OfficerResultsPreview from "./pages/preview/OfficerResultsPreview";
-import OfficerAccomplishmentsPreview from "./pages/preview/OfficerAccomplishmentsPreview";
-import AdminOrganizationPreview from "./pages/preview/AdminOrganizationPreview";
-import AdminFormBuilderPreview from "./pages/preview/AdminFormBuilderPreview";
-import AdminAssignmentsPreview from "./pages/preview/AdminAssignmentsPreview";
-import AdminAnalyticsPreview from "./pages/preview/AdminAnalyticsPreview";
-import AdminAccomplishmentsPreview from "./pages/preview/AdminAccomplishmentsPreview";
-import AdminUsersPreview from "./pages/preview/AdminUsersPreview";
-import AdminAuditLogPreview from "./pages/preview/AdminAuditLogPreview";
-import AdminSettingsPreview from "./pages/preview/AdminSettingsPreview";
 
 const queryClient = new QueryClient();
 
@@ -71,24 +55,7 @@ const App = () => (
               
               <Route path="/select-organization" element={<SelectOrganization />} />
 
-            {/* System Preview routes (No Auth) */}
-            <Route path="/preview/member" element={<OfficerPreviewLayout />}>
-              <Route path="dashboard" element={<OfficerDashboardPreview />} />
-              <Route path="evaluations" element={<OfficerEvaluationsPreview />} />
-              <Route path="results" element={<OfficerResultsPreview />} />
-              <Route path="accomplishments" element={<OfficerAccomplishmentsPreview />} />
-            </Route>
-            <Route path="/preview/admin" element={<AdminPreviewLayout />}>
-              <Route path="dashboard" element={<AdminDashboardPreview />} />
-              <Route path="organization" element={<AdminOrganizationPreview />} />
-              <Route path="forms" element={<AdminFormBuilderPreview />} />
-              <Route path="assignments" element={<AdminAssignmentsPreview />} />
-              <Route path="analytics" element={<AdminAnalyticsPreview />} />
-              <Route path="accomplishments" element={<AdminAccomplishmentsPreview />} />
-              <Route path="users" element={<AdminUsersPreview />} />
-              <Route path="audit-log" element={<AdminAuditLogPreview />} />
-              <Route path="settings" element={<AdminSettingsPreview />} />
-            </Route>
+
 
             {/* Member routes */}
             <Route path="/member" element={<OfficerLayout />}>
