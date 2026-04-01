@@ -1,24 +1,26 @@
-name: Enforce Dev Branch Target
+name: Enforce Main Target Rules
 
 on:
-  pull_request_target:
-    types: [opened, edited]
+  pull_request:
+    branches:
+      - main
+    types: [opened, edited, synchronize, reopened]
 
 permissions:
   pull-requests: write
 
 jobs:
-  check-branch:
+  check-branch-source:
     runs-on: ubuntu-latest
     steps:
-      - name: Enforce target branch rules
-        uses: Vankka/pr-target-branch-action@v3
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          target: "main" # Triggers if someone tries to PR directly to main
-          comment: |
-            ⚠️ **Target Branch Error**
-            Your PR is currently targeting the `main` branch. 
-            All new features and fixes should target the `dev` branch instead. 
-            Please update the base branch of this PR to `dev` to proceed.
+      - name: Check source branch for main target
+        if: github.base_ref == 'main' && github.head_ref != 'dev'
+        run: |
+          echo "::error::Strict Branching Policy: The 'main' branch can only be updated from the 'dev' branch via PR."
+          echo "Your PR is currently attempting to merge '${{ github.head_ref }}' into 'main'."
+          exit 1
+      
+      - name: Success message
+        if: github.base_ref == 'main' && github.head_ref == 'dev'
+        run: |
+          echo "Branch check passed: Merging 'dev' into 'main' is allowed."
