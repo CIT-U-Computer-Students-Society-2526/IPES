@@ -170,6 +170,29 @@ if DEBUG:
 
 CORS_ALLOW_CREDENTIALS = True
 
+# CSRF Configuration
+CSRF_TRUSTED_ORIGINS = config(
+    'CSRF_TRUSTED_ORIGINS',
+    default='',
+    cast=lambda v: [s.strip() for s in v.split(',') if s.strip()]
+)
+
+# Production-Specific Security Settings (Render/SSL)
+if not DEBUG:
+    # Ensure cookies are only sent over HTTPS
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_SECURE = True
+    
+    # Allow cookies to be sent in cross-site requests (frontend and backend on different domains)
+    # Required for browsers to support credentials (sessionid/csrftoken) over HTTPS
+    CSRF_COOKIE_SAMESITE = 'None'
+    SESSION_COOKIE_SAMESITE = 'None'
+    
+    # Optional: strict security headers
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 # Session and CSRF Cookie Configuration
 CSRF_COOKIE_HTTPONLY = False  # Allow JS to read the CSRF token
 
