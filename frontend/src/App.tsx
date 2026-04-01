@@ -11,6 +11,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import SelectOrganization from "./pages/SelectOrganization";
 import NotFound from "./pages/NotFound";
+import AuthLayout from "./components/layout/AuthLayout";
 
 // Officer pages
 import OfficerLayout from "./components/layout/OfficerLayout";
@@ -61,8 +62,13 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Index />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
+              
+              {/* Auth routes wrapped in AuthLayout */}
+              <Route element={<AuthLayout />}>
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+              </Route>
+              
               <Route path="/select-organization" element={<SelectOrganization />} />
 
             {/* System Preview routes (No Auth) */}
