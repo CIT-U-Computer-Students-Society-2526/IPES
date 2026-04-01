@@ -350,7 +350,7 @@ Supabase uses PostgreSQL. Connect to your Supabase database and run:
 The project uses Django's built-in testing framework for the backend and Vitest/React Testing Library for the frontend.
 
 ### Backend Tests
-To run the backend tests, assure your environment is set up and your database is accessible.
+To run the backend tests, ensure your environment is set up. The project is configured to automatically use a local **SQLite** database for tests to ensure speed and isolation.
 
 ```bash
 # Run all backend tests
@@ -359,7 +359,7 @@ python manage.py test
 # Run tests for specific apps
 python manage.py test apps.users apps.organizations
 ```
-> **Note:** Django creates a separate `test_` database for tests. If you are prompted to destroy an old test database, type `yes`. Ensure you don't have active database client connections (like PgAdmin/DBeaver) to the test database, or it may hang.
+> **Note:** The test runner automatically overrides the `DATABASES` setting to use SQLite when the `test` command is detected. This prevents session conflicts and permission issues often encountered when testing against a remote PostgreSQL instance (like Supabase). If you need to test Postgres-specific features, you can temporarily disable this override in `IPES/settings.py`.
 
 ### Frontend Tests
 The frontend uses Vitest for rapid execution and React Testing Library for simulating user interactions.
