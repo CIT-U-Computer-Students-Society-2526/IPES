@@ -8,7 +8,7 @@ from django.utils import timezone
 
 class AuditViewSetTest(APITestCase):
     def setUp(self):
-        self.user = User.objects.create_user(email='audit_admin@cit.edu', username='audadmin', password='password')
+        self.user = User.objects.create_superuser(email='audit_admin@cit.edu', username='audadmin', password='password')
         self.client.force_authenticate(user=self.user)
         
         self.org = Organization.objects.create(name='Test Org', code='ORG1', period_year_start=timezone.now().date())
