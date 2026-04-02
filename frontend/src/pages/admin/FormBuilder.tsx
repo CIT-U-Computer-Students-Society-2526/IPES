@@ -18,6 +18,7 @@ import {
   Send,
   Loader2,
   Info,
+  Archive,
 } from "lucide-react";
 import {
   DndContext,
@@ -1150,8 +1151,12 @@ const AdminFormBuilder = () => {
                       )}
                       {selectedForm?.is_active && !selectedForm?.results_released && (
                         <>
-                          <Button variant="outline" className="text-orange-600 border-orange-200 hover:bg-orange-50" onClick={() => setIsDeactivateDialogOpen(true)}>
-                            <ToggleLeft className="w-4 h-4 mr-2" />
+                          <Button 
+                            variant="outline" 
+                            className="text-amber-700 font-semibold border-amber-500 hover:bg-amber-50 hover:text-amber-800 hover:border-amber-600 transition-all duration-200 shadow-sm"
+                            onClick={() => setIsDeactivateDialogOpen(true)}
+                          >
+                            <Archive className="w-4 h-4 mr-2" />
                             Deactivate Form
                           </Button>
                           <Dialog open={isDeactivateDialogOpen} onOpenChange={setIsDeactivateDialogOpen}>
