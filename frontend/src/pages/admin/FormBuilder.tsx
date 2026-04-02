@@ -18,7 +18,25 @@ import {
   Send,
   Loader2,
   Info,
+  Archive,
 } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -70,6 +88,129 @@ const questionTypes = [
   { id: "textarea", name: "Paragraph Response", icon: AlignLeft, description: "Detailed text answer" },
 ];
 
+interface SortableQuestionItemProps {
+  question: Partial<Question> & { tempId?: string };
+  idx: number;
+  selectedForm: EvaluationForm | null;
+  handleQuestionChange: <K extends keyof Question>(index: number, field: K, value: Question[K]) => void;
+  handleRemoveQuestion: (index: number) => void;
+}
+
+const SortableQuestionItem = ({
+  question,
+  idx,
+  selectedForm,
+  handleQuestionChange,
+  handleRemoveQuestion
+}: SortableQuestionItemProps) => {
+  const itemId = question.id || question.tempId || `idx-${idx}`;
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: itemId,
+    disabled: !!selectedForm?.is_active
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+    opacity: isDragging ? 0.3 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-start gap-3 p-4 rounded-lg border border-border bg-card hover:shadow-sm transition-shadow relative group ${isDragging ? 'shadow-lg border-primary/50' : ''}`}
+    >
+      <div
+        {...attributes}
+        {...listeners}
+        className={`mt-2 ${selectedForm?.is_active ? "text-muted-foreground/30 cursor-not-allowed" : "cursor-move text-muted-foreground hover:text-foreground touch-none"}`}
+      >
+        <GripVertical className="w-5 h-5" />
+      </div>
+      <div className="flex-1 space-y-3">
+        <div className="flex items-center gap-2 mb-2">
+          <Badge variant="secondary" className="text-xs">
+            {questionTypes.find(t => t.id === question.input_type)?.name || question.input_type}
+          </Badge>
+          <span className="text-xs text-muted-foreground">Order: {question.order}</span>
+          {!question.id && <Badge variant="outline" className="text-xs text-blue-600 border-blue-200 bg-blue-50">Unsaved</Badge>}
+        </div>
+
+        <div className="grid gap-2">
+          <Label>Question Text</Label>
+          <Input
+            value={question.text}
+            onChange={(e) => handleQuestionChange(idx, 'text', e.target.value)}
+            placeholder="Type your question here..."
+            disabled={selectedForm?.is_active}
+            maxLength={500}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-muted/30 p-3 rounded-md">
+          <div>
+            <Label className="text-xs text-muted-foreground mb-1 block">Weight</Label>
+            <Input
+              type="number" step="0.5"
+              value={question.weight}
+              onChange={(e) => handleQuestionChange(idx, 'weight', parseFloat(e.target.value))}
+              disabled={selectedForm?.is_active}
+            />
+          </div>
+          {(question.input_type === 'rating' || question.input_type === 'number') && (
+            <>
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1 block">Min Value</Label>
+                <Input
+                  type="number"
+                  value={question.min_value}
+                  onChange={(e) => handleQuestionChange(idx, 'min_value', parseInt(e.target.value))}
+                  disabled={selectedForm?.is_active}
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1 block">Max Value</Label>
+                <Input
+                  type="number"
+                  value={question.max_value}
+                  onChange={(e) => handleQuestionChange(idx, 'max_value', parseInt(e.target.value))}
+                  disabled={selectedForm?.is_active}
+                />
+              </div>
+            </>
+          )}
+          <div className="flex items-center pt-5 pl-2">
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={question.is_required}
+                onChange={(e) => handleQuestionChange(idx, 'is_required', e.target.checked)}
+                disabled={selectedForm?.is_active}
+                className="rounded border-gray-300 text-primary shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50"
+              />
+              Required Field
+            </label>
+          </div>
+        </div>
+      </div>
+      <div className="absolute right-4 top-4 opacity-0 group-hover:opacity-100 transition-opacity">
+        <Button variant="ghost" size="icon" className="text-destructive h-8 w-8" onClick={() => handleRemoveQuestion(idx)} disabled={selectedForm?.is_active}>
+          <Trash2 className="w-4 h-4" />
+        </Button>
+      </div>
+    </div>
+  );
+};
+
 const AdminFormBuilder = () => {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
@@ -114,7 +255,8 @@ const AdminFormBuilder = () => {
   }>({ title: '', description: '', start_date: '', end_date: '' });
 
   // Questions State
-  const [localQuestions, setLocalQuestions] = useState<Partial<Question>[]>([]);
+  const [localQuestions, setLocalQuestions] = useState<(Partial<Question> & { tempId?: string })[]>([]);
+  const [deletedQuestionIds, setDeletedQuestionIds] = useState<number[]>([]);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
 
   // API Hooks
@@ -183,7 +325,13 @@ const AdminFormBuilder = () => {
     }
     if (activeTab === 'builder' && !questionsLoading && seededFormIdRef.current !== selectedForm.id) {
       seededFormIdRef.current = selectedForm.id;
-      setLocalQuestions(formQuestions);
+      // Add a tempId to any question that doesn't have an id, so dnd-kit has a stable identifier
+      const questionsWithIds = formQuestions.map(q => ({
+        ...q,
+        tempId: q.id ? undefined : `temp-${Math.random().toString(36).substring(2, 9)}`
+      }));
+      setLocalQuestions(questionsWithIds);
+      setDeletedQuestionIds([]); // Reset deletions when switching forms
     }
     // formQuestions deliberately NOT in deps — its reference changes every render.
     // We capture the current value when the stable deps (id, tab, loading) change.
@@ -312,6 +460,14 @@ const AdminFormBuilder = () => {
             }
           });
         }
+      }
+
+      // Process deferred deletions
+      if (deletedQuestionIds.length > 0) {
+        for (const id of deletedQuestionIds) {
+          await deleteQuestionMutation.mutateAsync({ id, form_id: selectedForm.id });
+        }
+        setDeletedQuestionIds([]);
       }
 
       // Bulk create new questions
@@ -463,26 +619,22 @@ const AdminFormBuilder = () => {
       is_required: true,
       min_value: (type === 'rating' || type === 'number') ? 1 : undefined,
       max_value: type === 'rating' ? 5 : (type === 'number' ? 100 : undefined),
+      tempId: `temp-${Math.random().toString(36).substring(2, 9)}`,
     }]);
   };
 
-  const handleRemoveQuestion = async (index: number) => {
+  const handleRemoveQuestion = (index: number) => {
     const qToRemove = localQuestions[index];
     if (qToRemove.id) {
-      try {
-        await deleteQuestionMutation.mutateAsync({ id: qToRemove.id, form_id: selectedForm!.id });
-      } catch (e: unknown) {
-        toast({ title: "Error Deleting Question", description: formatApiError(e), variant: "destructive" });
-        return;
-      }
+      setDeletedQuestionIds([...deletedQuestionIds, qToRemove.id]);
     }
     const newQs = [...localQuestions];
     newQs.splice(index, 1);
-
+    
     // Auto re-order
     const reordered = newQs.map((q, idx) => ({ ...q, order: idx + 1 }));
     setLocalQuestions(reordered);
-    toast({ title: "Question Removed" });
+    toast({ title: "Question Removed", description: "Changes will be saved once you Save Draft." });
   };
 
   const handleQuestionChange = <K extends keyof Question>(index: number, field: K, value: Question[K]) => {
@@ -493,6 +645,9 @@ const AdminFormBuilder = () => {
 
   // Check if questions have actually changed (content, not just order)
   const hasQuestionChanges = () => {
+    // Check if any were deleted
+    if (deletedQuestionIds.length > 0) return true;
+
     // Check for new questions
     if (localQuestions.some(q => !q.id)) return true;
     
@@ -507,6 +662,9 @@ const AdminFormBuilder = () => {
       if (local.max_value !== original.max_value) return true;
       if (local.input_type !== original.input_type) return true;
       if (local.is_required !== original.is_required) return true;
+      
+      // Also check if order actually changed based on the original data
+      if (local.order !== original.order) return true;
     }
     return false;
   };
@@ -552,6 +710,14 @@ const AdminFormBuilder = () => {
         }
       }
 
+      // Process deferred deletions
+      if (deletedQuestionIds.length > 0) {
+        for (const id of deletedQuestionIds) {
+          await deleteQuestionMutation.mutateAsync({ id, form_id: selectedForm.id });
+        }
+        setDeletedQuestionIds([]);
+      }
+
       // Bulk create new questions
       if (newQuestions.length > 0) {
         await createQuestionsMutation.mutateAsync({
@@ -576,6 +742,29 @@ const AdminFormBuilder = () => {
       toast({ title: "Error Saving", description: formatApiError(e), variant: "destructive" });
     } finally {
       setIsSavingDraft(false);
+    }
+  };
+
+  // DND Handlers
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      setLocalQuestions((items) => {
+        const oldIndex = items.findIndex((i) => (i.id || i.tempId) === active.id);
+        const newIndex = items.findIndex((i) => (i.id || i.tempId) === over.id);
+
+        const reordered = arrayMove(items, oldIndex, newIndex);
+        // Recalculate orders based on new position
+        return reordered.map((q, idx) => ({ ...q, order: idx + 1 }));
+      });
     }
   };
 
@@ -849,6 +1038,12 @@ const AdminFormBuilder = () => {
                       {selectedForm?.description && (
                         <p className="text-sm text-muted-foreground mt-1 truncate">{selectedForm.description}</p>
                       )}
+                      {!selectedForm?.is_active && hasQuestionChanges() && (
+                        <div className="flex items-center gap-2 mt-3 text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-md text-xs w-fit animate-in fade-in slide-in-from-top-1">
+                          <Info className="w-3.5 h-3.5 text-amber-500" />
+                          <span className="font-medium">You have unsaved changes in this form.</span>
+                        </div>
+                      )}
                     </div>
                     <div className="flex gap-2 shrink-0">
                       {!selectedForm?.is_active && (
@@ -956,8 +1151,12 @@ const AdminFormBuilder = () => {
                       )}
                       {selectedForm?.is_active && !selectedForm?.results_released && (
                         <>
-                          <Button variant="outline" className="text-orange-600 border-orange-200 hover:bg-orange-50" onClick={() => setIsDeactivateDialogOpen(true)}>
-                            <ToggleLeft className="w-4 h-4 mr-2" />
+                          <Button 
+                            variant="outline" 
+                            className="text-amber-700 font-semibold border-amber-500 hover:bg-amber-50 hover:text-amber-800 hover:border-amber-600 transition-all duration-200 shadow-sm"
+                            onClick={() => setIsDeactivateDialogOpen(true)}
+                          >
+                            <Archive className="w-4 h-4 mr-2" />
                             Deactivate Form
                           </Button>
                           <Dialog open={isDeactivateDialogOpen} onOpenChange={setIsDeactivateDialogOpen}>
@@ -1039,87 +1238,31 @@ const AdminFormBuilder = () => {
                 <CardContent className="space-y-4">
                   {questionsLoading ? (
                     <div className="p-8 text-center text-muted-foreground animate-pulse">Loading questions...</div>
-                  ) : localQuestions.map((question, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-start gap-3 p-4 rounded-lg border border-border bg-card hover:shadow-sm transition-shadow relative group"
+                  ) : (
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={handleDragEnd}
                     >
-                      <div className={`mt-2 ${selectedForm?.is_active ? "text-muted-foreground/30" : "cursor-move text-muted-foreground hover:text-foreground"}`}>
-                        <GripVertical className="w-5 h-5" />
-                      </div>
-                      <div className="flex-1 space-y-3">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge variant="secondary" className="text-xs">
-                            {questionTypes.find(t => t.id === question.input_type)?.name || question.input_type}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">Order: {question.order}</span>
-                          {!question.id && <Badge variant="outline" className="text-xs text-blue-600 border-blue-200 bg-blue-50">Unsaved</Badge>}
-                        </div>
-
-                        <div className="grid gap-2">
-                          <Label>Question Text</Label>
-                          <Input
-                            value={question.text}
-                            onChange={(e) => handleQuestionChange(idx, 'text', e.target.value)}
-                            placeholder="Type your question here..."
-                            disabled={selectedForm?.is_active}
-                            maxLength={500}
-                          />
-                        </div>
-
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-muted/30 p-3 rounded-md">
-                          <div>
-                            <Label className="text-xs text-muted-foreground mb-1 block">Weight</Label>
-                            <Input
-                              type="number" step="0.5"
-                              value={question.weight}
-                              onChange={(e) => handleQuestionChange(idx, 'weight', parseFloat(e.target.value))}
-                              disabled={selectedForm?.is_active}
+                      <SortableContext
+                        items={localQuestions.map((q, idx) => q.id || q.tempId || `idx-${idx}`)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        <div className="space-y-4">
+                          {localQuestions.map((question, idx) => (
+                            <SortableQuestionItem
+                              key={question.id || question.tempId || `idx-${idx}`}
+                              question={question}
+                              idx={idx}
+                              selectedForm={selectedForm}
+                              handleQuestionChange={handleQuestionChange}
+                              handleRemoveQuestion={handleRemoveQuestion}
                             />
-                          </div>
-                          {(question.input_type === 'rating' || question.input_type === 'number') && (
-                            <>
-                              <div>
-                                <Label className="text-xs text-muted-foreground mb-1 block">Min Value</Label>
-                                <Input
-                                  type="number"
-                                  value={question.min_value}
-                                  onChange={(e) => handleQuestionChange(idx, 'min_value', parseInt(e.target.value))}
-                                  disabled={selectedForm?.is_active}
-                                />
-                              </div>
-                              <div>
-                                <Label className="text-xs text-muted-foreground mb-1 block">Max Value</Label>
-                                <Input
-                                  type="number"
-                                  value={question.max_value}
-                                  onChange={(e) => handleQuestionChange(idx, 'max_value', parseInt(e.target.value))}
-                                  disabled={selectedForm?.is_active}
-                                />
-                              </div>
-                            </>
-                          )}
-                          <div className="flex items-center pt-5 pl-2">
-                            <label className="flex items-center gap-2 text-sm cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={question.is_required}
-                                onChange={(e) => handleQuestionChange(idx, 'is_required', e.target.checked)}
-                                disabled={selectedForm?.is_active}
-                                className="rounded border-gray-300 text-primary shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50"
-                              />
-                              Required Field
-                            </label>
-                          </div>
+                          ))}
                         </div>
-                      </div>
-                      <div className="absolute right-4 top-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button variant="ghost" size="icon" className="text-destructive h-8 w-8" onClick={() => handleRemoveQuestion(idx)} disabled={selectedForm?.is_active}>
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
+                      </SortableContext>
+                    </DndContext>
+                  )}
 
                   {localQuestions.length === 0 && !questionsLoading && (
                     <div className="py-12 text-center border-2 border-dashed border-border rounded-lg text-muted-foreground">
