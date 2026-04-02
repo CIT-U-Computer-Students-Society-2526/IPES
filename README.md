@@ -224,6 +224,178 @@ erDiagram
 
 ---
 
+## Sequence Diagrams
+
+### Evaluation Form Lifecycle
+
+This diagram illustrates the complete lifecycle of an evaluation form — from initial creation by an Admin, through question authoring, assignment generation, member response submission, and finally viewing results.
+
+```mermaid
+sequenceDiagram
+    actor Admin
+    participant Frontend as React Frontend
+    participant API as Django REST API
+    participant DB as PostgreSQL (Supabase)
+    actor Member as Member (Evaluator)
+
+    Note over Admin, DB: Phase 1 — Form Creation & Question Authoring
+
+    Admin->>Frontend: Create new form (title, description)
+    Frontend->>API: POST /api/evaluations/forms/
+    API->>DB: Insert EvaluationForm (is_active=false)
+    DB-->>API: Form record
+    API-->>Frontend: 201 Created (form data)
+    Frontend-->>Admin: Redirect to Form Editor
+
+    Admin->>Frontend: Add questions (type, weight, min/max)
+    Admin->>Frontend: Drag-and-drop to reorder questions
+    Admin->>Frontend: Click "Save Draft"
+    Frontend->>API: POST /api/evaluations/questions/bulk_create/
+    API->>DB: Insert Question rows with order values
+    DB-->>API: Created questions
+    API-->>Frontend: 201 Created
+    Frontend-->>Admin: "Draft Saved" toast
+
+    Note over Admin, DB: Phase 2 — Assignment Rules & Generation
+
+    Admin->>Frontend: Define assignment rules (evaluator ↔ evaluatee)
+    Frontend->>API: POST /api/evaluations/rules/
+    API->>DB: Insert AssignmentRule
+    DB-->>API: Rule record
+    API-->>Frontend: 201 Created
+
+    Admin->>Frontend: Click "Activate Form"
+    Frontend->>API: POST /api/evaluations/forms/{id}/activate/
+    API->>DB: Update form (is_active=true)
+    API-->>Frontend: 200 OK
+
+    Admin->>Frontend: Click "Generate Assignments"
+    Frontend->>API: POST /api/evaluations/rules/generate/
+    API->>DB: Query Memberships matching each rule
+    loop For each evaluator × evaluatee pair
+        API->>DB: get_or_create EvaluationAssignment (status=Pending)
+    end
+    API-->>Frontend: 201 Created ({created: N})
+    Frontend-->>Admin: "N assignments generated" toast
+
+    Note over Member, DB: Phase 3 — Evaluation Response
+
+    Member->>Frontend: View "My Evaluations" (pending list)
+    Frontend->>API: GET /api/evaluations/assignments/my_pending/
+    API->>DB: Query assignments where evaluator=user
+    DB-->>API: Pending assignments
+    API-->>Frontend: Assignment list
+    Frontend-->>Member: Display pending evaluations
+
+    Member->>Frontend: Open an assignment & fill in responses
+    Frontend->>API: POST /api/evaluations/responses/bulk_create/
+    API->>DB: Upsert Response rows (score_value, text)
+    API->>DB: Update assignment status → "In Progress"
+    API-->>Frontend: 201 Created
+
+    Member->>Frontend: Click "Submit Evaluation"
+    Frontend->>API: POST /api/evaluations/assignments/{id}/submit/
+    API->>DB: Create Response rows
+    API->>DB: Calculate weighted total_score
+    API->>DB: Update assignment (status=Completed, submitted_at=now)
+    API-->>Frontend: 200 OK (assignment + responses)
+    Frontend-->>Member: "Evaluation submitted" toast
+
+    Note over Admin, DB: Phase 4 — Results Release & Viewing
+
+    Admin->>Frontend: Click "Release Results"
+    Frontend->>API: POST /api/evaluations/forms/{id}/release_results/
+    API->>DB: Update form (results_released=true, is_active=false)
+    API-->>Frontend: 200 OK
+
+    Member->>Frontend: View "My Results"
+    Frontend->>API: GET /api/evaluations/assignments/my_performance/
+    API->>DB: Query completed assignments for released forms
+    API->>DB: Aggregate scores, category breakdowns, feedback
+    API-->>Frontend: Performance data (scores, history, comments)
+    Frontend-->>Member: Display results dashboard
+```
+
+### Accomplishment Verification
+
+This diagram shows how members submit accomplishments and how admins review (verify or reject) them.
+
+```mermaid
+sequenceDiagram
+    actor Member
+    participant Frontend as React Frontend
+    participant API as Django REST API
+    participant DB as PostgreSQL (Supabase)
+    actor Admin
+
+    Note over Member, DB: Phase 1 — Accomplishment Submission
+
+    Member->>Frontend: Fill accomplishment form (title, type, proof link)
+    Frontend->>API: POST /api/portfolio/accomplishments/
+    API->>API: Auto-set user_id & organization_id from request
+    API->>DB: Insert Accomplishment (status=Pending)
+    DB-->>API: Accomplishment record
+    API-->>Frontend: 201 Created
+    Frontend-->>Member: "Accomplishment submitted" confirmation
+
+    Note over Admin, DB: Phase 2 — Admin Review
+
+    Admin->>Frontend: View "Accomplishments" page (pending tab)
+    Frontend->>API: GET /api/portfolio/accomplishments/pending/
+    API->>API: Verify caller is org Admin
+    API->>DB: Query Accomplishments where status=Pending
+    DB-->>API: Pending accomplishments list
+    API-->>Frontend: Accomplishment data
+    Frontend-->>Admin: Display pending accomplishments with proof links
+
+    alt Admin approves
+        Admin->>Frontend: Click "Verify"
+        Frontend->>API: POST /api/portfolio/accomplishments/{id}/verify/
+        Note right of API: body: {status: "Verified"}
+        API->>API: Check accomplishment is "Pending"
+        API->>DB: Update status=Verified, verified_by=admin
+        API-->>Frontend: 200 OK
+        Frontend-->>Admin: "Accomplishment verified" toast
+    else Admin rejects
+        Admin->>Frontend: Click "Reject" with comments
+        Frontend->>API: POST /api/portfolio/accomplishments/{id}/verify/
+        Note right of API: body: {status: "Rejected", comments: "..."}
+        API->>API: Check accomplishment is "Pending"
+        API->>DB: Update status=Rejected, verified_by=admin, comments
+        API-->>Frontend: 200 OK
+        Frontend-->>Admin: "Accomplishment rejected" toast
+    end
+
+    Note over Member, DB: Phase 3 — Member Sees Outcome
+
+    Member->>Frontend: View "My Accomplishments"
+    Frontend->>API: GET /api/portfolio/accomplishments/my/
+    API->>DB: Query user's accomplishments
+    DB-->>API: Accomplishments with updated statuses
+    API-->>Frontend: Accomplishment list
+    Frontend-->>Member: Display Verified / Rejected status
+
+    opt If Rejected — Member can edit & resubmit
+        Member->>Frontend: Edit rejected accomplishment
+        Frontend->>API: PATCH /api/portfolio/accomplishments/{id}/
+        API->>API: Validate owner & status is "Pending" or "Rejected"
+        API->>DB: Update fields, reset status → Pending
+        API-->>Frontend: 200 OK
+        Frontend-->>Member: "Accomplishment resubmitted" confirmation
+    end
+
+    Note over Member, DB: Phase 4 — Verified accomplishments visible during evaluations
+
+    Member->>Frontend: Evaluator opens peer evaluation form
+    Frontend->>API: GET /api/portfolio/accomplishments/evaluatee_profile/?user_id=X
+    API->>DB: Query Verified accomplishments for evaluatee
+    DB-->>API: Verified accomplishments + membership info
+    API-->>Frontend: Evaluatee profile data
+    Frontend-->>Member: Display evaluatee's verified accomplishments alongside evaluation form
+```
+
+---
+
 ## 📦 Requirements
 
 ### Backend
