@@ -607,12 +607,29 @@ IPES/
 
 ## 🔌 API Endpoints
 
-The Django REST Framework API is available at `/api/`. API endpoints will be added as you develop the backend functionality.
+The Django REST Framework API is available at `/api/`. All endpoints (except for login and registration) require authentication via Bearer Token.
 
-Example API structure:
-- `/api/users/` - User management
-- `/api/evaluations/` - Evaluation forms and responses
-- `/api/organizations/` - Organization management
-- etc.
+### Auth & Users
+- `/api/auth/` - Registration, login, password changes, and logout
+- `/api/users/` - User profile management and search
+
+### Organizations
+- `/api/organizations/` - Main organization management (Admin only)
+- `/api/unit-types/` - Definitions for Unit categories (e.g., Committee, Commission)
+- `/api/units/` - Organizational units within an organization
+- `/api/positions/` - Position titles and rank definitions
+- `/api/memberships/` - Active user roles and assignments within units
+- `/api/join-requests/` - Membership application and approval workflow
+
+### Evaluations
+- `/api/forms/` - Evaluation form lifecycle (Draft, Active, Released)
+- `/api/questions/` - Question authoring and reordering
+- `/api/assignment-rules/` - Logic for mapping evaluators to evaluatees
+- `/api/assignments/` - Individual evaluation instances and status tracking
+- `/api/responses/` - Recorded answers for evaluation questions
+
+### Portfolio & Audit
+- `/api/accomplishments/` - Member portfolios, verification, and feedback
+- `/api/audit/` - System-wide audit logs showing critical admin and user actions
 
 ---
