@@ -583,21 +583,24 @@ The built files will be in `frontend/dist/` and can be served by Django static f
 
 ```
 IPES/
-├── apps/              # Django apps (backend)
-│   ├── audit/
-│   ├── evaluations/
-│   ├── organizations/
-│   ├── portfolio/
-│   └── users/
-├── frontend/          # React application (frontend)
+├── apps/               # Django backend apps
+│   ├── audit/          # Logging and audit trails
+│   ├── evaluations/    # Evaluation forms, rules, and results
+│   ├── organizations/  # Organization and membership management
+│   ├── portfolio/      # Accomplishment tracking and verification
+│   └── users/          # Custom user model and authentication
+├── frontend/           # React frontend (Vite)
 │   ├── src/
-│   │   ├── components/
-│   │   ├── pages/
-│   │   └── lib/
+│   │   ├── components/ # Reusable UI components
+│   │   ├── contexts/   # React Context providers (Auth, Org)
+│   │   ├── hooks/      # Custom React hooks (API queries)
+│   │   ├── lib/        # Utility functions and API configuration
+│   │   ├── pages/      # View components (Admin, Officer, Auth)
+│   │   └── App.tsx     # Main routing and layout wrapper
 │   └── package.json
-├── IPES/              # Django project settings
-├── manage.py
-└── requirements.txt
+├── IPES/               # Django project core settings
+├── manage.py           # Django CLI entry point
+└── requirements.txt    # Python dependencies
 ```
 
 ---
