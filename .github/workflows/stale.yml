@@ -13,7 +13,7 @@ jobs:
 
     steps:
       - name: Mark Stale Branches and PRs
-        uses: actions/stale@v9
+        uses: actions/stale@v10
         with:
           # Settings for PRs
           days-before-pr-stale: 30
