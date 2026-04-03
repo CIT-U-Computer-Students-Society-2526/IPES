@@ -13,6 +13,7 @@ updates:
       interval: "weekly"
     open-pull-requests-limit: 5
     labels:
+      - "dependencies"
       - "backend"
       - "python"
 
@@ -24,6 +25,7 @@ updates:
       interval: "weekly"
     open-pull-requests-limit: 5
     labels:
+      - "dependencies"
       - "frontend"
       - "javascript"
 
@@ -32,3 +34,7 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
+    labels:
+      - "dependencies"
+      - "frontend"
+      - "javascript"
