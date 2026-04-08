@@ -16,6 +16,7 @@ interface RegisterResponse {
         is_active: boolean;
     };
     message: string;
+    token: string;
 }
 
 const Register = () => {
@@ -61,8 +62,9 @@ const Register = () => {
             });
             const data: RegisterResponse = await response.json();
 
-            // Store user info in localStorage
+            // Store user info and token in localStorage
             localStorage.setItem("user", JSON.stringify(data.user));
+            localStorage.setItem("authToken", data.token);
 
             // Redirect to Organization Selector Hub with replace to prevent back navigation
             navigate("/select-organization", { replace: true });

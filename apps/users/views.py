@@ -94,8 +94,13 @@ class AuthViewSet(viewsets.ViewSet):
         login(request, user)
         log_action(user, AuditActions.USER_LOGIN, request)
         
+        # Generate token for API authentication
+        from rest_framework.authtoken.models import Token
+        token, _ = Token.objects.get_or_create(user=user)
+        
         return Response({
             'user': UserSerializer(user).data,
+            'token': token.key,
             'message': 'Registration successful'
         }, status=status.HTTP_201_CREATED)
 
