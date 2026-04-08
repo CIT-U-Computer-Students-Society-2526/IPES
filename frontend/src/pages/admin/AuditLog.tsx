@@ -99,6 +99,13 @@ const AuditLog = () => {
     organization_id: activeOrganizationId ?? undefined
   });
 
+  const formatAction = (action: string) => {
+    return action
+      .replace('.', ': ')
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, l => l.toUpperCase());
+  };
+
   const filteredLogs = useMemo(() => {
     return serverLogs.filter((log) => {
       const q = searchQuery.toLowerCase();
@@ -200,7 +207,24 @@ const AuditLog = () => {
                   <TableCell>
                     <Badge variant="secondary" className={`${colorClass} gap-1.5`}>
                       <IconComponent className="w-3 h-3" />
-                      {log.action}
+                      {(() => {
+                        const formatted = formatAction(log.action);
+                        const parenMatch = formatted.match(/\((.*)\)\s*$/);
+                        if (parenMatch) {
+                          const inside = parenMatch[1];
+                          const titleMatch = inside.match(/(?:^|,\s*)(?:title|name)\s*=\s*([^,]+)/i);
+                          if (titleMatch) {
+                            let title = titleMatch[1].trim();
+                            title = title.replace(/^['\"]|['\"]$/g, '');
+                            return formatted.replace(/\s*\(.*\)\s*$/, ` (${title})`);
+                          } else if (!inside.includes('=')) {
+                            return formatted.replace(/\s*\(.*\)\s*$/, ` (${inside.trim()})`);
+                          } else {
+                            return formatted.replace(/\s*\(.*\)\s*$/, '');
+                          }
+                        }
+                        return formatted;
+                      })()}
                     </Badge>
                   </TableCell>
                   <TableCell className="font-mono text-sm text-muted-foreground">

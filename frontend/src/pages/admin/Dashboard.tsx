@@ -84,11 +84,38 @@ const ActivityItem = ({ activity }: { activity: AuditLog }) => {
       .replace(/\b\w/g, l => l.toUpperCase());
   };
 
+  // Render formatted action but simplify parenthetical metadata.
+  // If the action contains a parenthesis with key=value pairs (e.g. "(title=My Form, id=123)")
+  // prefer to show only the title value in parentheses: "(My Form)".
+  const formatted = formatAction(activity.action);
+  let displayAction = formatted;
+
+  // Extract trailing parenthetical if present
+  const parenMatch = formatted.match(/\((.*)\)\s*$/);
+  if (parenMatch) {
+    const inside = parenMatch[1];
+
+    // Try to find a title or name key inside the parenthetical
+    const titleMatch = inside.match(/(?:^|,\s*)(?:title|name)\s*=\s*([^,]+)/i);
+    if (titleMatch) {
+      let title = titleMatch[1].trim();
+      // Strip surrounding quotes if any
+      title = title.replace(/^['"]|['"]$/g, '');
+      displayAction = formatted.replace(/\s*\(.*\)\s*$/, ` (${title})`);
+    } else if (!inside.includes('=')) {
+      // If the parenthetical is already a plain label (no key=), keep it as-is
+      displayAction = formatted.replace(/\s*\(.*\)\s*$/, ` (${inside.trim()})`);
+    } else {
+      // If no title found, drop the key=value list to keep the action concise
+      displayAction = formatted.replace(/\s*\(.*\)\s*$/, '');
+    }
+  }
+
   return (
     <div className="flex gap-3">
       <div className="w-2 h-2 rounded-full bg-primary mt-2 flex-shrink-0" />
       <div className="flex-1 min-w-0">
-        <p className="text-sm text-foreground">{formatAction(activity.action)}</p>
+        <p className="text-sm text-foreground">{displayAction}</p>
         {activity.user_name && (
           <p className="text-sm text-muted-foreground truncate">{activity.user_name}</p>
         )}
@@ -126,7 +153,8 @@ const UnitProgress = ({ name, completed, isLoading }: {
       </div>
       <Progress
         value={completed}
-        className={`h-2 ${completed < 50 ? '[&>div]:bg-warning' : completed >= 80 ? '[&>div]:bg-success' : ''}`}
+        className="h-2"
+        indicatorClassName={completed < 50 ? 'bg-warning' : completed >= 80 ? 'bg-success' : 'bg-primary'}
       />
     </div>
   );

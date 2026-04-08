@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { useCurrentUser, Membership, useLogout } from '@/hooks/useUsers';
 import { useOrganizationState } from '@/contexts/OrganizationContext';
 import { useCreateOrganization, useJoinOrganization } from '@/hooks/useOrganizations';
@@ -150,6 +150,11 @@ const SelectOrganization = () => {
         });
     };
 
+    // Protect against back-button caching unauthenticated states
+    if (!localStorage.getItem('authToken')) {
+        return <Navigate to="/login" replace />;
+    }
+
     if (isLoading) {
         return (
             <div className="min-h-screen bg-muted/30 flex flex-col items-center justify-center p-4">
@@ -295,7 +300,7 @@ const SelectOrganization = () => {
                             <p className="text-muted-foreground max-w-sm mt-2">
                                 You do not currently have an active membership in any organization. Please contact an administrator.
                             </p>
-                            <Button onClick={() => navigate('/login')} variant="outline" className="mt-6">
+                            <Button onClick={() => logout()} variant="outline" className="mt-6">
                                 Return to Login
                             </Button>
                         </CardContent>

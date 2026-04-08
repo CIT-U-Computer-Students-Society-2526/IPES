@@ -65,6 +65,22 @@ class MembershipSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'date_start', 'date_end']
 
+    def validate(self, data):
+        """Ensure uniqueness: a user cannot have the exact same unit+position entry twice."""
+        # Only enforce on create (instance is None) or when unit/position/user are being changed
+        user = data.get('user_id') or (self.instance.user_id if self.instance else None)
+        unit = data.get('unit_id') or (self.instance.unit_id if self.instance else None)
+        position = data.get('position_id') or (self.instance.position_id if self.instance else None)
+
+        if user and unit and position:
+            qs = Membership.objects.filter(user_id=user, unit_id=unit, position_id=position)
+            if self.instance:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise serializers.ValidationError('This membership (user + unit + position) already exists.')
+
+        return data
+
 class JoinRequestSerializer(serializers.ModelSerializer):
     """Serializer for JoinRequest model"""
     user_email = serializers.CharField(source='user.email', read_only=True)

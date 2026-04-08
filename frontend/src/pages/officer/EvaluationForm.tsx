@@ -419,10 +419,10 @@ const EvaluationForm = () => {
       {/* Progress */}
       <div className="bg-card rounded-xl border border-border p-4 mb-6">
         <div className="flex items-center justify-between text-sm mb-2">
-          <span className="text-muted-foreground">Progress</span>
+          <span className="text-muted-foreground">Completion</span>
           <span className="font-medium text-foreground">{answeredCount}/{totalQuestions} questions</span>
         </div>
-        <Progress value={progressPercentage} className="h-2" />
+        <Progress value={progressPercentage} className="h-2" indicatorClassName={progressPercentage < 50 ? 'bg-warning' : progressPercentage >= 80 ? 'bg-success' : 'bg-primary'} />
 
         {/* Section tabs */}
         <div className="flex gap-1 mt-4 overflow-x-auto pb-1">

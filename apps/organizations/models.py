@@ -41,6 +41,12 @@ class Membership(models.Model):
     date_start = models.DateField()
     date_end = models.DateField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
+    
+    class Meta:
+        # Prevent duplicate membership entries for the same user/unit/position
+        # It's allowed to have the same unit or the same position separately,
+        # but not both identical together for the same user.
+        unique_together = ('user_id', 'unit_id', 'position_id')
 
 class OrganizationRole(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='organization_roles')
