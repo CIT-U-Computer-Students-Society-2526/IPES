@@ -6,6 +6,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 export default function AuthLayout() {
   const [currentOrg, setCurrentOrg] = useState(0);
   const [windowSize, setWindowSize] = useState({ width: window.innerWidth, height: window.innerHeight });
+  const [dpr, setDpr] = useState<number>(window.devicePixelRatio || 1);
 
   const organizations = [
     { logo: "/css-logo.svg", name: "Computer Students' Society" },
@@ -13,26 +14,23 @@ export default function AuthLayout() {
   ];
 
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-    const handleResize = () => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        setWindowSize({ width: window.innerWidth, height: window.innerHeight });
-      }, 100); // 100ms debounce buffer for resizing/zooming
-    };
-    
-    window.addEventListener("resize", handleResize);
-    return () => {
-      window.removeEventListener("resize", handleResize);
-      clearTimeout(timeoutId);
-    };
-  }, []);
-
-  useEffect(() => {
     const interval = setInterval(() => {
       setCurrentOrg((prev) => (prev + 1) % organizations.length);
     }, 4000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Track devicePixelRatio / visual viewport scale so we can inversely scale the decorative animation
+  useEffect(() => {
+    const updateDpr = () => setDpr(window.devicePixelRatio || 1);
+    updateDpr();
+    window.addEventListener('resize', updateDpr);
+    // Poll as some browsers don't fire resize on zoom change
+    const poll = setInterval(updateDpr, 500);
+    return () => {
+      window.removeEventListener('resize', updateDpr);
+      clearInterval(poll);
+    };
   }, []);
 
   return (
@@ -61,7 +59,34 @@ export default function AuthLayout() {
             src="/assets/anim_getthingsdone.json"
             loop
             autoplay
-            className="w-full h-full"
+            aria-hidden
+            className="object-contain"
+            style={{
+              // Compute an inverse scale factor from visualViewport.scale (if available) or DPR.
+              // Cap the factor to avoid extreme shrinking/growing so the animation remains usable.
+              // When user zooms in (scale > 1) factor < 1 so animation shrinks; when zooms out factor > 1 it grows.
+              // Clamp factor between 0.85 and 1.15 to avoid extremes, and use a larger min size.
+              width: (() => {
+                try {
+                  const vScale = (window.visualViewport && window.visualViewport.scale) || dpr || 1;
+                  const raw = 1 / vScale;
+                  const factor = Math.max(0.85, Math.min(1.15, raw));
+                  return `clamp(220px, ${36 * factor}vw, 520px)`;
+                } catch (e) {
+                  return 'clamp(200px, 30vw, 480px)';
+                }
+              })(),
+              height: (() => {
+                try {
+                  const vScale = (window.visualViewport && window.visualViewport.scale) || dpr || 1;
+                  const raw = 1 / vScale;
+                  const factor = Math.max(0.85, Math.min(1.15, raw));
+                  return `clamp(220px, ${36 * factor}vw, 520px)`;
+                } catch (e) {
+                  return 'clamp(200px, 30vw, 480px)';
+                }
+              })()
+            }}
             renderConfig={{
               autoResize: true
             }}

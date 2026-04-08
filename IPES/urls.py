@@ -16,7 +16,8 @@ Including another URLconf
 """
 
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
+from django.views.generic import TemplateView
 from .api import APIRoot
 
 urlpatterns = [
@@ -27,4 +28,10 @@ urlpatterns = [
     path("api/", include("apps.evaluations.urls")),  # Evaluations API
     path("api/", include("apps.portfolio.urls")),  # Portfolio API
     path("api/", include("apps.audit.urls")),  # Audit API
+]
+
+# Catch-all route to serve the frontend SPA index (avoid 404 on refresh)
+# Only apply to non-API routes so API endpoints continue to work normally.
+urlpatterns += [
+    re_path(r'^(?!api/).*$', TemplateView.as_view(template_name='index.html')),
 ]

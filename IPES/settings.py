@@ -88,6 +88,18 @@ TEMPLATES = [
     },
 ]
 
+# Frontend build (Vite) output - used to serve the SPA index.html and static assets
+FRONTEND_DIST = BASE_DIR / 'frontend' / 'dist'
+
+# Include built frontend `dist` so TemplateView can find index.html there
+TEMPLATES[0]["DIRS"].append(FRONTEND_DIST)
+
+# Also include frontend dist in static files search so runserver and collectstatic
+# can find built assets if you opt to serve them from Django
+STATICFILES_DIRS = [
+    FRONTEND_DIST,
+]
+
 WSGI_APPLICATION = "IPES.wsgi.application"
 
 

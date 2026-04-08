@@ -220,7 +220,11 @@ const AdminAssignments = () => {
                       <span className="text-muted-foreground">Completion</span>
                       <span className="font-medium">{form.completedCount}/{form.evaluatorsCount || 0}</span>
                     </div>
-                    <Progress value={form.evaluatorsCount ? (form.completedCount / form.evaluatorsCount) * 100 : 0} className="h-2" />
+                    <Progress
+                      value={form.evaluatorsCount ? (form.completedCount / form.evaluatorsCount) * 100 : 0}
+                      className="h-2"
+                      indicatorClassName={(form.evaluatorsCount ? (form.completedCount / form.evaluatorsCount) * 100 : 0) < 50 ? 'bg-warning' : (form.evaluatorsCount ? (form.completedCount / form.evaluatorsCount) * 100 : 0) >= 80 ? 'bg-success' : 'bg-primary'}
+                    />
                   </div>
                 </CardContent>
               </Card>
