@@ -18,8 +18,4 @@ class Migration(migrations.Migration):
             name='display_picture',
             field=models.ImageField(blank=True, null=True, upload_to='organizations/pictures/', validators=[django.core.validators.FileExtensionValidator(['jpg', 'jpeg', 'png', 'gif'])]),
         ),
-        migrations.AlterUniqueTogether(
-            name='membership',
-            unique_together={('user_id', 'unit_id', 'position_id')},
-        ),
     ]
