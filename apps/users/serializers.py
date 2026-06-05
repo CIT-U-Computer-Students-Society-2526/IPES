@@ -2,6 +2,10 @@ from rest_framework import serializers
 from django.contrib.auth import authenticate
 from .models import User
 from apps.organizations.models import OrganizationRole
+from django.contrib.auth.password_validation import validate_password
+from django.utils.http import urlsafe_base64_decode
+from django.utils.encoding import force_str
+from django.contrib.auth.tokens import default_token_generator
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -143,3 +147,37 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['first_name', 'last_name', 'display_picture']
+
+
+class ForgotPasswordRequestSerializer(serializers.Serializer):
+    """Serializer for requesting a password reset link"""
+    email = serializers.EmailField()
+
+
+class ForgotPasswordConfirmSerializer(serializers.Serializer):
+    """Serializer for confirming a password reset"""
+    uidb64 = serializers.CharField()
+    token = serializers.CharField()
+    new_password = serializers.CharField(write_only=True, validators=[validate_password])
+
+    def validate(self, attrs):
+        uidb64 = attrs.get('uidb64')
+        token = attrs.get('token')
+        
+        try:
+            uid = force_str(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            raise serializers.ValidationError({"token": "Invalid token or user ID."})
+            
+        if not default_token_generator.check_token(user, token):
+            raise serializers.ValidationError({"token": "Invalid or expired token."})
+            
+        attrs['user'] = user
+        return attrs
+        
+    def save(self, **kwargs):
+        user = self.validated_data['user']
+        user.set_password(self.validated_data['new_password'])
+        user.save()
+        return user

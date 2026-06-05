@@ -12,10 +12,22 @@ from .serializers import (
     UserCreateSerializer,
     LoginSerializer,
     PasswordResetSerializer,
-    UserProfileUpdateSerializer
+    UserProfileUpdateSerializer,
+    ForgotPasswordRequestSerializer,
+    ForgotPasswordConfirmSerializer
 )
 
+from rest_framework.throttling import AnonRateThrottle
+from django.core.mail import send_mail
+from django.conf import settings
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
+from django.contrib.auth.tokens import default_token_generator
+import logging
+
 from .permissions import IsAdmin
+
+logger = logging.getLogger(__name__)
 
 class AuthViewSet(viewsets.ViewSet):
     """ViewSet for authentication endpoints"""
@@ -118,6 +130,52 @@ class AuthViewSet(viewsets.ViewSet):
             log_action(user, AuditActions.USER_UPDATED, request)
             return Response(UserSerializer(user).data)
 
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['post'], url_path='password-reset-request', permission_classes=[AllowAny], throttle_classes=[AnonRateThrottle])
+    def password_reset_request(self, request):
+        """Request a password reset link"""
+        serializer = ForgotPasswordRequestSerializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.validated_data['email']
+            user = User.objects.filter(email=email).first()
+            
+            if user and user.is_active:
+                uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+                token = default_token_generator.make_token(user)
+                frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+                reset_link = f"{frontend_url.rstrip('/')}/reset-password/{uidb64}/{token}"
+                
+                try:
+                    if getattr(settings, 'DEBUG', False):
+                        print(f"\n--- DEV: PASSWORD RESET LINK ---\n{reset_link}\n--------------------------------\n")
+                    send_mail(
+                        subject="Password Reset Request",
+                        message=f"You requested a password reset. Click the link to reset your password:\n\n{reset_link}",
+                        from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@example.com'),
+                        recipient_list=[email],
+                        fail_silently=False,
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to send password reset email to {email}: {e}", exc_info=True)
+            
+            # Anti-enumeration: always return success
+            return Response(
+                {'message': 'If an account with this email exists, a reset link has been sent.'},
+                status=status.HTTP_200_OK
+            )
+            
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['post'], url_path='password-reset-confirm', permission_classes=[AllowAny])
+    def password_reset_confirm(self, request):
+        """Confirm password reset with token"""
+        serializer = ForgotPasswordConfirmSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            log_action(user, AuditActions.USER_UPDATED, request, detail="Password reset via email link")
+            return Response({'message': 'Password has been reset successfully.'}, status=status.HTTP_200_OK)
+            
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 

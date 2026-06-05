@@ -184,6 +184,16 @@ const Login = () => {
             Sign Up
           </button>
         </p>
+
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Forgot your password?{' '}
+          <button
+            onClick={() => navigate("/forgot-password")}
+            className="font-semibold text-[#FCBD78] hover:text-[#faa94f] transition-colors"
+          >
+            Reset Password
+          </button>
+        </p>
       </div>
 
     </div>

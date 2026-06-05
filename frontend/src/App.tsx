@@ -12,6 +12,8 @@ import Register from "./pages/Register";
 import SelectOrganization from "./pages/SelectOrganization";
 import NotFound from "./pages/NotFound";
 import AuthLayout from "./components/layout/AuthLayout";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 
 // Officer pages
 import OfficerLayout from "./components/layout/OfficerLayout";
@@ -52,6 +54,9 @@ const App = () => (
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
               </Route>
+              
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password/:uidb64/:token" element={<ResetPassword />} />
               
               <Route path="/select-organization" element={<SelectOrganization />} />
 
