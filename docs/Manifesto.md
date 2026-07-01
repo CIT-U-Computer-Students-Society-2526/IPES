@@ -98,7 +98,7 @@ graph LR
 The Django project is organized into **five domain apps**, each encapsulating a bounded context:
 
 ```
-apps/
+backend/apps/
 ├── users/            Authentication, registration, profile management
 ├── organizations/    Org CRUD, units, positions, memberships, join requests, roles
 ├── evaluations/      Forms, questions, assignment rules, assignments, responses, analytics
@@ -405,46 +405,56 @@ All endpoints are prefixed with `/api/` and require session authentication (exce
 ```
 IPES/
 ├── .github/                     CI/CD workflows, PR template, issue templates
-├── apps/                        Django backend applications
-│   ├── audit/                   Audit logging system
-│   │   ├── models.py            AuditLog model
-│   │   ├── utils.py             log_action() helper + AuditActions constants
-│   │   ├── views.py             ReadOnly ViewSet with search, stats, CSV export
-│   │   ├── serializers.py       Log serialization
-│   │   └── tests/               Unit tests
-│   ├── evaluations/             Core evaluation engine
-│   │   ├── models.py            Form, Question, AssignmentRule, Assignment, Response
-│   │   ├── serializers.py       Rich serializers with nested data
-│   │   ├── views/
-│   │   │   ├── forms.py         Form lifecycle (activate, deactivate, release, duplicate)
-│   │   │   ├── questions.py     Question CRUD + bulk create
-│   │   │   ├── rules.py         Rule CRUD + assignment generation
-│   │   │   ├── assignments.py   Assignment CRUD + submit + performance analytics
-│   │   │   ├── responses.py     Response CRUD + bulk create
-│   │   │   └── analytics.py     Comprehensive analytics computation
-│   │   └── tests/               Model + view tests
-│   ├── organizations/           Organizational structure
-│   │   ├── models.py            Organization, Unit, Position, Membership, Role, JoinRequest
-│   │   ├── serializers.py       Nested serializers with computed fields
-│   │   ├── signals.py           Auto-assignment on membership activation
-│   │   ├── views/
-│   │   │   ├── organizations.py Org CRUD + join-by-code + member management + analytics
-│   │   │   ├── units.py         Unit CRUD
-│   │   │   ├── positions.py     Position CRUD
-│   │   │   ├── memberships.py   Membership CRUD
-│   │   │   └── join_requests.py Join request approval workflow
-│   │   └── tests/               Model + view tests
-│   ├── portfolio/               Accomplishment tracking
-│   │   ├── models.py            Accomplishment model
-│   │   ├── serializers.py       5 purpose-specific serializers
-│   │   └── views/
-│   │       └── accomplishments.py  Full CRUD + verify + summary + evaluatee profile
-│   └── users/                   User management
-│       ├── models.py            Custom User (email-primary)
-│       ├── permissions.py       IsAdmin permission class
-│       ├── serializers.py       Login, register, profile update, password reset
-│       ├── views.py             AuthViewSet + UserViewSet
-│       └── tests/               Model + view tests
+├── backend/                     Django backend module
+│   ├── apps/                    Django backend applications
+│   │   ├── audit/               Audit logging system
+│   │   │   ├── models.py        AuditLog model
+│   │   │   ├── utils.py         log_action() helper + AuditActions constants
+│   │   │   ├── views.py         ReadOnly ViewSet with search, stats, CSV export
+│   │   │   ├── serializers.py   Log serialization
+│   │   │   └── tests/           Unit tests
+│   │   ├── evaluations/         Core evaluation engine
+│   │   │   ├── models.py        Form, Question, AssignmentRule, Assignment, Response
+│   │   │   ├── serializers.py   Rich serializers with nested data
+│   │   │   ├── views/
+│   │   │   │   ├── forms.py     Form lifecycle (activate, deactivate, release, duplicate)
+│   │   │   │   ├── questions.py Question CRUD + bulk create
+│   │   │   │   ├── rules.py     Rule CRUD + assignment generation
+│   │   │   │   ├── assignments.py Assignment CRUD + submit + performance analytics
+│   │   │   │   ├── responses.py Response CRUD + bulk create
+│   │   │   │   └── analytics.py Comprehensive analytics computation
+│   │   │   └── tests/           Model + view tests
+│   │   ├── organizations/       Organizational structure
+│   │   │   ├── models.py        Organization, Unit, Position, Membership, Role, JoinRequest
+│   │   │   ├── serializers.py   Nested serializers with computed fields
+│   │   │   ├── signals.py       Auto-assignment on membership activation
+│   │   │   ├── views/
+│   │   │   │   ├── organizations.py Org CRUD + join-by-code + member management + analytics
+│   │   │   │   ├── units.py     Unit CRUD
+│   │   │   │   ├── positions.py Position CRUD
+│   │   │   │   ├── memberships.py Membership CRUD
+│   │   │   │   └── join_requests.py Join request approval workflow
+│   │   │   └── tests/           Model + view tests
+│   │   ├── portfolio/           Accomplishment tracking
+│   │   │   ├── models.py        Accomplishment model
+│   │   │   ├── serializers.py   5 purpose-specific serializers
+│   │   │   └── views/
+│   │   │       └── accomplishments.py Full CRUD + verify + summary + evaluatee profile
+│   │   └── users/               User management
+│   │       ├── models.py        Custom User (email-primary)
+│   │       ├── permissions.py   IsAdmin permission class
+│   │       ├── serializers.py   Login, register, profile update, password reset
+│   │       ├── views.py         AuthViewSet + UserViewSet
+│   │       └── tests/           Model + view tests
+│   ├── IPES/                    Django project core
+│   │   ├── settings.py          All configuration (DB, auth, CORS, CSRF, DRF)
+│   │   ├── urls.py              Root URL routing to all apps
+│   │   └── api.py               API root endpoint listing all available routes
+│   ├── scripts/                 Utility scripts for testing and verification
+│   ├── manage.py                Django CLI entry point
+│   ├── requirements.txt         Python dependencies
+│   └── sample.env               Environment variable template
+├── docs/                        Developer documentation and guides
 ├── frontend/                    React SPA
 │   ├── src/
 │   │   ├── components/          Reusable UI (shadcn/ui + custom)
@@ -459,14 +469,6 @@ IPES/
 │   ├── tailwind.config.ts       Design system tokens
 │   ├── vite.config.ts           Dev server and build configuration
 │   └── vitest.config.ts         Test runner configuration
-├── IPES/                        Django project core
-│   ├── settings.py              All configuration (DB, auth, CORS, CSRF, DRF)
-│   ├── urls.py                  Root URL routing to all apps
-│   └── api.py                   API root endpoint listing all available routes
-├── scripts/                     Utility scripts for testing and verification
-├── manage.py                    Django CLI entry point
-├── requirements.txt             Python dependencies
-└── sample.env                   Environment variable template
 ```
 
 ---
@@ -477,9 +479,10 @@ IPES/
 
 ```bash
 # 1. Clone & enter
-git clone https://github.com/rkSp4/IPES.git && cd IPES
+git clone https://github.com/CIT-U-Computer-Students-Society/IPES.git && cd IPES
 
 # 2. Backend setup
+cd backend
 python -m venv .venv && .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 cp sample.env .env                 # Edit with your DB credentials
