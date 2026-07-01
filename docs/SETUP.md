@@ -21,7 +21,7 @@ This guide details the steps to set up, configure, and run the Individual Perfor
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/CIT-U-Computer-Students-Society-2526/IPES.git
+git clone https://github.com/CIT-U-Computer-Students-Society/IPES.git
 cd IPES
 ```
 

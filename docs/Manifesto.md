@@ -479,7 +479,7 @@ IPES/
 
 ```bash
 # 1. Clone & enter
-git clone https://github.com/CIT-U-Computer-Students-Society-2526/IPES.git && cd IPES
+git clone https://github.com/CIT-U-Computer-Students-Society/IPES.git && cd IPES
 
 # 2. Backend setup
 cd backend
