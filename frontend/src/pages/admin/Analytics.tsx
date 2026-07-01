@@ -36,12 +36,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { useForms, useFormAnalytics } from "@/hooks/useEvaluations";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 const AdminAnalytics = () => {
   const { data: forms, isLoading: isLoadingForms } = useForms(); // Fetch all forms for the org
   const [selectedFormId, setSelectedFormId] = useState<string>("all");
-  const { toast } = useToast();
+
 
   const availableForms = (forms || []).filter(form => {
     // Hide soft-deleted forms
@@ -95,8 +95,7 @@ const AdminAnalytics = () => {
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
 
-    toast({
-      title: "Success",
+    toast.success("Success", {
       description: "Analytics data exported as JSON",
     });
   };
@@ -168,8 +167,7 @@ const AdminAnalytics = () => {
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
 
-    toast({
-      title: "Success",
+    toast.success("Success", {
       description: "Analytics data exported as CSV",
     });
   };

@@ -13,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { BuildingIcon, ArrowRight, ShieldIcon, UserIcon, PlusIcon, LogOut } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import {
     Dialog,
     DialogContent,
@@ -30,7 +30,7 @@ import { ProfileEditorDialog } from '@/components/ProfileEditorDialog';
 
 const SelectOrganization = () => {
     const navigate = useNavigate();
-    const { toast } = useToast();
+
     const { data: user, isLoading } = useCurrentUser();
     const { setActiveOrganizationId, clearOrganizationState } = useOrganizationState();
     const { logout } = useLogout();
@@ -111,17 +111,14 @@ const SelectOrganization = () => {
                     description: '',
                     period_year_start: new Date().toISOString().split('T')[0]
                 });
-                toast({
-                    title: "Organization Created",
+                toast.success("Organization Created", {
                     description: `${createForm.name} was set up successfully.`,
                 });
             },
             onError: (err: any) => {
                 const errorMessage = err.data?.error || err.data?.code?.[0] || err.message || "Ensure your code is unique and try again.";
-                toast({
-                    title: "Failed to create organization",
+                toast.error("Failed to create organization", {
                     description: errorMessage,
-                    variant: "destructive",
                 });
             }
         });
@@ -134,17 +131,14 @@ const SelectOrganization = () => {
             onSuccess: () => {
                 setIsJoinOpen(false);
                 setJoinCode('');
-                toast({
-                    title: "Join Request Sent",
+                toast.success("Join Request Sent", {
                     description: "Waiting for Admin approval.",
                 });
             },
             onError: (err: any) => {
                 const errorMessage = err.data?.error || err.message || "Ensure the code is correct.";
-                toast({
-                    title: "Failed to submit join request",
+                toast.error("Failed to submit join request", {
                     description: errorMessage,
-                    variant: "destructive",
                 });
             }
         });

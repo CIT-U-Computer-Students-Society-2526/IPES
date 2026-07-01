@@ -66,7 +66,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useToast } from "@/components/ui/use-toast";
+import { toast as sonnerToast } from "sonner";
 import { formatApiError } from "@/lib/api";
 
 import {
@@ -212,7 +212,13 @@ const SortableQuestionItem = ({
 };
 
 const AdminFormBuilder = () => {
-  const { toast } = useToast();
+  const toast = ({ title, description, variant }: { title: string; description?: string; variant?: string }) => {
+    if (variant === "destructive") {
+      sonnerToast.error(title, { description });
+    } else {
+      sonnerToast.success(title, { description });
+    }
+  };
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("forms");
 

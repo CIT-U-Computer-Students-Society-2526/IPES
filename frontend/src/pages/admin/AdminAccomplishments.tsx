@@ -32,7 +32,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useAccomplishments, useVerifyAccomplishment, Accomplishment } from "@/hooks/usePortfolio";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useOrganizationState } from "@/contexts/OrganizationContext";
 
 const AdminAccomplishments = () => {
@@ -48,7 +48,7 @@ const AdminAccomplishments = () => {
   } as any);
 
   const verifyAccomplishment = useVerifyAccomplishment();
-  const { toast } = useToast();
+
 
   const getStatusColor = (status: string) => {
     // make status badges non-interactive and lighten on hover
@@ -87,17 +87,14 @@ const AdminAccomplishments = () => {
           comments: reviewNotes,
         }
       });
-      toast({
-        title: "Success",
+      toast.success("Success", {
         description: `Accomplishment ${status.toLowerCase()} successfully.`,
       });
       setReviewDialogOpen(false);
       setReviewNotes("");
     } catch (error) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: `Failed to update accomplishment status.`,
-        variant: "destructive",
       });
     }
   };
