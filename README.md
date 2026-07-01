@@ -21,21 +21,21 @@ We hope that this system will help in minimizing manual effort, reducing errors,
 
 ## 📖 Documentation Guide
 
-To keep the repository clean and manageable, the project documentation has been split into modular guides. Access them via the [Documentation Index](file:///C:/Users/Rafael/.gemini/antigravity/worktrees/IPES/separate-backend-frontend-modules/docs/README.md) or use the quick links below:
+Access the project documentation via the [Documentation Index](docs/README.md) or use the quick links below:
 
 ### General Overview
-*   [Project Manifesto](file:///C:/Users/Rafael/.gemini/antigravity/worktrees/IPES/separate-backend-frontend-modules/docs/Manifesto.md)
+*   [Project Manifesto](docs/Manifesto.md)
 
 ### Getting Started
-*   [Setup & Installation Guide](file:///C:/Users/Rafael/.gemini/antigravity/worktrees/IPES/separate-backend-frontend-modules/docs/SETUP.md)
-*   [Testing Guide](file:///C:/Users/Rafael/.gemini/antigravity/worktrees/IPES/separate-backend-frontend-modules/docs/TESTING.md)
-*   [Contributing Guidelines](file:///C:/Users/Rafael/.gemini/antigravity/worktrees/IPES/separate-backend-frontend-modules/docs/CONTRIBUTING.md)
+*   [Setup & Installation Guide](docs/SETUP.md)
+*   [Testing Guide](docs/TESTING.md)
+*   [Contributing Guidelines](docs/CONTRIBUTING.md)
 
 ### System Architecture
-*   [Database ERD Diagram](file:///C:/Users/Rafael/.gemini/antigravity/worktrees/IPES/separate-backend-frontend-modules/docs/architecture/ERD.md)
-*   [Evaluation Form Lifecycle Sequence Diagram](file:///C:/Users/Rafael/.gemini/antigravity/worktrees/IPES/separate-backend-frontend-modules/docs/architecture/sequence_diagrams/evaluation_form_lifecycle.md)
-*   [Accomplishment Verification Sequence Diagram](file:///C:/Users/Rafael/.gemini/antigravity/worktrees/IPES/separate-backend-frontend-modules/docs/architecture/sequence_diagrams/accomplishment_verification.md)
-*   [API Endpoints & Design Registry](file:///C:/Users/Rafael/.gemini/antigravity/worktrees/IPES/separate-backend-frontend-modules/docs/API_Design.md)
+*   [Database ERD Diagram](docs/architecture/ERD.md)
+*   [Evaluation Form Lifecycle Sequence Diagram](docs/architecture/sequence_diagrams/evaluation_form_lifecycle.md)
+*   [Accomplishment Verification Sequence Diagram](docs/architecture/sequence_diagrams/accomplishment_verification.md)
+*   [API Endpoints & Design Registry](docs/API_Design.md)
 
 ---
 
