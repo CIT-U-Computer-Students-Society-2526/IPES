@@ -89,7 +89,7 @@ TEMPLATES = [
 ]
 
 # Frontend build (Vite) output - used to serve the SPA index.html and static assets
-FRONTEND_DIST = BASE_DIR / 'frontend' / 'dist'
+FRONTEND_DIST = BASE_DIR.parent / 'frontend' / 'dist'
 
 # Include built frontend `dist` so TemplateView can find index.html there
 TEMPLATES[0]["DIRS"].append(FRONTEND_DIST)

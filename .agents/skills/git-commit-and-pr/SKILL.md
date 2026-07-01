@@ -62,3 +62,17 @@ All pull requests must follow the template defined in `.github/PULL_REQUEST_TEMP
 2. **Type of change**: Select checkboxes representing the types of changes (Bug fix, New feature, Breaking change, Refactor, Docs).
 3. **How Has This Been Tested?**: Concrete commands run, test file references, and verification logs showing that the changes work.
 4. **Checklist**: Validate compliance with project style guidelines, self-reviews, and test suite execution.
+
+---
+
+## 4. Publishing to Origin
+
+Once commits are successfully made and verified locally, the branch must be pushed to the remote repository (`origin`) to make it available for the Pull Request.
+
+### Guidelines:
+- Ensure the local branch name matches the remote branch naming convention.
+- Push the branch using the following command:
+  ```bash
+  git push origin <branch-name>
+  ```
+- Always verify that the push was successful and check the printed GitHub URL to open/view the pull request.

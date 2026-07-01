@@ -418,6 +418,13 @@ cd IPES
 ```
 
 ### 2. Create Virtual Environment
+
+Navigate to the `backend` directory first:
+```bash
+cd backend
+```
+
+Create virtual environment inside `backend`:
 ```bash
 python -m venv .venv
 ```
@@ -437,6 +444,8 @@ Activate it:
   ```
 
 ### 3. Install Backend Dependencies
+
+With your virtual environment active and inside the `backend` directory:
 ```bash
 pip install -r requirements.txt
 ```
@@ -466,8 +475,10 @@ cd ..
 ```
 
 ### 5. Environment Variables
-Copy the example environment file:
+
+Navigate to the `backend` directory and copy the example environment file:
 ```bash
+cd backend
 cp sample.env .env
 ```
 
@@ -505,7 +516,7 @@ VITE_API_BASE_URL=http://localhost:8000/api
 
 ## 🗄️ Database Setup
 
-Supabase uses PostgreSQL. Connect to your Supabase database and run:
+Supabase uses PostgreSQL. Navigate to the `backend` directory, connect to your Supabase database, and run:
 
 1. Apply migrations:
    ```bash
@@ -522,7 +533,7 @@ Supabase uses PostgreSQL. Connect to your Supabase database and run:
 The project uses Django's built-in testing framework for the backend and Vitest/React Testing Library for the frontend.
 
 ### Backend Tests
-To run the backend tests, ensure your environment is set up. The project is configured to automatically use a local **SQLite** database for tests to ensure speed and isolation.
+To run the backend tests, ensure your environment is set up and you are in the `backend` directory. The project is configured to automatically use a local **SQLite** database for tests to ensure speed and isolation.
 
 ```bash
 # Run all backend tests
@@ -555,7 +566,9 @@ npm run test:ui
 You need to run both the Django backend and React frontend servers simultaneously.
 
 #### Terminal 1 - Django Backend
+Navigate to the `backend` directory and run:
 ```bash
+cd backend
 python manage.py runserver
 ```
 Backend will be available at: [http://127.0.0.1:8000](http://127.0.0.1:8000)
@@ -583,12 +596,17 @@ The built files will be in `frontend/dist/` and can be served by Django static f
 
 ```
 IPES/
-├── apps/               # Django backend apps
-│   ├── audit/          # Logging and audit trails
-│   ├── evaluations/    # Evaluation forms, rules, and results
-│   ├── organizations/  # Organization and membership management
-│   ├── portfolio/      # Accomplishment tracking and verification
-│   └── users/          # Custom user model and authentication
+├── backend/            # Django backend module
+│   ├── apps/           # Django backend apps
+│   │   ├── audit/      # Logging and audit trails
+│   │   ├── evaluations/ # Evaluation forms, rules, and results
+│   │   ├── organizations/ # Organization and membership management
+│   │   ├── portfolio/  # Accomplishment tracking and verification
+│   │   └── users/      # Custom user model and authentication
+│   ├── IPES/           # Django project core settings
+│   ├── manage.py       # Django CLI entry point
+│   ├── requirements.txt # Python dependencies
+│   └── scripts/        # Python scripts for verification/testing
 ├── frontend/           # React frontend (Vite)
 │   ├── src/
 │   │   ├── components/ # Reusable UI components
@@ -598,9 +616,6 @@ IPES/
 │   │   ├── pages/      # View components (Admin, Officer, Auth)
 │   │   └── App.tsx     # Main routing and layout wrapper
 │   └── package.json
-├── IPES/               # Django project core settings
-├── manage.py           # Django CLI entry point
-└── requirements.txt    # Python dependencies
 ```
 
 ---
