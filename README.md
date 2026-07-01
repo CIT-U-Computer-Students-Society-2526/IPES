@@ -23,6 +23,9 @@ We hope that this system will help in minimizing manual effort, reducing errors,
 
 To keep the repository clean and manageable, the project documentation has been split into modular guides. Access them via the [Documentation Index](file:///C:/Users/Rafael/.gemini/antigravity/worktrees/IPES/separate-backend-frontend-modules/docs/README.md) or use the quick links below:
 
+### General Overview
+*   [Project Manifesto](file:///C:/Users/Rafael/.gemini/antigravity/worktrees/IPES/separate-backend-frontend-modules/docs/Manifesto.md)
+
 ### Getting Started
 *   [Setup & Installation Guide](file:///C:/Users/Rafael/.gemini/antigravity/worktrees/IPES/separate-backend-frontend-modules/docs/SETUP.md)
 *   [Testing Guide](file:///C:/Users/Rafael/.gemini/antigravity/worktrees/IPES/separate-backend-frontend-modules/docs/TESTING.md)

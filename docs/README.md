@@ -8,6 +8,9 @@ Welcome to the Individual Performance Evaluation System (IPES) developer documen
 
 Use the links below to navigate the guides:
 
+### General / Overview
+*   [Project Manifesto](file:///C:/Users/Rafael/.gemini/antigravity/worktrees/IPES/separate-backend-frontend-modules/docs/Manifesto.md): Core goals, objectives, and foundational values of the IPES project.
+
 ### Setup & Getting Started
 *   [Setup & Installation Guide](file:///C:/Users/Rafael/.gemini/antigravity/worktrees/IPES/separate-backend-frontend-modules/docs/SETUP.md): Requirements, environment setup, database migrations, and local runner commands.
 *   [Testing Guide](file:///C:/Users/Rafael/.gemini/antigravity/worktrees/IPES/separate-backend-frontend-modules/docs/TESTING.md): Run instructions for Django and Vitest unit testing suites.
