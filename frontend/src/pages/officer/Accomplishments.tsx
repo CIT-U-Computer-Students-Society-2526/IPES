@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMyAccomplishments, useCreateAccomplishment, useUpdateAccomplishment, AccomplishmentCreate, Accomplishment } from "@/hooks/usePortfolio";
-import { useToast } from "@/hooks/use-toast";
+import { toast as sonnerToast } from "sonner";
 import { formatApiError } from "@/lib/api";
 
 const getStatusBadge = (status: string) => {
@@ -65,7 +65,13 @@ const OfficerAccomplishments = () => {
   const { data: accomplishments = [], isLoading } = useMyAccomplishments();
   const createAccomplishment = useCreateAccomplishment();
   const updateAccomplishment = useUpdateAccomplishment();
-  const { toast } = useToast();
+  const toast = ({ title, description, variant }: { title: string; description?: string; variant?: string }) => {
+    if (variant === "destructive") {
+      sonnerToast.error(title, { description });
+    } else {
+      sonnerToast.success(title, { description });
+    }
+  };
 
   // determine if the user has changed any editable fields compared to when the dialog opened
   const hasChanges = !!editingAccomplishment && !!originalAccomplishment && (

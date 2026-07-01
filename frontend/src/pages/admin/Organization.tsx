@@ -34,7 +34,7 @@ import {
   useUpdatePositionType
 } from "@/hooks/useOrganizations";
 import { useOrganizationState } from "@/contexts/OrganizationContext";
-import { useToast } from "@/hooks/use-toast";
+import { toast as sonnerToast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -98,7 +98,13 @@ const AdminOrganization = () => {
 
   const approveMutation = useApproveJoinRequest();
   const rejectMutation = useRejectJoinRequest();
-  const { toast } = useToast();
+  const toast = ({ title, description, variant }: { title: string; description?: string; variant?: string }) => {
+    if (variant === "destructive") {
+      sonnerToast.error(title, { description });
+    } else {
+      sonnerToast.success(title, { description });
+    }
+  };
 
   // --- Create States ---
   const [newPositionName, setNewPositionName] = useState("");

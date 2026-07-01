@@ -32,7 +32,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useAuditLogs } from "@/hooks/useAudit";
 import { useOrganizationState } from "@/contexts/OrganizationContext";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import api from "@/lib/api";
 
 const actionIcons: Record<string, typeof LogIn> = {
@@ -58,7 +58,7 @@ const AuditLog = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [actionFilter, setActionFilter] = useState("all");
   const [isExporting, setIsExporting] = useState(false);
-  const { toast } = useToast();
+
 
   const handleExport = async () => {
     setIsExporting(true);
@@ -79,16 +79,13 @@ const AuditLog = () => {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
-      toast({
-        title: "Export Successful",
+      toast.success("Export Successful", {
         description: "Your audit log CSV has been downloaded.",
       });
     } catch (error) {
       console.error("Export failed:", error);
-      toast({
-        title: "Export Failed",
+      toast.error("Export Failed", {
         description: "There was an error generating your CSV export.",
-        variant: "destructive",
       });
     } finally {
       setIsExporting(false);

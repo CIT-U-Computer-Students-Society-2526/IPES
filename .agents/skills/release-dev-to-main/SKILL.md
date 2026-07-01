@@ -1,0 +1,145 @@
+---
+name: release-dev-to-main
+description: Skill for preparing a release pull request from dev into main. Covers changelog generation, PR title format, and description structure. Use whenever merging dev into main for a production release.
+---
+
+# Skill: Releasing `dev` → `main`
+
+Use this skill whenever you are asked to merge `dev` into `main`. This is a **release event** — not a regular feature PR. The title, description, and changelog must reflect the full scope of changes being promoted to production.
+
+> [!IMPORTANT]
+> CI enforces that `main` can **only** be updated via a PR from `dev`. Never merge any other branch directly into `main`.
+
+---
+
+## 1. Pre-Flight Checklist
+
+Before opening the PR, verify all of the following:
+
+- [ ] Both test suites pass locally on `dev`:
+  ```bash
+  # Backend (from backend/)
+  python manage.py test
+
+  # Frontend (from frontend/)
+  npm run test
+  ```
+- [ ] `dev` is fully up-to-date with `origin/dev` (no unpushed commits):
+  ```bash
+  git fetch origin
+  git status
+  ```
+- [ ] The `dev` branch has been pushed to `origin`:
+  ```bash
+  git push origin dev
+  ```
+
+---
+
+## 2. Generate the Changelog
+
+Run the following command to list every commit on `dev` that is not yet on `main`:
+
+```bash
+git log main..dev --oneline
+```
+
+Then group the output by Conventional Commit type. Use this mapping:
+
+| Prefix | Changelog Section |
+|---|---|
+| `feat` | ✨ New Features |
+| `fix` | 🐛 Bug Fixes |
+| `refactor` | ♻️ Refactors |
+| `perf` | ⚡ Performance |
+| `build` / `build(deps)` | 📦 Dependency Updates |
+| `docs` | 📝 Documentation |
+| `test` | 🧪 Tests |
+| `ci` | ⚙️ CI / Tooling |
+| `chore` | 🔧 Chores |
+
+- Omit merge commits (lines starting with `Merge pull request`).
+- Omit bot-generated Dependabot bumps from the main changelog body — group them together under **Dependency Updates** as a single collapsed block.
+- List items as bullet points using the commit subject (strip the type prefix).
+
+---
+
+## 3. PR Title Format
+
+Use the following format for the PR title:
+
+```
+release: <short summary of the release> (YYYY-MM-DD)
+```
+
+The summary should be a **2–5 word description** of the dominant theme of this release — what most of the changes are about.
+
+**Examples:**
+```
+release: evaluation engine and analytics (2026-07-02)
+release: member dashboard and portfolio (2026-06-15)
+release: dependency updates and CI improvements (2026-07-01)
+```
+
+---
+
+## 4. PR Description Structure
+
+Use this exact structure for the PR body. Fill in every section — do not leave placeholder text.
+
+```markdown
+## 🚀 Release — <short summary> (<YYYY-MM-DD>)
+
+> Promotes `dev` → `main`. All changes listed below are now being deployed to production.
+
+---
+
+## ✨ New Features
+- <feat commit subject>
+- <feat commit subject>
+
+## 🐛 Bug Fixes
+- <fix commit subject>
+- <fix commit subject>
+
+## ♻️ Refactors
+- <refactor commit subject>
+
+## 📝 Documentation
+- <docs commit subject>
+
+## ⚙️ CI / Tooling
+- <ci or chore commit subject>
+
+<details>
+<summary>📦 Dependency Updates (<N> bumps)</summary>
+
+- <dep bump 1>
+- <dep bump 2>
+
+</details>
+
+---
+
+## ✅ Pre-Release Verification
+
+- [ ] `python manage.py test` — all backend tests pass
+- [ ] `npm run test` — all frontend tests pass
+- [ ] No regressions observed on the dev environment
+
+## Type of change
+
+- [ ] New feature (non-breaking change which adds functionality)
+- [ ] Bug fix (non-breaking change which fixes an issue)
+- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
+- [ ] Refactor (changes that do not add functionality or fix a bug)
+- [ ] This change requires a documentation update
+```
+
+---
+
+## 5. Omit Sections That Don't Apply
+
+If there are no commits for a particular section (e.g., no `perf` commits), **omit that section entirely** from the PR body. Do not leave empty sections.
+
+
