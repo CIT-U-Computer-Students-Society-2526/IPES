@@ -97,19 +97,19 @@ const Login = () => {
   };
 
   return (
-    <div className="w-full max-w-[420px] bg-white dark:bg-slate-900 p-8 md:p-10 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 animate-fade-up my-auto transition-colors duration-300">
+    <div className="w-full max-w-[420px] bg-white dark:bg-slate-900 p-6 md:p-8 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 animate-fade-up my-auto transition-colors duration-300">
       {/* Mobile Header */}
       <div className="lg:hidden flex items-center gap-2 mb-8 justify-center text-[#293F55] dark:text-blue-100">
         <img src="/ipes-logo-colored.svg" alt="Logo" className="w-8 h-8" />
         <span className="text-xl font-bold tracking-tight">IPES Portal</span>
       </div>
 
-      <div className="mb-8">
+      <div className="mb-6">
         <h2 className="text-3xl font-bold text-[#293F55] dark:text-white mb-2">Sign In</h2>
         <p className="text-slate-500 dark:text-slate-400 text-sm">Please enter your official credentials to continue.</p>
       </div>
 
-      <form onSubmit={handleLogin} className="space-y-6">
+      <form onSubmit={handleLogin} className="space-y-4">
         {error && (
           <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md border border-red-200 animate-fade-up">
             {error}
@@ -174,7 +174,7 @@ const Login = () => {
         </div>
       </form>
 
-      <div className="mt-6 text-center animate-fade-up delay-300">
+      <div className="mt-4 text-center animate-fade-up delay-300">
         <p className="text-sm text-slate-500 dark:text-slate-400">
           Don't have an account?{' '}
           <button

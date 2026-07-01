@@ -5,8 +5,6 @@ import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function AuthLayout() {
   const [currentOrg, setCurrentOrg] = useState(0);
-  const [windowSize, setWindowSize] = useState({ width: window.innerWidth, height: window.innerHeight });
-  const [dpr, setDpr] = useState<number>(window.devicePixelRatio || 1);
 
   const organizations = [
     { logo: "/css-logo.svg", name: "Computer Students' Society" },
@@ -20,21 +18,9 @@ export default function AuthLayout() {
     return () => clearInterval(interval);
   }, []);
 
-  // Track devicePixelRatio / visual viewport scale so we can inversely scale the decorative animation
-  useEffect(() => {
-    const updateDpr = () => setDpr(window.devicePixelRatio || 1);
-    updateDpr();
-    window.addEventListener('resize', updateDpr);
-    // Poll as some browsers don't fire resize on zoom change
-    const poll = setInterval(updateDpr, 500);
-    return () => {
-      window.removeEventListener('resize', updateDpr);
-      clearInterval(poll);
-    };
-  }, []);
 
   return (
-    <div className="min-h-screen flex font-sans text-[#293F55] dark:text-blue-100 transition-colors duration-300">
+    <div className="h-screen flex font-sans text-[#293F55] dark:text-blue-100 transition-colors duration-300 overflow-hidden">
       <style>{`
         @keyframes fadeUp {
           from { opacity: 0; transform: translateY(10px); }
@@ -50,54 +36,14 @@ export default function AuthLayout() {
       `}</style>
 
       {/* LEFT SIDE - BRANDING PANEL */}
-      <div className="hidden lg:flex lg:w-5/12 relative overflow-hidden flex-col justify-between"
+      <div className="hidden lg:flex lg:w-5/12 relative overflow-hidden flex-col h-full"
         style={{ backgroundColor: '#293F55' }}>
-
-        <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-          <DotLottieReact
-            key={`${windowSize.width}x${windowSize.height}`}
-            src="/assets/anim_getthingsdone.json"
-            loop
-            autoplay
-            aria-hidden
-            className="object-contain"
-            style={{
-              // Compute an inverse scale factor from visualViewport.scale (if available) or DPR.
-              // Cap the factor to avoid extreme shrinking/growing so the animation remains usable.
-              // When user zooms in (scale > 1) factor < 1 so animation shrinks; when zooms out factor > 1 it grows.
-              // Clamp factor between 0.85 and 1.15 to avoid extremes, and use a larger min size.
-              width: (() => {
-                try {
-                  const vScale = (window.visualViewport && window.visualViewport.scale) || dpr || 1;
-                  const raw = 1 / vScale;
-                  const factor = Math.max(0.85, Math.min(1.15, raw));
-                  return `clamp(220px, ${36 * factor}vw, 520px)`;
-                } catch (e) {
-                  return 'clamp(200px, 30vw, 480px)';
-                }
-              })(),
-              height: (() => {
-                try {
-                  const vScale = (window.visualViewport && window.visualViewport.scale) || dpr || 1;
-                  const raw = 1 / vScale;
-                  const factor = Math.max(0.85, Math.min(1.15, raw));
-                  return `clamp(220px, ${36 * factor}vw, 520px)`;
-                } catch (e) {
-                  return 'clamp(200px, 30vw, 480px)';
-                }
-              })()
-            }}
-            renderConfig={{
-              autoResize: true
-            }}
-          />
-        </div>
 
         {/* Decorative Yellow Accent Sideline */}
         <div className="absolute left-0 top-0 bottom-0 w-2 bg-[#FCBD78] z-20 shadow-[0_0_15px_rgba(252,189,120,0.3)]"></div>
 
         {/* Top Content */}
-        <div className="relative z-20 px-12 pt-10">
+        <div className="relative z-20 px-12 pt-12 pb-6">
           <div className="flex items-start gap-5 animate-fade-up delay-100 mb-6">
             <h1 className="text-3xl xl:text-4xl font-bold text-white leading-tight">
               <span className="text-[#FCBD78]">Individual Performance</span>
@@ -110,8 +56,24 @@ export default function AuthLayout() {
           </p>
         </div>
 
+        {/* Middle Content - Adaptive Lottie Animation */}
+        <div className="flex-1 flex items-center justify-center min-h-0 pointer-events-none relative z-10 px-6">
+          <div className="w-full h-full max-w-[600px] max-h-[600px]">
+            <DotLottieReact
+              src="/assets/anim_getthingsdone.json"
+              loop
+              autoplay
+              aria-hidden
+              className="w-full h-full object-contain transition-opacity duration-700"
+              renderConfig={{
+                autoResize: true
+              }}
+            />
+          </div>
+        </div>
+
         {/* Bottom Content (Partners) */}
-        <div className="relative z-10 px-12 pb-12">
+        <div className="relative z-20 px-12 pb-12 pt-6">
           <p className="text-[#FCBD78] text-xs font-bold uppercase tracking-wider mb-4">Authorized Partners</p>
           <div className="relative h-14">
             {organizations.map((org, index) => (
@@ -135,7 +97,7 @@ export default function AuthLayout() {
       </div>
 
       {/* RIGHT SIDE - CONTENT OUTLET */}
-      <div className="flex-1 flex items-center justify-center p-6 bg-[#293F55] lg:bg-[#F8FAFC] dark:lg:bg-slate-950 relative overflow-y-auto transition-colors duration-300">
+      <div className="flex-1 h-full flex items-center justify-center p-6 bg-[#293F55] lg:bg-[#F8FAFC] dark:lg:bg-slate-950 relative overflow-y-auto transition-colors duration-300">
         {/* Top Left Logo for Right Pane (Desktop/Tablet) */}
         <div className="hidden lg:flex absolute top-10 left-10 items-center gap-3 animate-fade-up">
           <img src="/ipes-logo-colored.svg" alt="IPES Logo" className="w-10 h-10 object-contain" />
