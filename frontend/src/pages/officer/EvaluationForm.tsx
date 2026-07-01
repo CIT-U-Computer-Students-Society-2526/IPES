@@ -7,7 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/components/ui/use-toast";
+import { toast as sonnerToast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -55,7 +55,13 @@ const EvaluationForm = () => {
   const location = useLocation();
   const basePath = location.pathname.startsWith('/admin') ? '/admin/my-' : '/member/';
   const { id } = useParams();
-  const { toast } = useToast();
+  const toast = ({ title, description, variant }: { title: string; description?: string; variant?: string }) => {
+    if (variant === "destructive") {
+      sonnerToast.error(title, { description });
+    } else {
+      sonnerToast.success(title, { description });
+    }
+  };
   const { activeOrganizationId } = useOrganizationState();
 
   // API Hooks

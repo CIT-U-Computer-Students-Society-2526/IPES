@@ -45,7 +45,7 @@ import { useCurrentMembership } from "@/hooks/useUsers";
 import { useNavigate } from "react-router-dom";
 import { useOrganizationState } from "@/contexts/OrganizationContext";
 import { formatApiError } from "@/lib/api";
-import { useToast } from "@/hooks/use-toast";
+import { toast as sonnerToast } from "sonner";
 
 const AdminSettings = () => {
   const [settings, setSettings] = useState({
@@ -58,7 +58,13 @@ const AdminSettings = () => {
   const { mutate: deleteOrganization, isPending: isDeleting } = useDeleteOrganization();
   const { mutate: updateOrganization, isPending: isUpdatingOrg } = useUpdateOrganization();
   const { data: organization } = useOrganization();
-  const { toast } = useToast();
+  const toast = ({ title, description, variant }: { title: string; description?: string; variant?: string }) => {
+    if (variant === "destructive") {
+      sonnerToast.error(title, { description });
+    } else {
+      sonnerToast.success(title, { description });
+    }
+  };
   const [codeCopied, setCodeCopied] = useState(false);
 
   // Dialog states for deleting organization

@@ -56,7 +56,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useToast } from "@/components/ui/use-toast";
+import { toast as sonnerToast } from "sonner";
 import { useUsers, useCurrentUser, type User } from "@/hooks/useUsers";
 
 // Organization unit options
@@ -97,7 +97,13 @@ const AdminUsers = () => {
     position_id: undefined as number | undefined,
   });
 
-  const { toast } = useToast();
+  const toast = ({ title, description, variant }: { title: string; description?: string; variant?: string }) => {
+    if (variant === "destructive") {
+      sonnerToast.error(title, { description });
+    } else {
+      sonnerToast.success(title, { description });
+    }
+  };
 
   // Fetch users from API (Filtered by Organization ID)
   const { data: users, isLoading, error, refetch } = useUsers({ organization_id: activeOrganizationId });
