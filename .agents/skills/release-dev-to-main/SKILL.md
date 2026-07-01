@@ -142,17 +142,4 @@ Use this exact structure for the PR body. Fill in every section — do not leave
 
 If there are no commits for a particular section (e.g., no `perf` commits), **omit that section entirely** from the PR body. Do not leave empty sections.
 
----
 
-## 6. After the PR Is Merged
-
-Once the PR is merged into `main`, tag the release commit:
-
-```bash
-git checkout main
-git pull origin main
-git tag release/<YYYY-MM-DD>
-git push origin release/<YYYY-MM-DD>
-```
-
-Use the same date string from the PR title. This creates a lightweight Git tag that makes it easy to `git diff` between any two releases.
