@@ -212,6 +212,7 @@ The project ships with skills that agents **must** use for specific tasks. Skill
 |---|---|
 | [`git-commit-and-pr`](.agents/skills/git-commit-and-pr/SKILL.md) | When staging commits or drafting pull requests. Follow Conventional Commits and separate concerns into atomic commits. |
 | [`write-implementation-plans`](.agents/skills/write-implementation-plans/SKILL.md) | When drafting technical implementation plans. Plans must go in `docs/generated/implementation_plans/YYYYMMDD/` following the required naming and structure conventions. |
+| [`release-dev-to-main`](.agents/skills/release-dev-to-main/SKILL.md) | When merging `dev` into `main` for a production release. Covers pre-flight checks, changelog generation from Conventional Commits, PR title format, and post-merge release tagging. |
 
 ---
 
