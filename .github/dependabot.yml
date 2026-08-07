@@ -7,7 +7,7 @@ version: 2
 updates:
   # 1. Django Backend
   - package-ecosystem: "pip"
-    directory: "/"
+    directory: "/backend"
     target-branch: "dev"
     schedule:
       interval: "weekly"
